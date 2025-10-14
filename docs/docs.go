@@ -138,6 +138,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/documents/user/{email}": {
+            "delete": {
+                "description": "Deletes all documents belonging to a specific user (identified by email) and their associated files from S3 storage.\n\n## Features\n- Deletes all document metadata from DynamoDB for the specified user\n- Removes all physical files from S3 storage\n- Returns the count of deleted documents\n- Useful for account closure or data migration scenarios\n\n## Use Cases\n- Account closure/deletion\n- Data migration to another system\n- Bulk cleanup operations\n- GDPR/privacy compliance (right to be forgotten)\n\n## Error Codes\n- ` + "`" + `VALIDATION_ERROR` + "`" + `: Invalid email format\n- ` + "`" + `PERSISTENCE_ERROR` + "`" + `: Failed to delete documents from database",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Delete all documents for a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "email",
+                        "example": "user@example.com",
+                        "description": "Owner's email address",
+                        "name": "email",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All documents deleted successfully",
+                        "schema": {
+                            "$ref": "#/definitions/endpoints.DeleteAllResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error - invalid email format",
+                        "schema": {
+                            "$ref": "#/definitions/endpoints.DeleteAllErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error - database or storage error",
+                        "schema": {
+                            "$ref": "#/definitions/endpoints.DeleteAllErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/documents/{id}": {
             "get": {
                 "description": "Retrieves detailed information about a specific document by its ID.\n\n## Features\n- Returns complete document metadata including URL for viewing/downloading\n- URL is pre-signed and ready to use in frontend viewers\n- Includes file information (size, type, hash, etc.)\n\n## Use Cases\n- Display document details in UI\n- Preview documents in viewers (PDF, images, etc.)\n- Download documents\n- Verify document integrity using hash\n\n## Error Codes\n- ` + "`" + `NOT_FOUND` + "`" + `: Document with the specified ID does not exist\n- ` + "`" + `PERSISTENCE_ERROR` + "`" + `: Failed to retrieve document from database",
@@ -181,6 +227,49 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "delete": {
+                "description": "Deletes a document and its associated file from S3 storage.\n\n## Features\n- Deletes document metadata from DynamoDB\n- Removes the physical file from S3 storage\n- Returns 404 if document doesn't exist\n\n## Use Cases\n- Remove unwanted documents\n- Clean up storage space\n- Comply with data deletion requests\n\n## Error Codes\n- ` + "`" + `NOT_FOUND` + "`" + `: Document with the specified ID does not exist\n- ` + "`" + `PERSISTENCE_ERROR` + "`" + `: Failed to delete document from database",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Delete a document by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "123e4567-e89b-12d3-a456-426614174000",
+                        "description": "Document ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Document deleted successfully",
+                        "schema": {
+                            "$ref": "#/definitions/endpoints.DeleteResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Document not found",
+                        "schema": {
+                            "$ref": "#/definitions/endpoints.DeleteErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error - database or storage error",
+                        "schema": {
+                            "$ref": "#/definitions/endpoints.DeleteErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/healthz": {
@@ -205,6 +294,60 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "endpoints.DeleteAllData": {
+            "type": "object",
+            "properties": {
+                "deleted_count": {
+                    "type": "integer",
+                    "example": 5
+                }
+            }
+        },
+        "endpoints.DeleteAllErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "$ref": "#/definitions/shared.ErrorDetail"
+                }
+            }
+        },
+        "endpoints.DeleteAllResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/endpoints.DeleteAllData"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "all documents deleted successfully"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "endpoints.DeleteErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "$ref": "#/definitions/shared.ErrorDetail"
+                }
+            }
+        },
+        "endpoints.DeleteResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "document deleted successfully"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
         "endpoints.GetErrorResponse": {
             "type": "object",
             "properties": {
