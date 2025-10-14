@@ -13,16 +13,16 @@ import (
 
 	_ "github.com/kristianrpo/document-management-microservice/docs"
 
+	"github.com/kristianrpo/document-management-microservice/internal/adapters/events"
 	httpadapter "github.com/kristianrpo/document-management-microservice/internal/adapters/http"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/handlers"
-	"github.com/kristianrpo/document-management-microservice/internal/adapters/events"
 	"github.com/kristianrpo/document-management-microservice/internal/application/interfaces"
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
 	"github.com/kristianrpo/document-management-microservice/internal/application/util"
 	cfgpkg "github.com/kristianrpo/document-management-microservice/internal/infrastructure/config"
-	infrapkg "github.com/kristianrpo/document-management-microservice/internal/infrastructure/repository"
 	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/messaging"
+	infrapkg "github.com/kristianrpo/document-management-microservice/internal/infrastructure/repository"
 )
 
 // @title Document Management Microservice API
@@ -97,6 +97,7 @@ func main() {
 	documentGetService := usecases.NewDocumentGetService(documentRepository)
 	documentDeleteService := usecases.NewDocumentDeleteService(documentRepository, objectStorage)
 	documentDeleteAllService := usecases.NewDocumentDeleteAllService(documentRepository, objectStorage)
+	documentTransferService := usecases.NewDocumentTransferService(documentRepository, objectStorage, 15*time.Minute)
 
 	errorMapper := errors.NewErrorMapper()
 	errorHandler := errors.NewErrorHandler(errorMapper)
@@ -106,14 +107,15 @@ func main() {
 	getHandler := handlers.NewDocumentGetHandler(documentGetService, errorHandler)
 	deleteHandler := handlers.NewDocumentDeleteHandler(documentDeleteService, errorHandler)
 	deleteAllHandler := handlers.NewDocumentDeleteAllHandler(documentDeleteAllService, errorHandler)
+	transferHandler := handlers.NewDocumentTransferHandler(documentTransferService, errorHandler)
 	healthHandler := handlers.NewHealthHandler()
 
-	router := httpadapter.NewRouter(uploadHandler, listHandler, getHandler, deleteHandler, deleteAllHandler, healthHandler)
+	router := httpadapter.NewRouter(uploadHandler, listHandler, getHandler, deleteHandler, deleteAllHandler, transferHandler, healthHandler)
 
 	// Initialize RabbitMQ consumer for event-driven communication
 	ctx := context.Background()
 	var messageBroker interfaces.MessageBroker
-	
+
 	if config.RabbitMQ.URL != "" {
 		rabbitConsumer, err := messaging.NewRabbitMQConsumer(config.RabbitMQ)
 		if err != nil {
@@ -121,11 +123,15 @@ func main() {
 			log.Println("continuing without message broker...")
 		} else {
 			messageBroker = rabbitConsumer
-			defer messageBroker.Close()
+			defer func() {
+				if err := messageBroker.Close(); err != nil {
+					log.Printf("Error closing message broker: %v", err)
+				}
+			}()
 
 			// Set up event handler
 			userTransferHandler := events.NewUserTransferHandler(documentDeleteAllService)
-			
+
 			// Start consuming messages
 			if err := messageBroker.Subscribe(ctx, userTransferHandler.HandleUserTransferred); err != nil {
 				log.Printf("warning: failed to subscribe to queue: %v", err)

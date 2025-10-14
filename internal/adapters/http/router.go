@@ -14,6 +14,7 @@ func NewRouter(
 	getHandler *handlers.DocumentGetHandler,
 	deleteHandler *handlers.DocumentDeleteHandler,
 	deleteAllHandler *handlers.DocumentDeleteAllHandler,
+	transferHandler *handlers.DocumentTransferHandler,
 	healthHandler *handlers.HealthHandler,
 ) *gin.Engine {
 	router := gin.Default()
@@ -29,6 +30,7 @@ func NewRouter(
 		apiGroup.GET("/documents/:id", getHandler.GetByID)
 		apiGroup.DELETE("/documents/:id", deleteHandler.Delete)
 		apiGroup.DELETE("/documents/user/:email", deleteAllHandler.DeleteAll)
+		apiGroup.GET("/documents/transfer/:email", transferHandler.PrepareTransfer)
 	}
 
 	return router
