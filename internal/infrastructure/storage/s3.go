@@ -46,3 +46,11 @@ func (client *S3Client) PublicURL(objectKey string) string {
 func (client *S3Client) Bucket() string {
 	return client.bucketName
 }
+
+func (client *S3Client) Delete(ctx context.Context, objectKey string) error {
+	_, err := client.s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(client.bucketName),
+		Key:    aws.String(objectKey),
+	})
+	return err
+}
