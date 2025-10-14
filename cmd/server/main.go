@@ -16,11 +16,13 @@ import (
 	httpadapter "github.com/kristianrpo/document-management-microservice/internal/adapters/http"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/handlers"
+	"github.com/kristianrpo/document-management-microservice/internal/adapters/events"
 	"github.com/kristianrpo/document-management-microservice/internal/application/interfaces"
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
 	"github.com/kristianrpo/document-management-microservice/internal/application/util"
 	cfgpkg "github.com/kristianrpo/document-management-microservice/internal/infrastructure/config"
 	infrapkg "github.com/kristianrpo/document-management-microservice/internal/infrastructure/repository"
+	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/messaging"
 )
 
 // @title Document Management Microservice API
@@ -107,6 +109,33 @@ func main() {
 	healthHandler := handlers.NewHealthHandler()
 
 	router := httpadapter.NewRouter(uploadHandler, listHandler, getHandler, deleteHandler, deleteAllHandler, healthHandler)
+
+	// Initialize RabbitMQ consumer for event-driven communication
+	ctx := context.Background()
+	var messageBroker interfaces.MessageBroker
+	
+	if config.RabbitMQ.URL != "" {
+		rabbitConsumer, err := messaging.NewRabbitMQConsumer(config.RabbitMQ)
+		if err != nil {
+			log.Printf("warning: failed to initialize RabbitMQ consumer: %v", err)
+			log.Println("continuing without message broker...")
+		} else {
+			messageBroker = rabbitConsumer
+			defer messageBroker.Close()
+
+			// Set up event handler
+			userTransferHandler := events.NewUserTransferHandler(documentDeleteAllService)
+			
+			// Start consuming messages
+			if err := messageBroker.Subscribe(ctx, userTransferHandler.HandleUserTransferred); err != nil {
+				log.Printf("warning: failed to subscribe to queue: %v", err)
+			} else {
+				log.Printf("listening for events on queue: %s", config.RabbitMQ.Queue)
+			}
+		}
+	} else {
+		log.Println("RabbitMQ URL not configured, skipping message broker initialization")
+	}
 
 	server := &http.Server{
 		Addr:              config.Port,
