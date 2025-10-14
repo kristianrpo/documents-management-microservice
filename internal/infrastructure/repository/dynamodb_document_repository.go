@@ -46,7 +46,6 @@ func (repo *dynamoDBDocumentRepository) Create(document *domain.Document) error 
 		TableName: aws.String(repo.tableName),
 		Item:      item,
 	})
-
 	if err != nil {
 		log.Printf("dynamodb PutItem error: %v", err)
 	}
@@ -64,22 +63,18 @@ func (repo *dynamoDBDocumentRepository) FindByHashAndEmail(hashSHA256, ownerEmai
 		},
 		Limit: aws.Int32(1),
 	})
-
 	if err != nil {
-		// Log query error; if index doesn't exist locally, treat as no result
 		log.Printf("dynamodb Query error on GSI HashEmailIndex: %v", err)
 		return nil, nil
 	}
 
 	if len(result.Items) == 0 {
-		return nil, nil // No document found
+		return nil, nil
 	}
 
 	var document domain.Document
-	err = attributevalue.UnmarshalMap(result.Items[0], &document)
-	if err != nil {
+	if err := attributevalue.UnmarshalMap(result.Items[0], &document); err != nil {
 		return nil, err
 	}
-
 	return &document, nil
 }

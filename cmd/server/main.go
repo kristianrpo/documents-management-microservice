@@ -19,7 +19,6 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/application/util"
 	cfgpkg "github.com/kristianrpo/document-management-microservice/internal/infrastructure/config"
 	infrapkg "github.com/kristianrpo/document-management-microservice/internal/infrastructure/repository"
-	storagepkg "github.com/kristianrpo/document-management-microservice/internal/infrastructure/storage"
 )
 
 func main() {
@@ -46,15 +45,7 @@ func main() {
 		log.Println("Set DEBUG=true to include error details in responses during local development")
 	}
 
-	s3Client, err := storagepkg.NewS3(context.Background(), storagepkg.S3Opts{
-		AccessKey:    config.AWSAccessKey,
-		SecretKey:    config.AWSSecretKey,
-		Region:       config.AWSRegion,
-		Endpoint:     config.S3Endpoint,
-		Bucket:       config.S3Bucket,
-		UsePathStyle: config.S3UsePath,
-		PublicBase:   config.S3PublicBase,
-	})
+	s3Client, err := cfgpkg.NewS3Client(context.Background(), *config)
 	if err != nil {
 		log.Fatalf("s3 init: %v", err)
 	}
