@@ -24,7 +24,7 @@ import (
 
 func main() {
 	if err := godotenv.Load(); err != nil {
-		log.Println("⚠️  No se encontró .env, usando entorno del sistema")
+		log.Println(".env not found, using system environment variables")
 	}
 
 	config := cfgpkg.Load()
