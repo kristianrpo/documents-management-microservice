@@ -1,16 +1,16 @@
 package presenter
 
 import (
-	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/dto/response"
+	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/dto/response/endpoints"
 	"github.com/kristianrpo/document-management-microservice/internal/domain"
 )
 
-func ToDocumentResponse(document *domain.Document) *response.DocumentResponse {
+func ToDocumentData(document *domain.Document) *endpoints.DocumentData {
 	if document == nil {
 		return nil
 	}
 
-	return &response.DocumentResponse{
+	return &endpoints.DocumentData{
 		ID:         document.ID,
 		Filename:   document.Filename,
 		MimeType:   document.MimeType,
@@ -20,3 +20,4 @@ func ToDocumentResponse(document *domain.Document) *response.DocumentResponse {
 		OwnerEmail: document.OwnerEmail,
 	}
 }
+

@@ -1,0 +1,164 @@
+basePath: /
+definitions:
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentData:
+    properties:
+      filename:
+        example: my-document.pdf
+        type: string
+      hash_sha256:
+        example: abc123def456789...
+        type: string
+      id:
+        example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+      mime_type:
+        example: application/pdf
+        type: string
+      owner_email:
+        example: user@example.com
+        type: string
+      size_bytes:
+        example: 102400
+        type: integer
+      url:
+        example: https://my-bucket.s3.amazonaws.com/ab/abc123def456.pdf
+        type: string
+    type: object
+  ? github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentUploadErrorResponse
+  : properties:
+      error:
+        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail'
+      success:
+        example: false
+        type: boolean
+    type: object
+  ? github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentUploadSuccessResponse
+  : properties:
+      data:
+        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentData'
+      success:
+        example: true
+        type: boolean
+    type: object
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.HealthCheckResponse:
+    properties:
+      ok:
+        example: true
+        type: boolean
+    type: object
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail:
+    properties:
+      code:
+        example: VALIDATION_ERROR
+        type: string
+      message:
+        example: invalid request format or validation failed
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@example.com
+    name: API Support
+  description: |-
+    Microservice for managing document uploads, storage, and metadata
+
+    Features:
+    - Upload documents to S3
+    - Store metadata in DynamoDB
+    - Automatic file deduplication based on SHA256 hash
+    - Support for multiple file types
+    - Health check endpoint
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  title: Document Management Microservice API
+  version: "1.0"
+paths:
+  /api/v1/documents:
+    post:
+      consumes:
+      - multipart/form-data
+      description: |-
+        Uploads a document to S3 storage and saves its metadata in DynamoDB.
+
+        ## Features
+        - Automatic file deduplication based on SHA256 hash
+        - If a file with the same hash exists for the same user, returns the existing document
+        - Supports any file type
+        - Automatically detects MIME type from file extension
+        - Generates unique object keys using hash prefix for optimal S3 performance
+
+        ## Process
+        1. Calculates SHA256 hash of the uploaded file
+        2. Checks if document already exists (hash + email)
+        3. If exists, returns existing document (no duplicate upload)
+        4. If new, uploads to S3 and saves metadata to DynamoDB
+
+        ## Error Codes
+        - `VALIDATION_ERROR`: Invalid request format or missing required fields
+        - `FILE_READ_ERROR`: Failed to read the uploaded file
+        - `HASH_CALCULATE_ERROR`: Failed to calculate file hash
+        - `STORAGE_UPLOAD_ERROR`: Failed to upload file to S3
+        - `PERSISTENCE_ERROR`: Failed to save metadata to DynamoDB
+      parameters:
+      - description: 'File to upload (supports any file type: PDF, images, documents,
+          etc.)'
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Owner's email address
+        example: user@example.com
+        format: email
+        in: formData
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Document uploaded successfully
+          schema:
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentUploadSuccessResponse'
+        "400":
+          description: Validation error - invalid email format or missing required
+            fields
+          schema:
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentUploadErrorResponse'
+        "500":
+          description: Internal server error - file processing, storage upload, or
+            database error
+          schema:
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentUploadErrorResponse'
+      summary: Upload a document
+      tags:
+      - documents
+  /healthz:
+    get:
+      description: |-
+        Returns the health status of the service. Use this endpoint to verify that the API is running and responsive.
+        This endpoint is useful for:
+        - Load balancer health checks
+        - Monitoring and alerting systems
+        - Kubernetes liveness/readiness probes
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Service is healthy and operational
+          schema:
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.HealthCheckResponse'
+      summary: Health check endpoint
+      tags:
+      - health
+schemes:
+- http
+- https
+swagger: "2.0"
+tags:
+- description: Document upload and management operations
+  name: documents
+- description: Health check endpoints
+  name: health
