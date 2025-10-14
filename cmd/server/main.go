@@ -91,14 +91,16 @@ func main() {
 		fileHasher,
 		mimeDetector,
 	)
+	documentListService := usecases.NewDocumentListService(documentRepository)
 
 	errorMapper := errors.NewErrorMapper()
 	errorHandler := errors.NewErrorHandler(errorMapper)
 
 	uploadHandler := handlers.NewDocumentUploadHandler(documentService, errorHandler)
+	listHandler := handlers.NewDocumentListHandler(documentListService, errorHandler)
 	healthHandler := handlers.NewHealthHandler()
 
-	router := httpadapter.NewRouter(uploadHandler, healthHandler)
+	router := httpadapter.NewRouter(uploadHandler, listHandler, healthHandler)
 
 	server := &http.Server{
 		Addr:              config.Port,

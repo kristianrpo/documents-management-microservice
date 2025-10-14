@@ -1,6 +1,47 @@
 basePath: /
 definitions:
-  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentData:
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.HealthCheckResponse:
+    properties:
+      ok:
+        example: true
+        type: boolean
+    type: object
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListData:
+    properties:
+      documents:
+        items:
+          $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.DocumentResponse'
+        type: array
+      pagination:
+        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.Pagination'
+    type: object
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListErrorResponse:
+    properties:
+      error:
+        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail'
+    type: object
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListResponse:
+    properties:
+      data:
+        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListData'
+      success:
+        example: true
+        type: boolean
+    type: object
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadErrorResponse:
+    properties:
+      error:
+        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail'
+    type: object
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadResponse:
+    properties:
+      data:
+        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.DocumentResponse'
+      success:
+        example: true
+        type: boolean
+    type: object
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.DocumentResponse:
     properties:
       filename:
         example: my-document.pdf
@@ -24,28 +65,6 @@ definitions:
         example: https://my-bucket.s3.amazonaws.com/ab/abc123def456.pdf
         type: string
     type: object
-  ? github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentUploadErrorResponse
-  : properties:
-      error:
-        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail'
-      success:
-        example: false
-        type: boolean
-    type: object
-  ? github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentUploadSuccessResponse
-  : properties:
-      data:
-        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentData'
-      success:
-        example: true
-        type: boolean
-    type: object
-  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.HealthCheckResponse:
-    properties:
-      ok:
-        example: true
-        type: boolean
-    type: object
   github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail:
     properties:
       code:
@@ -54,6 +73,21 @@ definitions:
       message:
         example: invalid request format or validation failed
         type: string
+    type: object
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.Pagination:
+    properties:
+      limit:
+        example: 10
+        type: integer
+      page:
+        example: 1
+        type: integer
+      total_items:
+        example: 42
+        type: integer
+      total_pages:
+        example: 5
+        type: integer
     type: object
 host: localhost:8080
 info:
@@ -76,6 +110,68 @@ info:
   version: "1.0"
 paths:
   /api/v1/documents:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Retrieves a paginated list of documents for a specific owner (identified by email).
+
+        ## Features
+        - Returns documents sorted by creation date (most recent first)
+        - Supports pagination with configurable page size
+        - Includes pagination metadata (total items, total pages, current page)
+        - Maximum limit per page: 100 documents
+        - Default page size: 10 documents
+
+        ## Pagination
+        - Use `page` parameter to navigate through results (starts at 1)
+        - Use `limit` parameter to control page size (1-100)
+        - Response includes total count and total pages for UI rendering
+
+        ## Error Codes
+        - `VALIDATION_ERROR`: Invalid email format or pagination parameters
+        - `PERSISTENCE_ERROR`: Failed to retrieve documents from database
+      parameters:
+      - description: Owner's email address
+        example: user@example.com
+        format: email
+        in: query
+        name: email
+        required: true
+        type: string
+      - default: 1
+        description: Page number (starts at 1)
+        example: 1
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - default: 10
+        description: Number of items per page (max 100)
+        example: 10
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of documents retrieved successfully
+          schema:
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListResponse'
+        "400":
+          description: Validation error - invalid email or pagination parameters
+          schema:
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListErrorResponse'
+        "500":
+          description: Internal server error - database error
+          schema:
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListErrorResponse'
+      summary: List documents
+      tags:
+      - documents
     post:
       consumes:
       - multipart/form-data
@@ -121,17 +217,17 @@ paths:
         "201":
           description: Document uploaded successfully
           schema:
-            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentUploadSuccessResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadResponse'
         "400":
           description: Validation error - invalid email format or missing required
             fields
           schema:
-            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentUploadErrorResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadErrorResponse'
         "500":
           description: Internal server error - file processing, storage upload, or
             database error
           schema:
-            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentUploadErrorResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadErrorResponse'
       summary: Upload a document
       tags:
       - documents

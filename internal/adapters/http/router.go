@@ -8,7 +8,11 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/handlers"
 )
 
-func NewRouter(uploadHandler *handlers.DocumentUploadHandler, healthHandler *handlers.HealthHandler) *gin.Engine {
+func NewRouter(
+	uploadHandler *handlers.DocumentUploadHandler,
+	listHandler *handlers.DocumentListHandler,
+	healthHandler *handlers.HealthHandler,
+) *gin.Engine {
 	router := gin.Default()
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -18,6 +22,7 @@ func NewRouter(uploadHandler *handlers.DocumentUploadHandler, healthHandler *han
 	apiGroup := router.Group("/api/v1")
 	{
 		apiGroup.POST("/documents", uploadHandler.Upload)
+		apiGroup.GET("/documents", listHandler.List)
 	}
 
 	return router

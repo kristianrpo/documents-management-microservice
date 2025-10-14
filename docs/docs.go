@@ -23,6 +23,69 @@ const docTemplate = `{
     "basePath": "{{.BasePath}}",
     "paths": {
         "/api/v1/documents": {
+            "get": {
+                "description": "Retrieves a paginated list of documents for a specific owner (identified by email).\n\n## Features\n- Returns documents sorted by creation date (most recent first)\n- Supports pagination with configurable page size\n- Includes pagination metadata (total items, total pages, current page)\n- Maximum limit per page: 100 documents\n- Default page size: 10 documents\n\n## Pagination\n- Use ` + "`" + `page` + "`" + ` parameter to navigate through results (starts at 1)\n- Use ` + "`" + `limit` + "`" + ` parameter to control page size (1-100)\n- Response includes total count and total pages for UI rendering\n\n## Error Codes\n- ` + "`" + `VALIDATION_ERROR` + "`" + `: Invalid email format or pagination parameters\n- ` + "`" + `PERSISTENCE_ERROR` + "`" + `: Failed to retrieve documents from database",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "List documents",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "email",
+                        "example": "user@example.com",
+                        "description": "Owner's email address",
+                        "name": "email",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 1,
+                        "example": 1,
+                        "description": "Page number (starts at 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 10,
+                        "example": 10,
+                        "description": "Number of items per page (max 100)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of documents retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error - invalid email or pagination parameters",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error - database error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListErrorResponse"
+                        }
+                    }
+                }
+            },
             "post": {
                 "description": "Uploads a document to S3 storage and saves its metadata in DynamoDB.\n\n## Features\n- Automatic file deduplication based on SHA256 hash\n- If a file with the same hash exists for the same user, returns the existing document\n- Supports any file type\n- Automatically detects MIME type from file extension\n- Generates unique object keys using hash prefix for optimal S3 performance\n\n## Process\n1. Calculates SHA256 hash of the uploaded file\n2. Checks if document already exists (hash + email)\n3. If exists, returns existing document (no duplicate upload)\n4. If new, uploads to S3 and saves metadata to DynamoDB\n\n## Error Codes\n- ` + "`" + `VALIDATION_ERROR` + "`" + `: Invalid request format or missing required fields\n- ` + "`" + `FILE_READ_ERROR` + "`" + `: Failed to read the uploaded file\n- ` + "`" + `HASH_CALCULATE_ERROR` + "`" + `: Failed to calculate file hash\n- ` + "`" + `STORAGE_UPLOAD_ERROR` + "`" + `: Failed to upload file to S3\n- ` + "`" + `PERSISTENCE_ERROR` + "`" + `: Failed to save metadata to DynamoDB",
                 "consumes": [
@@ -57,19 +120,19 @@ const docTemplate = `{
                     "201": {
                         "description": "Document uploaded successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentUploadSuccessResponse"
+                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error - invalid email format or missing required fields",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentUploadErrorResponse"
+                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error - file processing, storage upload, or database error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentUploadErrorResponse"
+                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadErrorResponse"
                         }
                     }
                 }
@@ -97,7 +160,70 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentData": {
+        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.HealthCheckResponse": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListData": {
+            "type": "object",
+            "properties": {
+                "documents": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.DocumentResponse"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.Pagination"
+                }
+            }
+        },
+        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail"
+                }
+            }
+        },
+        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListData"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail"
+                }
+            }
+        },
+        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.DocumentResponse"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.DocumentResponse": {
             "type": "object",
             "properties": {
                 "filename": {
@@ -130,39 +256,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentUploadErrorResponse": {
-            "type": "object",
-            "properties": {
-                "error": {
-                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail"
-                },
-                "success": {
-                    "type": "boolean",
-                    "example": false
-                }
-            }
-        },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentUploadSuccessResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentData"
-                },
-                "success": {
-                    "type": "boolean",
-                    "example": true
-                }
-            }
-        },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.HealthCheckResponse": {
-            "type": "object",
-            "properties": {
-                "ok": {
-                    "type": "boolean",
-                    "example": true
-                }
-            }
-        },
         "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail": {
             "type": "object",
             "properties": {
@@ -173,6 +266,27 @@ const docTemplate = `{
                 "message": {
                     "type": "string",
                     "example": "invalid request format or validation failed"
+                }
+            }
+        },
+        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.Pagination": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "page": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "total_items": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "total_pages": {
+                    "type": "integer",
+                    "example": 5
                 }
             }
         }

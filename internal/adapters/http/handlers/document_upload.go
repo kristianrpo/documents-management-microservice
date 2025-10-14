@@ -52,9 +52,9 @@ func NewDocumentUploadHandler(service usecases.DocumentService, errorHandler *er
 // @Produce json
 // @Param file formData file true "File to upload (supports any file type: PDF, images, documents, etc.)"
 // @Param email formData string true "Owner's email address" format(email) example(user@example.com)
-// @Success 201 {object} endpoints.DocumentUploadSuccessResponse "Document uploaded successfully"
-// @Failure 400 {object} endpoints.DocumentUploadErrorResponse "Validation error - invalid email format or missing required fields"
-// @Failure 500 {object} endpoints.DocumentUploadErrorResponse "Internal server error - file processing, storage upload, or database error"
+// @Success 201 {object} endpoints.UploadResponse "Document uploaded successfully"
+// @Failure 400 {object} endpoints.UploadErrorResponse "Validation error - invalid email format or missing required fields"
+// @Failure 500 {object} endpoints.UploadErrorResponse "Internal server error - file processing, storage upload, or database error"
 // @Router /api/v1/documents [post]
 func (handler *DocumentUploadHandler) Upload(ctx *gin.Context) {
 	var uploadRequest request.UploadRequest
@@ -70,8 +70,8 @@ func (handler *DocumentUploadHandler) Upload(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, endpoints.DocumentUploadSuccessResponse{
+	ctx.JSON(http.StatusCreated, endpoints.UploadResponse{
 		Success: true,
-		Data:    *presenter.ToDocumentData(document),
+		Data:    *presenter.ToDocumentResponse(document),
 	})
 }
