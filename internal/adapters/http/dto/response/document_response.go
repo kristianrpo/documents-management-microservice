@@ -1,7 +1,7 @@
 package response
 
 type DocumentResponse struct {
-	ID         uint   `json:"id"`
+	ID         string `json:"id"`
 	Filename   string `json:"filename"`
 	MimeType   string `json:"mime_type"`
 	SizeBytes  int64  `json:"size_bytes"`

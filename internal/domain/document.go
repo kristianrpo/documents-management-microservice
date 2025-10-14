@@ -6,17 +6,17 @@ import (
 )
 
 type Document struct {
-	ID         uint      `gorm:"primaryKey" json:"id"`
-	Filename   string    `json:"filename"`
-	MimeType   string    `json:"mime_type"`
-	SizeBytes  int64     `json:"size_bytes"`
-	HashSHA256 string    `gorm:"size:64;index" json:"hash_sha256"`
-	Bucket     string    `json:"bucket"`
-	ObjectKey  string    `json:"object_key"`
-	URL        string    `json:"url"`
-	OwnerEmail string    `json:"owner_email" gorm:"index"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	ID         string    `dynamodbav:"id" json:"id"`
+	Filename   string    `dynamodbav:"filename" json:"filename"`
+	MimeType   string    `dynamodbav:"mime_type" json:"mime_type"`
+	SizeBytes  int64     `dynamodbav:"size_bytes" json:"size_bytes"`
+	HashSHA256 string    `dynamodbav:"hash_sha256" json:"hash_sha256"`
+	Bucket     string    `dynamodbav:"bucket" json:"bucket"`
+	ObjectKey  string    `dynamodbav:"object_key" json:"object_key"`
+	URL        string    `dynamodbav:"url" json:"url"`
+	OwnerEmail string    `dynamodbav:"owner_email" json:"owner_email"`
+	CreatedAt  time.Time `dynamodbav:"created_at" json:"created_at"`
+	UpdatedAt  time.Time `dynamodbav:"updated_at" json:"updated_at"`
 }
 
 func (d *Document) Validate() error {

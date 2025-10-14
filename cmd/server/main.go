@@ -28,9 +28,18 @@ func main() {
 	}
 
 	config := cfgpkg.Load()
-	log.Println("DEBUG DSN:", config.DBUrl)
 
-	database := cfgpkg.Connect(config.DBUrl)
+	dynamoClient, err := cfgpkg.NewDynamoDBClient(
+		context.Background(),
+		config.AWSAccessKey,
+		config.AWSSecretKey,
+		config.AWSRegion,
+		config.DynamoDBEndpoint,
+	)
+	if err != nil {
+		log.Fatalf("dynamodb init: %v", err)
+	}
+	log.Printf("DynamoDB client initialized (endpoint: %s)", config.DynamoDBEndpoint)
 
 	s3Client, err := storagepkg.NewS3(context.Background(), storagepkg.S3Opts{
 		AccessKey:    config.AWSAccessKey,
@@ -45,7 +54,7 @@ func main() {
 		log.Fatalf("s3 init: %v", err)
 	}
 
-	documentRepository := infrapkg.NewDocumentRepo(database)
+	documentRepository := infrapkg.NewDynamoDBDocumentRepo(dynamoClient, config.DynamoDBTable)
 	
 	var objectStorage interfaces.ObjectStorage = s3Client
 	
