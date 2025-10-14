@@ -87,6 +87,23 @@ func main() {
 	fileHasher := util.NewSHA256Hasher()
 	mimeDetector := util.NewExtensionBasedDetector()
 
+	// Initialize RabbitMQ publisher for publishing events
+	var messagePublisher interfaces.MessagePublisher
+	if config.RabbitMQ.URL != "" {
+		rabbitPublisher, err := messaging.NewRabbitMQPublisher(config.RabbitMQ)
+		if err != nil {
+			log.Printf("warning: failed to initialize RabbitMQ publisher: %v", err)
+		} else {
+			messagePublisher = rabbitPublisher
+			defer func() {
+				if err := messagePublisher.Close(); err != nil {
+					log.Printf("Error closing message publisher: %v", err)
+				}
+			}()
+			log.Println("RabbitMQ publisher initialized")
+		}
+	}
+
 	documentService := usecases.NewDocumentService(
 		documentRepository,
 		objectStorage,
@@ -98,6 +115,17 @@ func main() {
 	documentDeleteService := usecases.NewDocumentDeleteService(documentRepository, objectStorage)
 	documentDeleteAllService := usecases.NewDocumentDeleteAllService(documentRepository, objectStorage)
 	documentTransferService := usecases.NewDocumentTransferService(documentRepository, objectStorage, 15*time.Minute)
+	
+	var documentRequestAuthService *usecases.DocumentRequestAuthenticationService
+	if messagePublisher != nil {
+		documentRequestAuthService = usecases.NewDocumentRequestAuthenticationService(
+			documentRepository,
+			objectStorage,
+			messagePublisher,
+			config.AuthenticationRequestQueue,
+			24*time.Hour,
+		)
+	}
 
 	errorMapper := errors.NewErrorMapper()
 	errorHandler := errors.NewErrorHandler(errorMapper)
@@ -108,9 +136,15 @@ func main() {
 	deleteHandler := handlers.NewDocumentDeleteHandler(documentDeleteService, errorHandler)
 	deleteAllHandler := handlers.NewDocumentDeleteAllHandler(documentDeleteAllService, errorHandler)
 	transferHandler := handlers.NewDocumentTransferHandler(documentTransferService, errorHandler)
+	
+	var requestAuthHandler *handlers.DocumentRequestAuthenticationHandler
+	if documentRequestAuthService != nil {
+		requestAuthHandler = handlers.NewDocumentRequestAuthenticationHandler(documentRequestAuthService, errorHandler)
+	}
+	
 	healthHandler := handlers.NewHealthHandler()
 
-	router := httpadapter.NewRouter(uploadHandler, listHandler, getHandler, deleteHandler, deleteAllHandler, transferHandler, healthHandler)
+	router := httpadapter.NewRouter(uploadHandler, listHandler, getHandler, deleteHandler, deleteAllHandler, transferHandler, requestAuthHandler, healthHandler)
 
 	// Initialize RabbitMQ consumer for event-driven communication
 	ctx := context.Background()

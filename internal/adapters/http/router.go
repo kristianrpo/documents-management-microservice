@@ -15,6 +15,7 @@ func NewRouter(
 	deleteHandler *handlers.DocumentDeleteHandler,
 	deleteAllHandler *handlers.DocumentDeleteAllHandler,
 	transferHandler *handlers.DocumentTransferHandler,
+	requestAuthHandler *handlers.DocumentRequestAuthenticationHandler,
 	healthHandler *handlers.HealthHandler,
 ) *gin.Engine {
 	router := gin.Default()
@@ -31,6 +32,7 @@ func NewRouter(
 		apiGroup.DELETE("/documents/:id", deleteHandler.Delete)
 		apiGroup.DELETE("/documents/user/:email", deleteAllHandler.DeleteAll)
 		apiGroup.GET("/documents/transfer/:email", transferHandler.PrepareTransfer)
+		apiGroup.POST("/documents/:id/request-authentication", requestAuthHandler.RequestAuthentication)
 	}
 
 	return router

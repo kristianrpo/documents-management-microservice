@@ -20,7 +20,8 @@ type Config struct {
 	S3UsePath    bool
 	S3PublicBase string
 
-	RabbitMQ RabbitMQConfig
+	RabbitMQ                      RabbitMQConfig
+	AuthenticationRequestQueue    string
 
 	ReadHeaderTimeout time.Duration
 }
@@ -42,18 +43,19 @@ func Load() *Config {
 	rabbitMQConfig.Queue = getenv("RABBITMQ_QUEUE", "user.transferred")
 
 	return &Config{
-		Port:              port,
-		DynamoDBTable:     getenv("DYNAMODB_TABLE", "documents"),
-		DynamoDBEndpoint:  getenv("DYNAMODB_ENDPOINT", ""),
-		AWSAccessKey:      getenv("AWS_ACCESS_KEY_ID", "local"),
-		AWSSecretKey:      getenv("AWS_SECRET_ACCESS_KEY", "local"),
-		AWSRegion:         getenv("AWS_REGION", "us-east-1"),
-		S3Bucket:          getenv("S3_BUCKET", "documents"),
-		S3Endpoint:        getenv("S3_ENDPOINT", ""),
-		S3UsePath:         getbool("S3_USE_PATH_STYLE"),
-		S3PublicBase:      getenv("S3_PUBLIC_BASE_URL", ""),
-		RabbitMQ:          rabbitMQConfig,
-		ReadHeaderTimeout: 5 * time.Second,
+		Port:                       port,
+		DynamoDBTable:              getenv("DYNAMODB_TABLE", "documents"),
+		DynamoDBEndpoint:           getenv("DYNAMODB_ENDPOINT", ""),
+		AWSAccessKey:               getenv("AWS_ACCESS_KEY_ID", "local"),
+		AWSSecretKey:               getenv("AWS_SECRET_ACCESS_KEY", "local"),
+		AWSRegion:                  getenv("AWS_REGION", "us-east-1"),
+		S3Bucket:                   getenv("S3_BUCKET", "documents"),
+		S3Endpoint:                 getenv("S3_ENDPOINT", ""),
+		S3UsePath:                  getbool("S3_USE_PATH_STYLE"),
+		S3PublicBase:               getenv("S3_PUBLIC_BASE_URL", ""),
+		RabbitMQ:                   rabbitMQConfig,
+		AuthenticationRequestQueue: getenv("AUTHENTICATION_REQUEST_QUEUE", "document.authentication.requested"),
+		ReadHeaderTimeout:          5 * time.Second,
 	}
 }
 

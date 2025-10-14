@@ -77,6 +77,23 @@ definitions:
         example: true
         type: boolean
     type: object
+  endpoints.RequestAuthenticationErrorResponse:
+    properties:
+      error:
+        $ref: '#/definitions/shared.ErrorDetail'
+      success:
+        example: false
+        type: boolean
+    type: object
+  endpoints.RequestAuthenticationResponse:
+    properties:
+      message:
+        example: Authentication request submitted successfully
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
   endpoints.TransferData:
     properties:
       documents:
@@ -427,6 +444,41 @@ paths:
           schema:
             $ref: '#/definitions/endpoints.GetErrorResponse'
       summary: Get document by ID
+      tags:
+      - documents
+  /api/v1/documents/{id}/request-authentication:
+    post:
+      consumes:
+      - application/json
+      description: Requests authentication of a document by publishing an event for
+        external authentication service. The document owner's email and filename are
+        automatically included in the event.
+      parameters:
+      - description: Document ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Authentication request accepted
+          schema:
+            $ref: '#/definitions/endpoints.RequestAuthenticationResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/endpoints.RequestAuthenticationErrorResponse'
+        "404":
+          description: Document not found
+          schema:
+            $ref: '#/definitions/endpoints.RequestAuthenticationErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/endpoints.RequestAuthenticationErrorResponse'
+      summary: Request document authentication
       tags:
       - documents
   /api/v1/documents/transfer/{email}:

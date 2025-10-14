@@ -316,6 +316,56 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/documents/{id}/request-authentication": {
+            "post": {
+                "description": "Requests authentication of a document by publishing an event for external authentication service. The document owner's email and filename are automatically included in the event.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Request document authentication",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Document ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Authentication request accepted",
+                        "schema": {
+                            "$ref": "#/definitions/endpoints.RequestAuthenticationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/endpoints.RequestAuthenticationErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Document not found",
+                        "schema": {
+                            "$ref": "#/definitions/endpoints.RequestAuthenticationErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/endpoints.RequestAuthenticationErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/healthz": {
             "get": {
                 "description": "Returns the health status of the service. Use this endpoint to verify that the API is running and responsive.\nThis endpoint is useful for:\n- Load balancer health checks\n- Monitoring and alerting systems\n- Kubernetes liveness/readiness probes",
@@ -448,6 +498,31 @@ const docTemplate = `{
             "properties": {
                 "data": {
                     "$ref": "#/definitions/endpoints.ListData"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "endpoints.RequestAuthenticationErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "$ref": "#/definitions/shared.ErrorDetail"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "endpoints.RequestAuthenticationResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Authentication request submitted successfully"
                 },
                 "success": {
                     "type": "boolean",
