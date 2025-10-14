@@ -3,6 +3,7 @@ package handlers
 import (
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 
@@ -33,27 +34,29 @@ func NewDocumentTransferHandler(
 // @Tags documents
 // @Accept json
 // @Produce json
-// @Param email path string true "User email"
+// @Param id_citizen path int true "Citizen ID"
 // @Success 200 {object} endpoints.TransferResponse "Documents prepared successfully"
 // @Failure 400 {object} endpoints.TransferErrorResponse "Invalid request"
 // @Failure 500 {object} endpoints.TransferErrorResponse "Internal server error"
-// @Router /api/v1/documents/transfer/{email} [get]
+// @Router /api/v1/documents/transfer/{id_citizen} [get]
 func (h *DocumentTransferHandler) PrepareTransfer(c *gin.Context) {
-	email := c.Param("email")
-	if email == "" {
+	idCitizenStr := c.Param("id_citizen")
+	
+	idCitizen, err := strconv.ParseInt(idCitizenStr, 10, 64)
+	if err != nil || idCitizen <= 0 {
 		c.JSON(http.StatusBadRequest, endpoints.TransferErrorResponse{
 			Success: false,
 			Error: shared.ErrorDetail{
-				Code:    "INVALID_EMAIL",
-				Message: "Email parameter is required",
+				Code:    "INVALID_ID_CITIZEN",
+				Message: "id_citizen must be a valid positive integer",
 			},
 		})
 		return
 	}
 
-	log.Printf("Preparing transfer for user: %s", email)
+	log.Printf("Preparing transfer for user ID: %d", idCitizen)
 
-	results, err := h.transferService.PrepareTransfer(c.Request.Context(), email)
+	results, err := h.transferService.PrepareTransfer(c.Request.Context(), idCitizen)
 	if err != nil {
 		h.errorHandler.HandleError(c, err)
 		return
@@ -79,13 +82,13 @@ func (h *DocumentTransferHandler) PrepareTransfer(c *gin.Context) {
 		})
 	}
 
-	log.Printf("Successfully prepared %d documents for transfer (user: %s)", len(transferDocuments), email)
+	log.Printf("Successfully prepared %d documents for transfer (user ID: %d)", len(transferDocuments), idCitizen)
 
 	c.JSON(http.StatusOK, endpoints.TransferResponse{
 		Success: true,
 		Message: "Documents prepared for transfer",
 		Data: endpoints.TransferData{
-			Email:          email,
+			IDCitizen:      idCitizen,
 			TotalDocuments: len(transferDocuments),
 			Documents:      transferDocuments,
 			ExpiresIn:      "15m",

@@ -100,12 +100,12 @@ definitions:
         items:
           $ref: '#/definitions/shared.TransferDocument'
         type: array
-      email:
-        example: user@example.com
-        type: string
       expires_in:
         example: 15m
         type: string
+      id_citizen:
+        example: 123456789
+        type: integer
       total_documents:
         example: 5
         type: integer
@@ -156,9 +156,9 @@ definitions:
       mime_type:
         example: application/pdf
         type: string
-      owner_email:
-        example: user@example.com
-        type: string
+      owner_id:
+        example: 1234567890
+        type: integer
       size_bytes:
         example: 102400
         type: integer
@@ -239,7 +239,7 @@ paths:
       consumes:
       - application/json
       description: |-
-        Retrieves a paginated list of documents for a specific owner (identified by email).
+        Retrieves a paginated list of documents for a specific owner (identified by citizen ID).
 
         ## Features
         - Returns documents sorted by creation date (most recent first)
@@ -254,16 +254,15 @@ paths:
         - Response includes total count and total pages for UI rendering
 
         ## Error Codes
-        - `VALIDATION_ERROR`: Invalid email format or pagination parameters
+        - `VALIDATION_ERROR`: Invalid id_citizen or pagination parameters
         - `PERSISTENCE_ERROR`: Failed to retrieve documents from database
       parameters:
-      - description: Owner's email address
-        example: user@example.com
-        format: email
+      - description: Owner's citizen ID
+        example: 123456789
         in: query
-        name: email
+        name: id_citizen
         required: true
-        type: string
+        type: integer
       - default: 1
         description: Page number (starts at 1)
         example: 1
@@ -287,7 +286,7 @@ paths:
           schema:
             $ref: '#/definitions/endpoints.ListResponse'
         "400":
-          description: Validation error - invalid email or pagination parameters
+          description: Validation error - invalid id_citizen or pagination parameters
           schema:
             $ref: '#/definitions/endpoints.ListErrorResponse'
         "500":
@@ -312,7 +311,7 @@ paths:
 
         ## Process
         1. Calculates SHA256 hash of the uploaded file
-        2. Checks if document already exists (hash + email)
+        2. Checks if document already exists (hash + citizen ID)
         3. If exists, returns existing document (no duplicate upload)
         4. If new, uploads to S3 and saves metadata to DynamoDB
 
@@ -329,13 +328,12 @@ paths:
         name: file
         required: true
         type: file
-      - description: Owner's email address
-        example: user@example.com
-        format: email
+      - description: Owner's citizen ID
+        example: 123456789
         in: formData
-        name: email
+        name: id_citizen
         required: true
-        type: string
+        type: integer
       produces:
       - application/json
       responses:
@@ -344,8 +342,7 @@ paths:
           schema:
             $ref: '#/definitions/endpoints.UploadResponse'
         "400":
-          description: Validation error - invalid email format or missing required
-            fields
+          description: Validation error - invalid id_citizen or missing required fields
           schema:
             $ref: '#/definitions/endpoints.UploadErrorResponse'
         "500":
@@ -451,8 +448,8 @@ paths:
       consumes:
       - application/json
       description: Requests authentication of a document by publishing an event for
-        external authentication service. The document owner's email and filename are
-        automatically included in the event.
+        external authentication service. The document owner's citizen ID and filename
+        are automatically included in the event.
       parameters:
       - description: Document ID
         in: path
@@ -481,18 +478,18 @@ paths:
       summary: Request document authentication
       tags:
       - documents
-  /api/v1/documents/transfer/{email}:
+  /api/v1/documents/transfer/{id_citizen}:
     get:
       consumes:
       - application/json
       description: Generates pre-signed URLs for all documents owned by a user for
         secure transfer to another operator
       parameters:
-      - description: User email
+      - description: Citizen ID
         in: path
-        name: email
+        name: id_citizen
         required: true
-        type: string
+        type: integer
       produces:
       - application/json
       responses:
@@ -511,12 +508,12 @@ paths:
       summary: Prepare documents for transfer
       tags:
       - documents
-  /api/v1/documents/user/{email}:
+  /api/v1/documents/user/{id_citizen}:
     delete:
       consumes:
       - application/json
       description: |-
-        Deletes all documents belonging to a specific user (identified by email) and their associated files from S3 storage.
+        Deletes all documents belonging to a specific user (identified by citizen ID) and their associated files from S3 storage.
 
         ## Features
         - Deletes all document metadata from DynamoDB for the specified user
@@ -531,16 +528,15 @@ paths:
         - GDPR/privacy compliance (right to be forgotten)
 
         ## Error Codes
-        - `VALIDATION_ERROR`: Invalid email format
+        - `VALIDATION_ERROR`: Invalid citizen ID
         - `PERSISTENCE_ERROR`: Failed to delete documents from database
       parameters:
-      - description: Owner's email address
-        example: user@example.com
-        format: email
+      - description: Citizen ID
+        example: 123456789
         in: path
-        name: email
+        name: id_citizen
         required: true
-        type: string
+        type: integer
       produces:
       - application/json
       responses:
@@ -549,7 +545,7 @@ paths:
           schema:
             $ref: '#/definitions/endpoints.DeleteAllResponse'
         "400":
-          description: Validation error - invalid email format
+          description: Validation error - invalid citizen ID
           schema:
             $ref: '#/definitions/endpoints.DeleteAllErrorResponse'
         "500":

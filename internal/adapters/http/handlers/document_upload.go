@@ -37,7 +37,7 @@ func NewDocumentUploadHandler(service usecases.DocumentService, errorHandler *er
 // @Description
 // @Description ## Process
 // @Description 1. Calculates SHA256 hash of the uploaded file
-// @Description 2. Checks if document already exists (hash + email)
+// @Description 2. Checks if document already exists (hash + citizen ID)
 // @Description 3. If exists, returns existing document (no duplicate upload)
 // @Description 4. If new, uploads to S3 and saves metadata to DynamoDB
 // @Description
@@ -51,9 +51,9 @@ func NewDocumentUploadHandler(service usecases.DocumentService, errorHandler *er
 // @Accept multipart/form-data
 // @Produce json
 // @Param file formData file true "File to upload (supports any file type: PDF, images, documents, etc.)"
-// @Param email formData string true "Owner's email address" format(email) example(user@example.com)
+// @Param id_citizen formData int true "Owner's citizen ID" example(123456789)
 // @Success 201 {object} endpoints.UploadResponse "Document uploaded successfully"
-// @Failure 400 {object} endpoints.UploadErrorResponse "Validation error - invalid email format or missing required fields"
+// @Failure 400 {object} endpoints.UploadErrorResponse "Validation error - invalid id_citizen or missing required fields"
 // @Failure 500 {object} endpoints.UploadErrorResponse "Internal server error - file processing, storage upload, or database error"
 // @Router /api/v1/documents [post]
 func (handler *DocumentUploadHandler) Upload(ctx *gin.Context) {
@@ -64,7 +64,7 @@ func (handler *DocumentUploadHandler) Upload(ctx *gin.Context) {
 		return
 	}
 
-	document, err := handler.service.Upload(ctx.Request.Context(), uploadRequest.File, uploadRequest.Email)
+	document, err := handler.service.Upload(ctx.Request.Context(), uploadRequest.File, uploadRequest.IDCitizen)
 	if err != nil {
 		handler.errorHandler.HandleError(ctx, err)
 		return

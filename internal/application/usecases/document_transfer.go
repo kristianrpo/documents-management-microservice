@@ -39,9 +39,9 @@ func NewDocumentTransferService(
 }
 
 // PrepareTransfer generates pre-signed URLs for all documents owned by a user
-func (s *DocumentTransferService) PrepareTransfer(ctx context.Context, email string) ([]DocumentTransferResult, error) {
+func (s *DocumentTransferService) PrepareTransfer(ctx context.Context, ownerID int64) ([]DocumentTransferResult, error) {
 	// List all documents for the user
-	documents, _, err := s.repo.List(email, 1000, 0) // Get up to 1000 documents
+	documents, _, err := s.repo.List(ownerID, 1000, 0) // Get up to 1000 documents
 	if err != nil {
 		return nil, fmt.Errorf("failed to list documents: %w", err)
 	}

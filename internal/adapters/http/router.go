@@ -30,8 +30,8 @@ func NewRouter(
 		apiGroup.GET("/documents", listHandler.List)
 		apiGroup.GET("/documents/:id", getHandler.GetByID)
 		apiGroup.DELETE("/documents/:id", deleteHandler.Delete)
-		apiGroup.DELETE("/documents/user/:email", deleteAllHandler.DeleteAll)
-		apiGroup.GET("/documents/transfer/:email", transferHandler.PrepareTransfer)
+		apiGroup.DELETE("/documents/user/:id_citizen", deleteAllHandler.DeleteAll)
+		apiGroup.GET("/documents/transfer/:id_citizen", transferHandler.PrepareTransfer)
 		apiGroup.POST("/documents/:id/request-authentication", requestAuthHandler.RequestAuthentication)
 	}
 

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -52,19 +53,19 @@ func (repo *dynamoDBDocumentRepository) Create(document *domain.Document) error 
 	return err
 }
 
-func (repo *dynamoDBDocumentRepository) FindByHashAndEmail(hashSHA256, ownerEmail string) (*domain.Document, error) {
+func (repo *dynamoDBDocumentRepository) FindByHashAndOwnerID(hashSHA256 string, ownerID int64) (*domain.Document, error) {
 	result, err := repo.client.Query(context.TODO(), &dynamodb.QueryInput{
 		TableName:              aws.String(repo.tableName),
-		IndexName:              aws.String("HashEmailIndex"),
-		KeyConditionExpression: aws.String("HashSHA256 = :hash AND OwnerEmail = :email"),
+		IndexName:              aws.String("HashOwnerIndex"),
+		KeyConditionExpression: aws.String("HashSHA256 = :hash AND OwnerID = :ownerid"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":hash":  &types.AttributeValueMemberS{Value: hashSHA256},
-			":email": &types.AttributeValueMemberS{Value: ownerEmail},
+			":hash":    &types.AttributeValueMemberS{Value: hashSHA256},
+			":ownerid": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", ownerID)},
 		},
 		Limit: aws.Int32(1),
 	})
 	if err != nil {
-		log.Printf("dynamodb Query error on GSI HashEmailIndex: %v", err)
+		log.Printf("dynamodb Query error on GSI HashOwnerIndex: %v", err)
 		return nil, nil
 	}
 
@@ -104,13 +105,13 @@ func (repo *dynamoDBDocumentRepository) GetByID(id string) (*domain.Document, er
 	return &document, nil
 }
 
-func (repo *dynamoDBDocumentRepository) List(ownerEmail string, limit, offset int) ([]*domain.Document, int64, error) {
+func (repo *dynamoDBDocumentRepository) List(ownerID int64, limit, offset int) ([]*domain.Document, int64, error) {
 	queryInput := &dynamodb.QueryInput{
 		TableName:              aws.String(repo.tableName),
-		IndexName:              aws.String("OwnerEmailIndex"),
-		KeyConditionExpression: aws.String("OwnerEmail = :email"),
+		IndexName:              aws.String("OwnerIDIndex"),
+		KeyConditionExpression: aws.String("OwnerID = :ownerid"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":email": &types.AttributeValueMemberS{Value: ownerEmail},
+			":ownerid": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", ownerID)},
 		},
 		ScanIndexForward: aws.Bool(false),
 	}
@@ -125,7 +126,7 @@ func (repo *dynamoDBDocumentRepository) List(ownerEmail string, limit, offset in
 
 		result, err := repo.client.Query(context.TODO(), queryInput)
 		if err != nil {
-			log.Printf("dynamodb Query error on GSI OwnerEmailIndex: %v", err)
+			log.Printf("dynamodb Query error on GSI OwnerIDIndex: %v", err)
 			return nil, 0, err
 		}
 
@@ -178,7 +179,7 @@ func (repo *dynamoDBDocumentRepository) DeleteByID(id string) (*domain.Document,
 		TableName: aws.String(repo.tableName),
 		Key: map[string]types.AttributeValue{
 			"DocumentID": &types.AttributeValueMemberS{Value: document.ID},
-			"OwnerEmail": &types.AttributeValueMemberS{Value: document.OwnerEmail},
+			"OwnerID":    &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", document.OwnerID)},
 		},
 	})
 	if err != nil {
@@ -189,10 +190,10 @@ func (repo *dynamoDBDocumentRepository) DeleteByID(id string) (*domain.Document,
 	return document, nil
 }
 
-func (repo *dynamoDBDocumentRepository) DeleteAllByEmail(email string) (int, error) {
-	documents, _, err := repo.List(email, 1000, 0)
+func (repo *dynamoDBDocumentRepository) DeleteAllByOwnerID(ownerID int64) (int, error) {
+	documents, _, err := repo.List(ownerID, 1000, 0)
 	if err != nil {
-		log.Printf("dynamodb List error during DeleteAllByEmail: %v", err)
+		log.Printf("dynamodb List error during DeleteAllByOwnerID: %v", err)
 		return 0, err
 	}
 
@@ -206,7 +207,7 @@ func (repo *dynamoDBDocumentRepository) DeleteAllByEmail(email string) (int, err
 			TableName: aws.String(repo.tableName),
 			Key: map[string]types.AttributeValue{
 				"DocumentID": &types.AttributeValueMemberS{Value: doc.ID},
-				"OwnerEmail": &types.AttributeValueMemberS{Value: doc.OwnerEmail},
+				"OwnerID":    &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", doc.OwnerID)},
 			},
 		})
 		if err != nil {

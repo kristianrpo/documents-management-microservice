@@ -11,13 +11,13 @@ func ToDocumentResponse(document *domain.Document) *shared.DocumentResponse {
 	}
 
 	return &shared.DocumentResponse{
-		ID:         document.ID,
-		Filename:   document.Filename,
-		MimeType:   document.MimeType,
-		SizeBytes:  document.SizeBytes,
+		ID:        document.ID,
+		Filename:  document.Filename,
+		MimeType:  document.MimeType,
+		SizeBytes: document.SizeBytes,
 		HashSHA256: document.HashSHA256,
-		URL:        document.URL,
-		OwnerEmail: document.OwnerEmail,
+		URL:       document.URL,
+		OwnerID:   document.OwnerID,
 	}
 }
 

@@ -10,7 +10,7 @@ import (
 )
 
 type DocumentService interface {
-	Upload(ctx context.Context, fileHeader *multipart.FileHeader, ownerEmail string) (*domain.Document, error)
+	Upload(ctx context.Context, fileHeader *multipart.FileHeader, ownerID int64) (*domain.Document, error)
 }
 
 type documentService struct {
@@ -34,7 +34,7 @@ func NewDocumentService(
 	}
 }
 
-func (service *documentService) Upload(ctx context.Context, fileHeader *multipart.FileHeader, ownerEmail string) (*domain.Document, error) {
+func (service *documentService) Upload(ctx context.Context, fileHeader *multipart.FileHeader, ownerID int64) (*domain.Document, error) {
 	file, err := fileHeader.Open()
 	if err != nil {
 		return nil, domain.NewFileReadError(err)
@@ -48,7 +48,7 @@ func (service *documentService) Upload(ctx context.Context, fileHeader *multipar
 		return nil, domain.NewHashCalculateError(err)
 	}
 
-	existingDoc, _ := service.repository.FindByHashAndEmail(hash, ownerEmail)
+	existingDoc, _ := service.repository.FindByHashAndOwnerID(hash, ownerID)
 	if existingDoc != nil {
 		return existingDoc, nil
 	}
@@ -78,7 +78,7 @@ func (service *documentService) Upload(ctx context.Context, fileHeader *multipar
 		Bucket:     service.storage.Bucket(),
 		ObjectKey:  objectKey,
 		URL:        publicURL,
-		OwnerEmail: ownerEmail,
+		OwnerID:    ownerID,
 	}
 
 	if err := document.Validate(); err != nil {

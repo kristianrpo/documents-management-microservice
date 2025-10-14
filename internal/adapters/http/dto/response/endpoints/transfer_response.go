@@ -13,7 +13,7 @@ type TransferResponse struct {
 
 // TransferData contains the list of documents with pre-signed URLs
 type TransferData struct {
-	Email          string                    `json:"email" example:"user@example.com"`
+	IDCitizen      int64                     `json:"id_citizen" example:"123456789"`
 	TotalDocuments int                       `json:"total_documents" example:"5"`
 	Documents      []shared.TransferDocument `json:"documents"`
 	ExpiresIn      string                    `json:"expires_in" example:"15m"`

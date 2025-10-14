@@ -7,5 +7,5 @@ type DocumentResponse struct {
 	SizeBytes  int64  `json:"size_bytes" example:"102400"`
 	HashSHA256 string `json:"hash_sha256" example:"abc123def456789..."`
 	URL        string `json:"url" example:"https://my-bucket.s3.amazonaws.com/ab/abc123def456.pdf"`
-	OwnerEmail string `json:"owner_email" example:"user@example.com"`
+	OwnerID    int64  `json:"owner_id" example:"1234567890"`
 }
