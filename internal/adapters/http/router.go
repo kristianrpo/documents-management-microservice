@@ -12,6 +12,8 @@ func NewRouter(
 	uploadHandler *handlers.DocumentUploadHandler,
 	listHandler *handlers.DocumentListHandler,
 	getHandler *handlers.DocumentGetHandler,
+	deleteHandler *handlers.DocumentDeleteHandler,
+	deleteAllHandler *handlers.DocumentDeleteAllHandler,
 	healthHandler *handlers.HealthHandler,
 ) *gin.Engine {
 	router := gin.Default()
@@ -25,6 +27,8 @@ func NewRouter(
 		apiGroup.POST("/documents", uploadHandler.Upload)
 		apiGroup.GET("/documents", listHandler.List)
 		apiGroup.GET("/documents/:id", getHandler.GetByID)
+		apiGroup.DELETE("/documents/:id", deleteHandler.Delete)
+		apiGroup.DELETE("/documents/user/:email", deleteAllHandler.DeleteAll)
 	}
 
 	return router
