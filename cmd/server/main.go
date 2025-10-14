@@ -55,12 +55,12 @@ func main() {
 	}
 
 	documentRepository := infrapkg.NewDynamoDBDocumentRepo(dynamoClient, config.DynamoDBTable)
-	
+
 	var objectStorage interfaces.ObjectStorage = s3Client
-	
+
 	fileHasher := util.NewSHA256Hasher()
 	mimeDetector := util.NewExtensionBasedDetector()
-	
+
 	documentService := usecases.NewDocumentService(
 		documentRepository,
 		objectStorage,
@@ -95,10 +95,10 @@ func main() {
 
 	shutdownContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	
+
 	if err := server.Shutdown(shutdownContext); err != nil {
 		log.Printf("graceful shutdown error: %v", err)
 	}
-	
+
 	log.Println("server stopped")
 }

@@ -10,11 +10,11 @@ func (e *DomainError) Error() string { return e.Message }
 func (e *DomainError) Unwrap() error { return e.Err }
 
 const (
-	ErrCodeValidation     = "VALIDATION_ERROR"
-	ErrCodeFileRead       = "FILE_READ_ERROR"
-	ErrCodeHashCalculate  = "HASH_CALCULATE_ERROR"
-	ErrCodeStorageUpload  = "STORAGE_UPLOAD_ERROR"
-	ErrCodePersistence    = "PERSISTENCE_ERROR"
+	ErrCodeValidation    = "VALIDATION_ERROR"
+	ErrCodeFileRead      = "FILE_READ_ERROR"
+	ErrCodeHashCalculate = "HASH_CALCULATE_ERROR"
+	ErrCodeStorageUpload = "STORAGE_UPLOAD_ERROR"
+	ErrCodePersistence   = "PERSISTENCE_ERROR"
 )
 
 func NewValidationError(message string) *DomainError {

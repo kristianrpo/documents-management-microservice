@@ -9,7 +9,7 @@ func ToDocumentResponse(document *domain.Document) *response.DocumentResponse {
 	if document == nil {
 		return nil
 	}
-	
+
 	return &response.DocumentResponse{
 		ID:         document.ID,
 		Filename:   document.Filename,

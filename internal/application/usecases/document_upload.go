@@ -39,7 +39,9 @@ func (service *documentService) Upload(ctx context.Context, fileHeader *multipar
 	if err != nil {
 		return nil, domain.NewFileReadError(err)
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	hash, err := service.hasher.CalculateHash(file)
 	if err != nil {
@@ -50,12 +52,14 @@ func (service *documentService) Upload(ctx context.Context, fileHeader *multipar
 
 	contentType := service.mimeDetector.DetectFromFilename(fileHeader.Filename)
 
-	if seeker, ok := file.(interface{ Seek(int64, int) (int64, error) }); ok {
+	if seeker, ok := file.(interface {
+		Seek(int64, int) (int64, error)
+	}); ok {
 		if _, err := seeker.Seek(0, 0); err != nil {
 			return nil, domain.NewFileReadError(err)
 		}
 	}
-	
+
 	if err := service.storage.Put(ctx, file, objectKey, contentType); err != nil {
 		return nil, domain.NewStorageUploadError(err)
 	}

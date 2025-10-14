@@ -26,7 +26,7 @@ func NewDynamoDBClient(ctx context.Context, accessKey, secretKey, region, endpoi
 	}
 
 	var clientOpts []func(*dynamodb.Options)
-	
+
 	if endpoint != "" {
 		clientOpts = append(clientOpts, func(o *dynamodb.Options) {
 			o.BaseEndpoint = aws.String(endpoint)

@@ -1,0 +1,62 @@
+run:
+  timeout: 3m
+  tests: true
+
+linters:
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - gosimple
+    - ineffassign
+    - unused
+    - typecheck
+    - revive
+    - gofmt
+    - gofumpt
+    - gocyclo
+    - dupl
+    - misspell
+    - unparam
+    - prealloc
+    - gosec
+    - nolintlint
+
+  disable:
+    - wsl
+    - funlen
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+  dupl:
+    threshold: 100
+  gofmt:
+    simplify: true
+  misspell:
+    locale: US
+  revive:
+    confidence: 0.8
+    severity: warning
+  gosec:
+    excludes:
+      - G304
+      - G107
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude:
+    - "should have comment"
+  exclude-dirs:
+    - vendor
+    - build
+    - dist
+  exclude-files:
+    - ".*_mock\\.go"
+
+output:
+  formats:
+    - format: colored-line-number
+  sort-results: true

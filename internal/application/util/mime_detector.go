@@ -38,11 +38,11 @@ func NewExtensionBasedDetector() MimeTypeDetector {
 
 func (d *ExtensionBasedDetector) DetectFromFilename(filename string) string {
 	ext := strings.ToLower(filepath.Ext(filename))
-	
+
 	if mimeType, exists := d.extensionMap[ext]; exists {
 		return mimeType
 	}
-	
+
 	return d.defaultType
 }
 

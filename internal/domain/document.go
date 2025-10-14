@@ -23,27 +23,27 @@ func (d *Document) Validate() error {
 	if strings.TrimSpace(d.Filename) == "" {
 		return NewValidationError("filename cannot be empty")
 	}
-	
+
 	if d.SizeBytes <= 0 {
 		return NewValidationError("file size must be greater than zero")
 	}
-	
+
 	if len(d.HashSHA256) != 64 {
 		return NewValidationError("invalid SHA256 hash format")
 	}
-	
+
 	if strings.TrimSpace(d.OwnerEmail) == "" {
 		return NewValidationError("owner email cannot be empty")
 	}
-	
+
 	if !isValidEmail(d.OwnerEmail) {
 		return NewValidationError("invalid email format")
 	}
-	
+
 	if strings.TrimSpace(d.ObjectKey) == "" {
 		return NewValidationError("object key cannot be empty")
 	}
-	
+
 	return nil
 }
 

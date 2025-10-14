@@ -16,27 +16,27 @@ import (
 )
 
 type S3Client struct {
-	bucketName     string
-	publicBaseURL  string
-	s3Client       *s3.Client
+	bucketName    string
+	publicBaseURL string
+	s3Client      *s3.Client
 }
 
 type S3Opts struct {
 	AccessKey, SecretKey, Region, Endpoint string
-	Bucket                                  string
-	UsePathStyle                            bool
-	PublicBase                              string
+	Bucket                                 string
+	UsePathStyle                           bool
+	PublicBase                             string
 }
 
 func NewS3(ctx context.Context, opts S3Opts) (*S3Client, error) {
 	var configLoaders []func(*awscfg.LoadOptions) error
-	
+
 	if opts.AccessKey != "" && opts.SecretKey != "" {
 		configLoaders = append(configLoaders, awscfg.WithCredentialsProvider(
 			credentials.NewStaticCredentialsProvider(opts.AccessKey, opts.SecretKey, ""),
 		))
 	}
-	
+
 	if opts.Region != "" {
 		configLoaders = append(configLoaders, awscfg.WithRegion(opts.Region))
 	}
@@ -47,7 +47,7 @@ func NewS3(ctx context.Context, opts S3Opts) (*S3Client, error) {
 	}
 
 	clientOptions := []func(*s3.Options){}
-	
+
 	if opts.Endpoint != "" {
 		endpointURL, _ := url.Parse(opts.Endpoint)
 		clientOptions = append(clientOptions, func(options *s3.Options) {
@@ -62,7 +62,7 @@ func NewS3(ctx context.Context, opts S3Opts) (*S3Client, error) {
 	}
 
 	s3APIClient := s3.NewFromConfig(awsConfig, clientOptions...)
-	
+
 	return &S3Client{
 		bucketName:    opts.Bucket,
 		publicBaseURL: opts.PublicBase,
@@ -97,11 +97,11 @@ func ObjectKeyFromHash(hashHex, filename string) string {
 	if dotIndex := strings.LastIndex(filename, "."); dotIndex >= 0 {
 		extension = strings.ToLower(filename[dotIndex:])
 	}
-	
+
 	prefix := "00"
 	if len(hashHex) >= 2 {
 		prefix = hashHex[:2]
 	}
-	
+
 	return fmt.Sprintf("%s/%s%s", prefix, hashHex, extension)
 }
