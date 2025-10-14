@@ -40,6 +40,11 @@ func main() {
 		log.Fatalf("dynamodb init: %v", err)
 	}
 	log.Printf("DynamoDB client initialized (endpoint: %s)", config.DynamoDBEndpoint)
+	if os.Getenv("DEBUG") == "true" {
+		log.Println("DEBUG mode enabled: error details will be included in responses")
+	} else {
+		log.Println("Set DEBUG=true to include error details in responses during local development")
+	}
 
 	s3Client, err := storagepkg.NewS3(context.Background(), storagepkg.S3Opts{
 		AccessKey:    config.AWSAccessKey,

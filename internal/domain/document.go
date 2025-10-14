@@ -6,17 +6,17 @@ import (
 )
 
 type Document struct {
-	ID         string    `dynamodbav:"id" json:"id"`
-	Filename   string    `dynamodbav:"filename" json:"filename"`
-	MimeType   string    `dynamodbav:"mime_type" json:"mime_type"`
-	SizeBytes  int64     `dynamodbav:"size_bytes" json:"size_bytes"`
-	HashSHA256 string    `dynamodbav:"hash_sha256" json:"hash_sha256"`
-	Bucket     string    `dynamodbav:"bucket" json:"bucket"`
-	ObjectKey  string    `dynamodbav:"object_key" json:"object_key"`
-	URL        string    `dynamodbav:"url" json:"url"`
-	OwnerEmail string    `dynamodbav:"owner_email" json:"owner_email"`
-	CreatedAt  time.Time `dynamodbav:"created_at" json:"created_at"`
-	UpdatedAt  time.Time `dynamodbav:"updated_at" json:"updated_at"`
+	ID         string    `dynamodbav:"DocumentID" json:"id"`
+	Filename   string    `dynamodbav:"Filename" json:"filename"`
+	MimeType   string    `dynamodbav:"MimeType" json:"mime_type"`
+	SizeBytes  int64     `dynamodbav:"SizeBytes" json:"size_bytes"`
+	HashSHA256 string    `dynamodbav:"HashSHA256" json:"hash_sha256"`
+	Bucket     string    `dynamodbav:"Bucket" json:"bucket"`
+	ObjectKey  string    `dynamodbav:"ObjectKey" json:"object_key"`
+	URL        string    `dynamodbav:"URL" json:"url"`
+	OwnerEmail string    `dynamodbav:"OwnerEmail" json:"owner_email"`
+	CreatedAt  time.Time `dynamodbav:"CreatedAt" json:"created_at"`
+	UpdatedAt  time.Time `dynamodbav:"UpdatedAt" json:"updated_at"`
 }
 
 func (d *Document) Validate() error {

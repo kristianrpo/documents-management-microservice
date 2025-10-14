@@ -48,6 +48,11 @@ func (service *documentService) Upload(ctx context.Context, fileHeader *multipar
 		return nil, domain.NewHashCalculateError(err)
 	}
 
+	existingDoc, _ := service.repository.FindByHashAndEmail(hash, ownerEmail)
+	if existingDoc != nil {
+		return existingDoc, nil
+	}
+
 	objectKey := util.ObjectKeyFromHash(hash, fileHeader.Filename)
 
 	contentType := service.mimeDetector.DetectFromFilename(fileHeader.Filename)
