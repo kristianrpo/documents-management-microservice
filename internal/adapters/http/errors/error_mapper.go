@@ -24,6 +24,8 @@ func (m *ErrorMapper) MapDomainErrorToHTTPStatus(err *domain.DomainError) int {
 		return http.StatusInternalServerError
 	case domain.ErrCodePersistence:
 		return http.StatusInternalServerError
+	case domain.ErrCodeNotFound:
+		return http.StatusNotFound
 	default:
 		return http.StatusInternalServerError
 	}

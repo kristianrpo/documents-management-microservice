@@ -92,15 +92,17 @@ func main() {
 		mimeDetector,
 	)
 	documentListService := usecases.NewDocumentListService(documentRepository)
+	documentGetService := usecases.NewDocumentGetService(documentRepository)
 
 	errorMapper := errors.NewErrorMapper()
 	errorHandler := errors.NewErrorHandler(errorMapper)
 
 	uploadHandler := handlers.NewDocumentUploadHandler(documentService, errorHandler)
 	listHandler := handlers.NewDocumentListHandler(documentListService, errorHandler)
+	getHandler := handlers.NewDocumentGetHandler(documentGetService, errorHandler)
 	healthHandler := handlers.NewHealthHandler()
 
-	router := httpadapter.NewRouter(uploadHandler, listHandler, healthHandler)
+	router := httpadapter.NewRouter(uploadHandler, listHandler, getHandler, healthHandler)
 
 	server := &http.Server{
 		Addr:              config.Port,
