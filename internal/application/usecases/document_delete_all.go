@@ -9,7 +9,7 @@ import (
 )
 
 type DocumentDeleteAllService interface {
-	DeleteAll(ctx context.Context, email string) (int, error)
+	DeleteAll(ctx context.Context, ownerID int64) (int, error)
 }
 
 type documentDeleteAllService struct {
@@ -24,8 +24,8 @@ func NewDocumentDeleteAllService(repository interfaces.DocumentRepository, objec
 	}
 }
 
-func (s *documentDeleteAllService) DeleteAll(ctx context.Context, email string) (int, error) {
-	documents, _, err := s.repository.List(email, 1000, 0)
+func (s *documentDeleteAllService) DeleteAll(ctx context.Context, ownerID int64) (int, error) {
+	documents, _, err := s.repository.List(ownerID, 1000, 0)
 	if err != nil {
 		return 0, domain.NewPersistenceError(err)
 	}
@@ -34,7 +34,7 @@ func (s *documentDeleteAllService) DeleteAll(ctx context.Context, email string) 
 		return 0, nil
 	}
 
-	deletedCount, err := s.repository.DeleteAllByEmail(email)
+	deletedCount, err := s.repository.DeleteAllByOwnerID(ownerID)
 	if err != nil {
 		return 0, domain.NewPersistenceError(err)
 	}

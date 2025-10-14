@@ -27,7 +27,7 @@ func NewDocumentListHandler(service usecases.DocumentListService, errorHandler *
 
 // List godoc
 // @Summary List documents
-// @Description Retrieves a paginated list of documents for a specific owner (identified by email).
+// @Description Retrieves a paginated list of documents for a specific owner (identified by citizen ID).
 // @Description
 // @Description ## Features
 // @Description - Returns documents sorted by creation date (most recent first)
@@ -42,16 +42,16 @@ func NewDocumentListHandler(service usecases.DocumentListService, errorHandler *
 // @Description - Response includes total count and total pages for UI rendering
 // @Description
 // @Description ## Error Codes
-// @Description - `VALIDATION_ERROR`: Invalid email format or pagination parameters
+// @Description - `VALIDATION_ERROR`: Invalid id_citizen or pagination parameters
 // @Description - `PERSISTENCE_ERROR`: Failed to retrieve documents from database
 // @Tags documents
 // @Accept json
 // @Produce json
-// @Param email query string true "Owner's email address" format(email) example(user@example.com)
+// @Param id_citizen query int true "Owner's citizen ID" example(123456789)
 // @Param page query int false "Page number (starts at 1)" minimum(1) default(1) example(1)
 // @Param limit query int false "Number of items per page (max 100)" minimum(1) maximum(100) default(10) example(10)
 // @Success 200 {object} endpoints.ListResponse "List of documents retrieved successfully"
-// @Failure 400 {object} endpoints.ListErrorResponse "Validation error - invalid email or pagination parameters"
+// @Failure 400 {object} endpoints.ListErrorResponse "Validation error - invalid id_citizen or pagination parameters"
 // @Failure 500 {object} endpoints.ListErrorResponse "Internal server error - database error"
 // @Router /api/v1/documents [get]
 func (handler *DocumentListHandler) List(ctx *gin.Context) {
@@ -64,7 +64,7 @@ func (handler *DocumentListHandler) List(ctx *gin.Context) {
 
 	documents, pagination, totalPages, totalCount, err := handler.service.List(
 		ctx.Request.Context(),
-		listRequest.Email,
+		listRequest.IDCitizen,
 		listRequest.Page,
 		listRequest.Limit,
 	)

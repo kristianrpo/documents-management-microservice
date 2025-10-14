@@ -29,7 +29,7 @@ func NewDocumentRequestAuthenticationHandler(
 
 // RequestAuthentication godoc
 // @Summary Request document authentication
-// @Description Requests authentication of a document by publishing an event for external authentication service. The document owner's email and filename are automatically included in the event.
+// @Description Requests authentication of a document by publishing an event for external authentication service. The document owner's citizen ID and filename are automatically included in the event.
 // @Tags documents
 // @Accept json
 // @Produce json

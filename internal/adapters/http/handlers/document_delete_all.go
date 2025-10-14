@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 
@@ -24,7 +25,7 @@ func NewDocumentDeleteAllHandler(service usecases.DocumentDeleteAllService, erro
 
 // DeleteAll godoc
 // @Summary Delete all documents for a user
-// @Description Deletes all documents belonging to a specific user (identified by email) and their associated files from S3 storage.
+// @Description Deletes all documents belonging to a specific user (identified by citizen ID) and their associated files from S3 storage.
 // @Description
 // @Description ## Features
 // @Description - Deletes all document metadata from DynamoDB for the specified user
@@ -39,30 +40,30 @@ func NewDocumentDeleteAllHandler(service usecases.DocumentDeleteAllService, erro
 // @Description - GDPR/privacy compliance (right to be forgotten)
 // @Description
 // @Description ## Error Codes
-// @Description - `VALIDATION_ERROR`: Invalid email format
+// @Description - `VALIDATION_ERROR`: Invalid citizen ID
 // @Description - `PERSISTENCE_ERROR`: Failed to delete documents from database
 // @Tags documents
 // @Accept json
 // @Produce json
-// @Param email path string true "Owner's email address" format(email) example(user@example.com)
+// @Param id_citizen path int true "Citizen ID" example(123456789)
 // @Success 200 {object} endpoints.DeleteAllResponse "All documents deleted successfully"
-// @Failure 400 {object} endpoints.DeleteAllErrorResponse "Validation error - invalid email format"
+// @Failure 400 {object} endpoints.DeleteAllErrorResponse "Validation error - invalid citizen ID"
 // @Failure 500 {object} endpoints.DeleteAllErrorResponse "Internal server error - database or storage error"
-// @Router /api/v1/documents/user/{email} [delete]
+// @Router /api/v1/documents/user/{id_citizen} [delete]
 func (handler *DocumentDeleteAllHandler) DeleteAll(ctx *gin.Context) {
-	email := ctx.Param("email")
+	idCitizenStr := ctx.Param("id_citizen")
 
-	if email == "" {
-		handler.errorHandler.HandleError(ctx, errors.NewValidationError("email is required"))
+	idCitizen, err := strconv.ParseInt(idCitizenStr, 10, 64)
+	if err != nil || idCitizen <= 0 {
+		handler.errorHandler.HandleError(ctx, errors.NewValidationError("id_citizen must be a valid positive integer"))
 		return
 	}
 
-	deletedCount, err := handler.service.DeleteAll(ctx.Request.Context(), email)
+	deletedCount, err := handler.service.DeleteAll(ctx.Request.Context(), idCitizen)
 	if err != nil {
 		handler.errorHandler.HandleError(ctx, err)
 		return
 	}
-
 	response := endpoints.DeleteAllResponse{
 		Success: true,
 		Message: "all documents deleted successfully",

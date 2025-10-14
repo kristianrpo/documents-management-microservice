@@ -14,7 +14,7 @@ type Document struct {
 	Bucket     string    `dynamodbav:"Bucket" json:"bucket"`
 	ObjectKey  string    `dynamodbav:"ObjectKey" json:"object_key"`
 	URL        string    `dynamodbav:"URL" json:"url"`
-	OwnerEmail string    `dynamodbav:"OwnerEmail" json:"owner_email"`
+	OwnerID    int64     `dynamodbav:"OwnerID" json:"owner_id"`
 	CreatedAt  time.Time `dynamodbav:"CreatedAt" json:"created_at"`
 	UpdatedAt  time.Time `dynamodbav:"UpdatedAt" json:"updated_at"`
 }
@@ -32,12 +32,8 @@ func (d *Document) Validate() error {
 		return NewValidationError("invalid SHA256 hash format")
 	}
 
-	if strings.TrimSpace(d.OwnerEmail) == "" {
-		return NewValidationError("owner email cannot be empty")
-	}
-
-	if !isValidEmail(d.OwnerEmail) {
-		return NewValidationError("invalid email format")
+	if d.OwnerID <= 0 {
+		return NewValidationError("owner ID must be greater than zero")
 	}
 
 	if strings.TrimSpace(d.ObjectKey) == "" {
@@ -45,16 +41,4 @@ func (d *Document) Validate() error {
 	}
 
 	return nil
-}
-
-func isValidEmail(email string) bool {
-	email = strings.TrimSpace(email)
-	if email == "" {
-		return false
-	}
-	parts := strings.Split(email, "@")
-	if len(parts) != 2 {
-		return false
-	}
-	return len(parts[0]) > 0 && len(parts[1]) > 0 && strings.Contains(parts[1], ".")
 }

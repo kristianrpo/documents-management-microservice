@@ -60,10 +60,10 @@ func (s *DocumentRequestAuthenticationService) RequestAuthentication(
 	}
 
 	// Create the event using document information
-	// IDCitizen is the owner's email (for now)
+	// IDCitizen is the owner's ID
 	// DocumentTitle is the filename
 	event := domain.DocumentAuthenticationRequestedEvent{
-		IDCitizen:     doc.OwnerEmail, // Using email as citizen identifier
+		IDCitizen:     doc.OwnerID,
 		URLDocument:   presignedURL,
 		DocumentTitle: doc.Filename,
 	}
@@ -79,8 +79,8 @@ func (s *DocumentRequestAuthenticationService) RequestAuthentication(
 		return fmt.Errorf("failed to publish authentication request event: %w", err)
 	}
 
-	log.Printf("Authentication requested for document %s (owner: %s, title: %s)", 
-		documentID, doc.OwnerEmail, doc.Filename)
+	log.Printf("Authentication requested for document %s (owner ID: %d, title: %s)", 
+		documentID, doc.OwnerID, doc.Filename)
 
 	return nil
 }

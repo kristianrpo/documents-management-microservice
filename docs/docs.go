@@ -24,7 +24,7 @@ const docTemplate = `{
     "paths": {
         "/api/v1/documents": {
             "get": {
-                "description": "Retrieves a paginated list of documents for a specific owner (identified by email).\n\n## Features\n- Returns documents sorted by creation date (most recent first)\n- Supports pagination with configurable page size\n- Includes pagination metadata (total items, total pages, current page)\n- Maximum limit per page: 100 documents\n- Default page size: 10 documents\n\n## Pagination\n- Use ` + "`" + `page` + "`" + ` parameter to navigate through results (starts at 1)\n- Use ` + "`" + `limit` + "`" + ` parameter to control page size (1-100)\n- Response includes total count and total pages for UI rendering\n\n## Error Codes\n- ` + "`" + `VALIDATION_ERROR` + "`" + `: Invalid email format or pagination parameters\n- ` + "`" + `PERSISTENCE_ERROR` + "`" + `: Failed to retrieve documents from database",
+                "description": "Retrieves a paginated list of documents for a specific owner (identified by citizen ID).\n\n## Features\n- Returns documents sorted by creation date (most recent first)\n- Supports pagination with configurable page size\n- Includes pagination metadata (total items, total pages, current page)\n- Maximum limit per page: 100 documents\n- Default page size: 10 documents\n\n## Pagination\n- Use ` + "`" + `page` + "`" + ` parameter to navigate through results (starts at 1)\n- Use ` + "`" + `limit` + "`" + ` parameter to control page size (1-100)\n- Response includes total count and total pages for UI rendering\n\n## Error Codes\n- ` + "`" + `VALIDATION_ERROR` + "`" + `: Invalid id_citizen or pagination parameters\n- ` + "`" + `PERSISTENCE_ERROR` + "`" + `: Failed to retrieve documents from database",
                 "consumes": [
                     "application/json"
                 ],
@@ -37,11 +37,10 @@ const docTemplate = `{
                 "summary": "List documents",
                 "parameters": [
                     {
-                        "type": "string",
-                        "format": "email",
-                        "example": "user@example.com",
-                        "description": "Owner's email address",
-                        "name": "email",
+                        "type": "integer",
+                        "example": 123456789,
+                        "description": "Owner's citizen ID",
+                        "name": "id_citizen",
                         "in": "query",
                         "required": true
                     },
@@ -73,7 +72,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Validation error - invalid email or pagination parameters",
+                        "description": "Validation error - invalid id_citizen or pagination parameters",
                         "schema": {
                             "$ref": "#/definitions/endpoints.ListErrorResponse"
                         }
@@ -87,7 +86,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Uploads a document to S3 storage and saves its metadata in DynamoDB.\n\n## Features\n- Automatic file deduplication based on SHA256 hash\n- If a file with the same hash exists for the same user, returns the existing document\n- Supports any file type\n- Automatically detects MIME type from file extension\n- Generates unique object keys using hash prefix for optimal S3 performance\n\n## Process\n1. Calculates SHA256 hash of the uploaded file\n2. Checks if document already exists (hash + email)\n3. If exists, returns existing document (no duplicate upload)\n4. If new, uploads to S3 and saves metadata to DynamoDB\n\n## Error Codes\n- ` + "`" + `VALIDATION_ERROR` + "`" + `: Invalid request format or missing required fields\n- ` + "`" + `FILE_READ_ERROR` + "`" + `: Failed to read the uploaded file\n- ` + "`" + `HASH_CALCULATE_ERROR` + "`" + `: Failed to calculate file hash\n- ` + "`" + `STORAGE_UPLOAD_ERROR` + "`" + `: Failed to upload file to S3\n- ` + "`" + `PERSISTENCE_ERROR` + "`" + `: Failed to save metadata to DynamoDB",
+                "description": "Uploads a document to S3 storage and saves its metadata in DynamoDB.\n\n## Features\n- Automatic file deduplication based on SHA256 hash\n- If a file with the same hash exists for the same user, returns the existing document\n- Supports any file type\n- Automatically detects MIME type from file extension\n- Generates unique object keys using hash prefix for optimal S3 performance\n\n## Process\n1. Calculates SHA256 hash of the uploaded file\n2. Checks if document already exists (hash + citizen ID)\n3. If exists, returns existing document (no duplicate upload)\n4. If new, uploads to S3 and saves metadata to DynamoDB\n\n## Error Codes\n- ` + "`" + `VALIDATION_ERROR` + "`" + `: Invalid request format or missing required fields\n- ` + "`" + `FILE_READ_ERROR` + "`" + `: Failed to read the uploaded file\n- ` + "`" + `HASH_CALCULATE_ERROR` + "`" + `: Failed to calculate file hash\n- ` + "`" + `STORAGE_UPLOAD_ERROR` + "`" + `: Failed to upload file to S3\n- ` + "`" + `PERSISTENCE_ERROR` + "`" + `: Failed to save metadata to DynamoDB",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -107,11 +106,10 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "type": "string",
-                        "format": "email",
-                        "example": "user@example.com",
-                        "description": "Owner's email address",
-                        "name": "email",
+                        "type": "integer",
+                        "example": 123456789,
+                        "description": "Owner's citizen ID",
+                        "name": "id_citizen",
                         "in": "formData",
                         "required": true
                     }
@@ -124,7 +122,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Validation error - invalid email format or missing required fields",
+                        "description": "Validation error - invalid id_citizen or missing required fields",
                         "schema": {
                             "$ref": "#/definitions/endpoints.UploadErrorResponse"
                         }
@@ -138,7 +136,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/documents/transfer/{email}": {
+        "/api/v1/documents/transfer/{id_citizen}": {
             "get": {
                 "description": "Generates pre-signed URLs for all documents owned by a user for secure transfer to another operator",
                 "consumes": [
@@ -153,9 +151,9 @@ const docTemplate = `{
                 "summary": "Prepare documents for transfer",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "User email",
-                        "name": "email",
+                        "type": "integer",
+                        "description": "Citizen ID",
+                        "name": "id_citizen",
                         "in": "path",
                         "required": true
                     }
@@ -182,9 +180,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/documents/user/{email}": {
+        "/api/v1/documents/user/{id_citizen}": {
             "delete": {
-                "description": "Deletes all documents belonging to a specific user (identified by email) and their associated files from S3 storage.\n\n## Features\n- Deletes all document metadata from DynamoDB for the specified user\n- Removes all physical files from S3 storage\n- Returns the count of deleted documents\n- Useful for account closure or data migration scenarios\n\n## Use Cases\n- Account closure/deletion\n- Data migration to another system\n- Bulk cleanup operations\n- GDPR/privacy compliance (right to be forgotten)\n\n## Error Codes\n- ` + "`" + `VALIDATION_ERROR` + "`" + `: Invalid email format\n- ` + "`" + `PERSISTENCE_ERROR` + "`" + `: Failed to delete documents from database",
+                "description": "Deletes all documents belonging to a specific user (identified by citizen ID) and their associated files from S3 storage.\n\n## Features\n- Deletes all document metadata from DynamoDB for the specified user\n- Removes all physical files from S3 storage\n- Returns the count of deleted documents\n- Useful for account closure or data migration scenarios\n\n## Use Cases\n- Account closure/deletion\n- Data migration to another system\n- Bulk cleanup operations\n- GDPR/privacy compliance (right to be forgotten)\n\n## Error Codes\n- ` + "`" + `VALIDATION_ERROR` + "`" + `: Invalid citizen ID\n- ` + "`" + `PERSISTENCE_ERROR` + "`" + `: Failed to delete documents from database",
                 "consumes": [
                     "application/json"
                 ],
@@ -197,11 +195,10 @@ const docTemplate = `{
                 "summary": "Delete all documents for a user",
                 "parameters": [
                     {
-                        "type": "string",
-                        "format": "email",
-                        "example": "user@example.com",
-                        "description": "Owner's email address",
-                        "name": "email",
+                        "type": "integer",
+                        "example": 123456789,
+                        "description": "Citizen ID",
+                        "name": "id_citizen",
                         "in": "path",
                         "required": true
                     }
@@ -214,7 +211,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Validation error - invalid email format",
+                        "description": "Validation error - invalid citizen ID",
                         "schema": {
                             "$ref": "#/definitions/endpoints.DeleteAllErrorResponse"
                         }
@@ -318,7 +315,7 @@ const docTemplate = `{
         },
         "/api/v1/documents/{id}/request-authentication": {
             "post": {
-                "description": "Requests authentication of a document by publishing an event for external authentication service. The document owner's email and filename are automatically included in the event.",
+                "description": "Requests authentication of a document by publishing an event for external authentication service. The document owner's citizen ID and filename are automatically included in the event.",
                 "consumes": [
                     "application/json"
                 ],
@@ -539,13 +536,13 @@ const docTemplate = `{
                         "$ref": "#/definitions/shared.TransferDocument"
                     }
                 },
-                "email": {
-                    "type": "string",
-                    "example": "user@example.com"
-                },
                 "expires_in": {
                     "type": "string",
                     "example": "15m"
+                },
+                "id_citizen": {
+                    "type": "integer",
+                    "example": 123456789
                 },
                 "total_documents": {
                     "type": "integer",
@@ -620,9 +617,9 @@ const docTemplate = `{
                     "type": "string",
                     "example": "application/pdf"
                 },
-                "owner_email": {
-                    "type": "string",
-                    "example": "user@example.com"
+                "owner_id": {
+                    "type": "integer",
+                    "example": 1234567890
                 },
                 "size_bytes": {
                     "type": "integer",
