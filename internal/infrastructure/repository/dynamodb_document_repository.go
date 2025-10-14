@@ -78,3 +78,63 @@ func (repo *dynamoDBDocumentRepository) FindByHashAndEmail(hashSHA256, ownerEmai
 	}
 	return &document, nil
 }
+
+func (repo *dynamoDBDocumentRepository) List(ownerEmail string, limit, offset int) ([]*domain.Document, int64, error) {
+	queryInput := &dynamodb.QueryInput{
+		TableName:              aws.String(repo.tableName),
+		IndexName:              aws.String("OwnerEmailIndex"),
+		KeyConditionExpression: aws.String("OwnerEmail = :email"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":email": &types.AttributeValueMemberS{Value: ownerEmail},
+		},
+		ScanIndexForward: aws.Bool(false),
+	}
+
+	var allDocuments []*domain.Document
+	var lastEvaluatedKey map[string]types.AttributeValue
+
+	for {
+		if lastEvaluatedKey != nil {
+			queryInput.ExclusiveStartKey = lastEvaluatedKey
+		}
+
+		result, err := repo.client.Query(context.TODO(), queryInput)
+		if err != nil {
+			log.Printf("dynamodb Query error on GSI OwnerEmailIndex: %v", err)
+			return nil, 0, err
+		}
+
+		for _, item := range result.Items {
+			var doc domain.Document
+			if err := attributevalue.UnmarshalMap(item, &doc); err != nil {
+				log.Printf("error unmarshaling document: %v", err)
+				continue
+			}
+			allDocuments = append(allDocuments, &doc)
+		}
+
+		lastEvaluatedKey = result.LastEvaluatedKey
+		if lastEvaluatedKey == nil {
+			break
+		}
+
+		if len(allDocuments) >= offset+limit {
+			break
+		}
+	}
+
+	totalCount := int64(len(allDocuments))
+
+	start := offset
+	if start > len(allDocuments) {
+		return []*domain.Document{}, totalCount, nil
+	}
+
+	end := start + limit
+	if end > len(allDocuments) {
+		end = len(allDocuments)
+	}
+
+	paginatedDocuments := allDocuments[start:end]
+	return paginatedDocuments, totalCount, nil
+}

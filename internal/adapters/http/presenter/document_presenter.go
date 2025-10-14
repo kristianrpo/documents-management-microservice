@@ -21,3 +21,18 @@ func ToDocumentData(document *domain.Document) *endpoints.DocumentData {
 	}
 }
 
+func ToDocumentDataList(documents []*domain.Document) []endpoints.DocumentData {
+	if documents == nil {
+		return []endpoints.DocumentData{}
+	}
+
+	result := make([]endpoints.DocumentData, 0, len(documents))
+	for _, doc := range documents {
+		if docData := ToDocumentData(doc); docData != nil {
+			result = append(result, *docData)
+		}
+	}
+
+	return result
+}
+
