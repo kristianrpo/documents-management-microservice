@@ -2,11 +2,11 @@ package config
 
 // RabbitMQConfig holds RabbitMQ consumer configuration
 type RabbitMQConfig struct {
-	URL          string
-	Queue        string
-	Durable      bool
+	URL           string
+	Queue         string
+	Durable       bool
 	PrefetchCount int
-	AutoAck      bool
+	AutoAck       bool
 }
 
 // DefaultRabbitMQConfig returns sensible defaults for RabbitMQ consumer

@@ -12,7 +12,7 @@ import (
 )
 
 type RabbitMQConsumer struct {
-	conn   *amqp091.Connection
+	conn    *amqp091.Connection
 	channel *amqp091.Channel
 	config  config.RabbitMQConfig
 }
@@ -25,7 +25,9 @@ func NewRabbitMQConsumer(cfg config.RabbitMQConfig) (*RabbitMQConsumer, error) {
 
 	channel, err := conn.Channel()
 	if err != nil {
-		conn.Close()
+		if err := conn.Close(); err != nil {
+			log.Printf("Error closing RabbitMQ connection: %v", err)
+		}
 		return nil, fmt.Errorf("failed to open channel: %w", err)
 	}
 
@@ -62,13 +64,13 @@ func (r *RabbitMQConsumer) Subscribe(ctx context.Context, handler interfaces.Mes
 
 	// Start consuming messages
 	msgs, err := r.channel.Consume(
-		queue.Name,        // queue
-		"",                // consumer tag
-		r.config.AutoAck,  // auto-ack
-		false,             // exclusive
-		false,             // no-local
-		false,             // no-wait
-		nil,               // args
+		queue.Name,       // queue
+		"",               // consumer tag
+		r.config.AutoAck, // auto-ack
+		false,            // exclusive
+		false,            // no-local
+		false,            // no-wait
+		nil,              // args
 	)
 	if err != nil {
 		return fmt.Errorf("failed to register consumer: %w", err)
@@ -81,7 +83,7 @@ func (r *RabbitMQConsumer) Subscribe(ctx context.Context, handler interfaces.Mes
 		for {
 			select {
 			case <-ctx.Done():
-				log.Println("Context cancelled, stopping consumer")
+				log.Println("Context canceled, stopping consumer")
 				return
 			case msg, ok := <-msgs:
 				if !ok {
@@ -120,7 +122,7 @@ func (r *RabbitMQConsumer) Close() error {
 	}
 	if r.conn != nil {
 		if err := r.conn.Close(); err != nil {
-			log.Printf("error closing connection: %v", err)
+			log.Printf("Error closing RabbitMQ connection: %v", err)
 			return err
 		}
 	}

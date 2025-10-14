@@ -28,7 +28,7 @@ func NewUserTransferHandler(deleteAllService usecases.DocumentDeleteAllService) 
 // HandleUserTransferred processes user transfer events and deletes all associated documents
 func (h *UserTransferHandler) HandleUserTransferred(ctx context.Context, message []byte) error {
 	var event UserTransferredEvent
-	
+
 	if err := json.Unmarshal(message, &event); err != nil {
 		log.Printf("failed to unmarshal user transfer event: %v", err)
 		return err
