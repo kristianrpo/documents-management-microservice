@@ -10,4 +10,8 @@ type DocumentRepository interface {
 	GetByID(id string) (*domain.Document, error)
 
 	List(ownerEmail string, limit, offset int) ([]*domain.Document, int64, error)
+
+	DeleteByID(id string) (*domain.Document, error)
+
+	DeleteAllByEmail(email string) (int, error)
 }

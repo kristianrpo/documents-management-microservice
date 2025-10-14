@@ -1,5 +1,41 @@
 basePath: /
 definitions:
+  endpoints.DeleteAllData:
+    properties:
+      deleted_count:
+        example: 5
+        type: integer
+    type: object
+  endpoints.DeleteAllErrorResponse:
+    properties:
+      error:
+        $ref: '#/definitions/shared.ErrorDetail'
+    type: object
+  endpoints.DeleteAllResponse:
+    properties:
+      data:
+        $ref: '#/definitions/endpoints.DeleteAllData'
+      message:
+        example: all documents deleted successfully
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  endpoints.DeleteErrorResponse:
+    properties:
+      error:
+        $ref: '#/definitions/shared.ErrorDetail'
+    type: object
+  endpoints.DeleteResponse:
+    properties:
+      message:
+        example: document deleted successfully
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
   endpoints.GetErrorResponse:
     properties:
       error:
@@ -245,6 +281,50 @@ paths:
       tags:
       - documents
   /api/v1/documents/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: |-
+        Deletes a document and its associated file from S3 storage.
+
+        ## Features
+        - Deletes document metadata from DynamoDB
+        - Removes the physical file from S3 storage
+        - Returns 404 if document doesn't exist
+
+        ## Use Cases
+        - Remove unwanted documents
+        - Clean up storage space
+        - Comply with data deletion requests
+
+        ## Error Codes
+        - `NOT_FOUND`: Document with the specified ID does not exist
+        - `PERSISTENCE_ERROR`: Failed to delete document from database
+      parameters:
+      - description: Document ID
+        example: 123e4567-e89b-12d3-a456-426614174000
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Document deleted successfully
+          schema:
+            $ref: '#/definitions/endpoints.DeleteResponse'
+        "404":
+          description: Document not found
+          schema:
+            $ref: '#/definitions/endpoints.DeleteErrorResponse'
+        "500":
+          description: Internal server error - database or storage error
+          schema:
+            $ref: '#/definitions/endpoints.DeleteErrorResponse'
+      summary: Delete a document by ID
+      tags:
+      - documents
     get:
       consumes:
       - application/json
@@ -288,6 +368,54 @@ paths:
           schema:
             $ref: '#/definitions/endpoints.GetErrorResponse'
       summary: Get document by ID
+      tags:
+      - documents
+  /api/v1/documents/user/{email}:
+    delete:
+      consumes:
+      - application/json
+      description: |-
+        Deletes all documents belonging to a specific user (identified by email) and their associated files from S3 storage.
+
+        ## Features
+        - Deletes all document metadata from DynamoDB for the specified user
+        - Removes all physical files from S3 storage
+        - Returns the count of deleted documents
+        - Useful for account closure or data migration scenarios
+
+        ## Use Cases
+        - Account closure/deletion
+        - Data migration to another system
+        - Bulk cleanup operations
+        - GDPR/privacy compliance (right to be forgotten)
+
+        ## Error Codes
+        - `VALIDATION_ERROR`: Invalid email format
+        - `PERSISTENCE_ERROR`: Failed to delete documents from database
+      parameters:
+      - description: Owner's email address
+        example: user@example.com
+        format: email
+        in: path
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: All documents deleted successfully
+          schema:
+            $ref: '#/definitions/endpoints.DeleteAllResponse'
+        "400":
+          description: Validation error - invalid email format
+          schema:
+            $ref: '#/definitions/endpoints.DeleteAllErrorResponse'
+        "500":
+          description: Internal server error - database or storage error
+          schema:
+            $ref: '#/definitions/endpoints.DeleteAllErrorResponse'
+      summary: Delete all documents for a user
       tags:
       - documents
   /healthz:

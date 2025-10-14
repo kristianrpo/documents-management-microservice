@@ -93,6 +93,8 @@ func main() {
 	)
 	documentListService := usecases.NewDocumentListService(documentRepository)
 	documentGetService := usecases.NewDocumentGetService(documentRepository)
+	documentDeleteService := usecases.NewDocumentDeleteService(documentRepository, objectStorage)
+	documentDeleteAllService := usecases.NewDocumentDeleteAllService(documentRepository, objectStorage)
 
 	errorMapper := errors.NewErrorMapper()
 	errorHandler := errors.NewErrorHandler(errorMapper)
@@ -100,9 +102,11 @@ func main() {
 	uploadHandler := handlers.NewDocumentUploadHandler(documentService, errorHandler)
 	listHandler := handlers.NewDocumentListHandler(documentListService, errorHandler)
 	getHandler := handlers.NewDocumentGetHandler(documentGetService, errorHandler)
+	deleteHandler := handlers.NewDocumentDeleteHandler(documentDeleteService, errorHandler)
+	deleteAllHandler := handlers.NewDocumentDeleteAllHandler(documentDeleteAllService, errorHandler)
 	healthHandler := handlers.NewHealthHandler()
 
-	router := httpadapter.NewRouter(uploadHandler, listHandler, getHandler, healthHandler)
+	router := httpadapter.NewRouter(uploadHandler, listHandler, getHandler, deleteHandler, deleteAllHandler, healthHandler)
 
 	server := &http.Server{
 		Addr:              config.Port,

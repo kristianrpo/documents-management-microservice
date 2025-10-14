@@ -163,3 +163,58 @@ func (repo *dynamoDBDocumentRepository) List(ownerEmail string, limit, offset in
 	paginatedDocuments := allDocuments[start:end]
 	return paginatedDocuments, totalCount, nil
 }
+
+func (repo *dynamoDBDocumentRepository) DeleteByID(id string) (*domain.Document, error) {
+	document, err := repo.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	if document == nil {
+		return nil, nil
+	}
+
+	_, err = repo.client.DeleteItem(context.TODO(), &dynamodb.DeleteItemInput{
+		TableName: aws.String(repo.tableName),
+		Key: map[string]types.AttributeValue{
+			"DocumentID": &types.AttributeValueMemberS{Value: document.ID},
+			"OwnerEmail": &types.AttributeValueMemberS{Value: document.OwnerEmail},
+		},
+	})
+	if err != nil {
+		log.Printf("dynamodb DeleteItem error: %v", err)
+		return nil, err
+	}
+
+	return document, nil
+}
+
+func (repo *dynamoDBDocumentRepository) DeleteAllByEmail(email string) (int, error) {
+	documents, _, err := repo.List(email, 1000, 0)
+	if err != nil {
+		log.Printf("dynamodb List error during DeleteAllByEmail: %v", err)
+		return 0, err
+	}
+
+	if len(documents) == 0 {
+		return 0, nil
+	}
+
+	deletedCount := 0
+	for _, doc := range documents {
+		_, err := repo.client.DeleteItem(context.TODO(), &dynamodb.DeleteItemInput{
+			TableName: aws.String(repo.tableName),
+			Key: map[string]types.AttributeValue{
+				"DocumentID": &types.AttributeValueMemberS{Value: doc.ID},
+				"OwnerEmail": &types.AttributeValueMemberS{Value: doc.OwnerEmail},
+			},
+		})
+		if err != nil {
+			log.Printf("dynamodb DeleteItem error for document %s: %v", doc.ID, err)
+			continue
+		}
+		deletedCount++
+	}
+
+	return deletedCount, nil
+}
