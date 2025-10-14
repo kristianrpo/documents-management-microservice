@@ -33,19 +33,19 @@ aws dynamodb create-table \
   --table-name $TABLE_NAME \
   --attribute-definitions \
     AttributeName=DocumentID,AttributeType=S \
-    AttributeName=OwnerEmail,AttributeType=S \
+    AttributeName=OwnerID,AttributeType=N \
     AttributeName=HashSHA256,AttributeType=S \
   --key-schema \
     AttributeName=DocumentID,KeyType=HASH \
-    AttributeName=OwnerEmail,KeyType=RANGE \
+    AttributeName=OwnerID,KeyType=RANGE \
   --provisioned-throughput \
     ReadCapacityUnits=5,WriteCapacityUnits=5 \
   --global-secondary-indexes \
     "[
       {
-        \"IndexName\": \"OwnerEmailIndex\",
+        \"IndexName\": \"OwnerIDIndex\",
         \"KeySchema\": [
-          {\"AttributeName\": \"OwnerEmail\", \"KeyType\": \"HASH\"}
+          {\"AttributeName\": \"OwnerID\", \"KeyType\": \"HASH\"}
         ],
         \"Projection\": {\"ProjectionType\": \"ALL\"},
         \"ProvisionedThroughput\": {
@@ -54,10 +54,10 @@ aws dynamodb create-table \
         }
       },
       {
-        \"IndexName\": \"HashEmailIndex\",
+        \"IndexName\": \"HashOwnerIndex\",
         \"KeySchema\": [
           {\"AttributeName\": \"HashSHA256\", \"KeyType\": \"HASH\"},
-          {\"AttributeName\": \"OwnerEmail\", \"KeyType\": \"RANGE\"}
+          {\"AttributeName\": \"OwnerID\", \"KeyType\": \"RANGE\"}
         ],
         \"Projection\": {\"ProjectionType\": \"ALL\"},
         \"ProvisionedThroughput\": {
@@ -75,4 +75,4 @@ aws dynamodb wait table-exists \
   --endpoint-url http://localhost:8000 \
   --region $REGION
 
-echo "Table $TABLE_NAME has been created successfully with GSIs: OwnerEmailIndex and HashEmailIndex."
+echo "Table $TABLE_NAME has been created successfully with GSIs: OwnerIDIndex and HashOwnerIndex."
