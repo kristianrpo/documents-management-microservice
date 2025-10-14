@@ -23,7 +23,6 @@ func NewDocumentListService(repository interfaces.DocumentRepository) DocumentLi
 	}
 }
 
-
 func (s *documentListService) List(ctx context.Context, ownerEmail string, page, limit int) ([]*domain.Document, util.PaginationParams, int, int64, error) {
 	pagination := util.NormalizePagination(page, limit)
 

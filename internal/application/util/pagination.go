@@ -1,12 +1,10 @@
 package util
 
-
 type PaginationParams struct {
 	Page   int
 	Limit  int
 	Offset int
 }
-
 
 func NormalizePagination(page, limit int) PaginationParams {
 	if page < 1 {

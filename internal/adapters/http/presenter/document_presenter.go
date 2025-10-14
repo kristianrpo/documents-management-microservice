@@ -1,16 +1,16 @@
 package presenter
 
 import (
-	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/dto/response/endpoints"
+	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/dto/response/shared"
 	"github.com/kristianrpo/document-management-microservice/internal/domain"
 )
 
-func ToDocumentData(document *domain.Document) *endpoints.DocumentData {
+func ToDocumentResponse(document *domain.Document) *shared.DocumentResponse {
 	if document == nil {
 		return nil
 	}
 
-	return &endpoints.DocumentData{
+	return &shared.DocumentResponse{
 		ID:         document.ID,
 		Filename:   document.Filename,
 		MimeType:   document.MimeType,
@@ -21,18 +21,17 @@ func ToDocumentData(document *domain.Document) *endpoints.DocumentData {
 	}
 }
 
-func ToDocumentDataList(documents []*domain.Document) []endpoints.DocumentData {
+func ToDocumentResponseList(documents []*domain.Document) []shared.DocumentResponse {
 	if documents == nil {
-		return []endpoints.DocumentData{}
+		return []shared.DocumentResponse{}
 	}
 
-	result := make([]endpoints.DocumentData, 0, len(documents))
+	result := make([]shared.DocumentResponse, 0, len(documents))
 	for _, doc := range documents {
-		if docData := ToDocumentData(doc); docData != nil {
+		if docData := ToDocumentResponse(doc); docData != nil {
 			result = append(result, *docData)
 		}
 	}
 
 	return result
 }
-

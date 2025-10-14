@@ -69,19 +69,19 @@ const docTemplate = `{
                     "200": {
                         "description": "List of documents retrieved successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentListSuccessResponse"
+                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error - invalid email or pagination parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentListErrorResponse"
+                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error - database error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentListErrorResponse"
+                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListErrorResponse"
                         }
                     }
                 }
@@ -120,19 +120,19 @@ const docTemplate = `{
                     "201": {
                         "description": "Document uploaded successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentUploadSuccessResponse"
+                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error - invalid email format or missing required fields",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentUploadErrorResponse"
+                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error - file processing, storage upload, or database error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentUploadErrorResponse"
+                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadErrorResponse"
                         }
                     }
                 }
@@ -160,7 +160,70 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentData": {
+        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.HealthCheckResponse": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListData": {
+            "type": "object",
+            "properties": {
+                "documents": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.DocumentResponse"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.Pagination"
+                }
+            }
+        },
+        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail"
+                }
+            }
+        },
+        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListData"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail"
+                }
+            }
+        },
+        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.DocumentResponse"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.DocumentResponse": {
             "type": "object",
             "properties": {
                 "filename": {
@@ -193,78 +256,20 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentListData": {
+        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail": {
             "type": "object",
             "properties": {
-                "documents": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentData"
-                    }
+                "code": {
+                    "type": "string",
+                    "example": "VALIDATION_ERROR"
                 },
-                "pagination": {
-                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.PaginationMetadata"
+                "message": {
+                    "type": "string",
+                    "example": "invalid request format or validation failed"
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentListErrorResponse": {
-            "type": "object",
-            "properties": {
-                "error": {
-                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail"
-                },
-                "success": {
-                    "type": "boolean",
-                    "example": false
-                }
-            }
-        },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentListSuccessResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentListData"
-                },
-                "success": {
-                    "type": "boolean",
-                    "example": true
-                }
-            }
-        },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentUploadErrorResponse": {
-            "type": "object",
-            "properties": {
-                "error": {
-                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail"
-                },
-                "success": {
-                    "type": "boolean",
-                    "example": false
-                }
-            }
-        },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentUploadSuccessResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DocumentData"
-                },
-                "success": {
-                    "type": "boolean",
-                    "example": true
-                }
-            }
-        },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.HealthCheckResponse": {
-            "type": "object",
-            "properties": {
-                "ok": {
-                    "type": "boolean",
-                    "example": true
-                }
-            }
-        },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.PaginationMetadata": {
+        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.Pagination": {
             "type": "object",
             "properties": {
                 "limit": {
@@ -277,24 +282,11 @@ const docTemplate = `{
                 },
                 "total_items": {
                     "type": "integer",
-                    "example": 50
+                    "example": 42
                 },
                 "total_pages": {
                     "type": "integer",
                     "example": 5
-                }
-            }
-        },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "example": "VALIDATION_ERROR"
-                },
-                "message": {
-                    "type": "string",
-                    "example": "invalid request format or validation failed"
                 }
             }
         }

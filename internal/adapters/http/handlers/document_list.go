@@ -7,6 +7,7 @@ import (
 
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/dto/request"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/dto/response/endpoints"
+	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/dto/response/shared"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/presenter"
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
@@ -49,9 +50,9 @@ func NewDocumentListHandler(service usecases.DocumentListService, errorHandler *
 // @Param email query string true "Owner's email address" format(email) example(user@example.com)
 // @Param page query int false "Page number (starts at 1)" minimum(1) default(1) example(1)
 // @Param limit query int false "Number of items per page (max 100)" minimum(1) maximum(100) default(10) example(10)
-// @Success 200 {object} endpoints.DocumentListSuccessResponse "List of documents retrieved successfully"
-// @Failure 400 {object} endpoints.DocumentListErrorResponse "Validation error - invalid email or pagination parameters"
-// @Failure 500 {object} endpoints.DocumentListErrorResponse "Internal server error - database error"
+// @Success 200 {object} endpoints.ListResponse "List of documents retrieved successfully"
+// @Failure 400 {object} endpoints.ListErrorResponse "Validation error - invalid email or pagination parameters"
+// @Failure 500 {object} endpoints.ListErrorResponse "Internal server error - database error"
 // @Router /api/v1/documents [get]
 func (handler *DocumentListHandler) List(ctx *gin.Context) {
 	var listRequest request.ListDocumentsRequest
@@ -72,11 +73,11 @@ func (handler *DocumentListHandler) List(ctx *gin.Context) {
 		return
 	}
 
-	response := endpoints.DocumentListSuccessResponse{
+	response := endpoints.ListResponse{
 		Success: true,
-		Data: endpoints.DocumentListData{
-			Documents: presenter.ToDocumentDataList(documents),
-			Pagination: endpoints.PaginationMetadata{
+		Data: endpoints.ListData{
+			Documents: presenter.ToDocumentResponseList(documents),
+			Pagination: shared.Pagination{
 				Page:       pagination.Page,
 				Limit:      pagination.Limit,
 				TotalItems: totalCount,
