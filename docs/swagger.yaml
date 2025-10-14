@@ -77,6 +77,41 @@ definitions:
         example: true
         type: boolean
     type: object
+  endpoints.TransferData:
+    properties:
+      documents:
+        items:
+          $ref: '#/definitions/shared.TransferDocument'
+        type: array
+      email:
+        example: user@example.com
+        type: string
+      expires_in:
+        example: 15m
+        type: string
+      total_documents:
+        example: 5
+        type: integer
+    type: object
+  endpoints.TransferErrorResponse:
+    properties:
+      error:
+        $ref: '#/definitions/shared.ErrorDetail'
+      success:
+        example: false
+        type: boolean
+    type: object
+  endpoints.TransferResponse:
+    properties:
+      data:
+        $ref: '#/definitions/endpoints.TransferData'
+      message:
+        example: Documents prepared for transfer
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
   endpoints.UploadErrorResponse:
     properties:
       error:
@@ -136,6 +171,30 @@ definitions:
         type: integer
       total_pages:
         example: 5
+        type: integer
+    type: object
+  shared.TransferDocument:
+    properties:
+      expires_at:
+        example: "2025-10-14T15:30:00Z"
+        type: string
+      filename:
+        example: passport.pdf
+        type: string
+      hash_sha256:
+        example: a1b2c3d4e5f6...
+        type: string
+      id:
+        example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+      mime_type:
+        example: application/pdf
+        type: string
+      presigned_url:
+        example: https://s3.amazonaws.com/bucket/key?signature=...
+        type: string
+      size_bytes:
+        example: 1048576
         type: integer
     type: object
 host: localhost:8080
@@ -368,6 +427,36 @@ paths:
           schema:
             $ref: '#/definitions/endpoints.GetErrorResponse'
       summary: Get document by ID
+      tags:
+      - documents
+  /api/v1/documents/transfer/{email}:
+    get:
+      consumes:
+      - application/json
+      description: Generates pre-signed URLs for all documents owned by a user for
+        secure transfer to another operator
+      parameters:
+      - description: User email
+        in: path
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Documents prepared successfully
+          schema:
+            $ref: '#/definitions/endpoints.TransferResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/endpoints.TransferErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/endpoints.TransferErrorResponse'
+      summary: Prepare documents for transfer
       tags:
       - documents
   /api/v1/documents/user/{email}:

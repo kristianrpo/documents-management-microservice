@@ -20,6 +20,8 @@ type Config struct {
 	S3UsePath    bool
 	S3PublicBase string
 
+	RabbitMQ RabbitMQConfig
+
 	ReadHeaderTimeout time.Duration
 }
 
@@ -34,6 +36,11 @@ func getbool(k string) bool { return os.Getenv(k) == "true" }
 func Load() *Config {
 	port := ":" + getenv("APP_PORT", "8080")
 
+	// Load RabbitMQ config with defaults
+	rabbitMQConfig := DefaultRabbitMQConfig()
+	rabbitMQConfig.URL = getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
+	rabbitMQConfig.Queue = getenv("RABBITMQ_QUEUE", "user.transferred")
+
 	return &Config{
 		Port:              port,
 		DynamoDBTable:     getenv("DYNAMODB_TABLE", "documents"),
@@ -45,6 +52,7 @@ func Load() *Config {
 		S3Endpoint:        getenv("S3_ENDPOINT", ""),
 		S3UsePath:         getbool("S3_USE_PATH_STYLE"),
 		S3PublicBase:      getenv("S3_PUBLIC_BASE_URL", ""),
+		RabbitMQ:          rabbitMQConfig,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"io"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -53,4 +54,19 @@ func (client *S3Client) Delete(ctx context.Context, objectKey string) error {
 		Key:    aws.String(objectKey),
 	})
 	return err
+}
+
+func (client *S3Client) GeneratePresignedURL(ctx context.Context, objectKey string, expiration time.Duration) (string, error) {
+	presignClient := s3.NewPresignClient(client.s3Client)
+
+	request, err := presignClient.PresignGetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(client.bucketName),
+		Key:    aws.String(objectKey),
+	}, s3.WithPresignExpires(expiration))
+
+	if err != nil {
+		return "", err
+	}
+
+	return request.URL, nil
 }
