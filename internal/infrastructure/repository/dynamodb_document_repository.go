@@ -79,6 +79,31 @@ func (repo *dynamoDBDocumentRepository) FindByHashAndEmail(hashSHA256, ownerEmai
 	return &document, nil
 }
 
+func (repo *dynamoDBDocumentRepository) GetByID(id string) (*domain.Document, error) {
+	result, err := repo.client.Query(context.TODO(), &dynamodb.QueryInput{
+		TableName:              aws.String(repo.tableName),
+		KeyConditionExpression: aws.String("DocumentID = :id"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":id": &types.AttributeValueMemberS{Value: id},
+		},
+		Limit: aws.Int32(1),
+	})
+	if err != nil {
+		log.Printf("dynamodb Query error: %v", err)
+		return nil, err
+	}
+
+	if len(result.Items) == 0 {
+		return nil, nil
+	}
+
+	var document domain.Document
+	if err := attributevalue.UnmarshalMap(result.Items[0], &document); err != nil {
+		return nil, err
+	}
+	return &document, nil
+}
+
 func (repo *dynamoDBDocumentRepository) List(ownerEmail string, limit, offset int) ([]*domain.Document, int64, error) {
 	queryInput := &dynamodb.QueryInput{
 		TableName:              aws.String(repo.tableName),

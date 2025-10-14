@@ -7,5 +7,7 @@ type DocumentRepository interface {
 
 	FindByHashAndEmail(hashSHA256, ownerEmail string) (*domain.Document, error)
 
+	GetByID(id string) (*domain.Document, error)
+
 	List(ownerEmail string, limit, offset int) ([]*domain.Document, int64, error)
 }

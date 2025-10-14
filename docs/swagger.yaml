@@ -1,47 +1,60 @@
 basePath: /
 definitions:
-  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.HealthCheckResponse:
+  endpoints.GetErrorResponse:
+    properties:
+      error:
+        $ref: '#/definitions/shared.ErrorDetail'
+    type: object
+  endpoints.GetResponse:
+    properties:
+      data:
+        $ref: '#/definitions/shared.DocumentResponse'
+      success:
+        example: true
+        type: boolean
+    type: object
+  endpoints.HealthCheckResponse:
     properties:
       ok:
         example: true
         type: boolean
     type: object
-  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListData:
+  endpoints.ListData:
     properties:
       documents:
         items:
-          $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.DocumentResponse'
+          $ref: '#/definitions/shared.DocumentResponse'
         type: array
       pagination:
-        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.Pagination'
+        $ref: '#/definitions/shared.Pagination'
     type: object
-  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListErrorResponse:
+  endpoints.ListErrorResponse:
     properties:
       error:
-        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail'
+        $ref: '#/definitions/shared.ErrorDetail'
     type: object
-  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListResponse:
+  endpoints.ListResponse:
     properties:
       data:
-        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListData'
+        $ref: '#/definitions/endpoints.ListData'
       success:
         example: true
         type: boolean
     type: object
-  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadErrorResponse:
+  endpoints.UploadErrorResponse:
     properties:
       error:
-        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail'
+        $ref: '#/definitions/shared.ErrorDetail'
     type: object
-  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadResponse:
+  endpoints.UploadResponse:
     properties:
       data:
-        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.DocumentResponse'
+        $ref: '#/definitions/shared.DocumentResponse'
       success:
         example: true
         type: boolean
     type: object
-  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.DocumentResponse:
+  shared.DocumentResponse:
     properties:
       filename:
         example: my-document.pdf
@@ -65,7 +78,7 @@ definitions:
         example: https://my-bucket.s3.amazonaws.com/ab/abc123def456.pdf
         type: string
     type: object
-  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail:
+  shared.ErrorDetail:
     properties:
       code:
         example: VALIDATION_ERROR
@@ -74,7 +87,7 @@ definitions:
         example: invalid request format or validation failed
         type: string
     type: object
-  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.Pagination:
+  shared.Pagination:
     properties:
       limit:
         example: 10
@@ -160,15 +173,15 @@ paths:
         "200":
           description: List of documents retrieved successfully
           schema:
-            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListResponse'
+            $ref: '#/definitions/endpoints.ListResponse'
         "400":
           description: Validation error - invalid email or pagination parameters
           schema:
-            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListErrorResponse'
+            $ref: '#/definitions/endpoints.ListErrorResponse'
         "500":
           description: Internal server error - database error
           schema:
-            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListErrorResponse'
+            $ref: '#/definitions/endpoints.ListErrorResponse'
       summary: List documents
       tags:
       - documents
@@ -217,18 +230,64 @@ paths:
         "201":
           description: Document uploaded successfully
           schema:
-            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadResponse'
+            $ref: '#/definitions/endpoints.UploadResponse'
         "400":
           description: Validation error - invalid email format or missing required
             fields
           schema:
-            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadErrorResponse'
+            $ref: '#/definitions/endpoints.UploadErrorResponse'
         "500":
           description: Internal server error - file processing, storage upload, or
             database error
           schema:
-            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadErrorResponse'
+            $ref: '#/definitions/endpoints.UploadErrorResponse'
       summary: Upload a document
+      tags:
+      - documents
+  /api/v1/documents/{id}:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Retrieves detailed information about a specific document by its ID.
+
+        ## Features
+        - Returns complete document metadata including URL for viewing/downloading
+        - URL is pre-signed and ready to use in frontend viewers
+        - Includes file information (size, type, hash, etc.)
+
+        ## Use Cases
+        - Display document details in UI
+        - Preview documents in viewers (PDF, images, etc.)
+        - Download documents
+        - Verify document integrity using hash
+
+        ## Error Codes
+        - `NOT_FOUND`: Document with the specified ID does not exist
+        - `PERSISTENCE_ERROR`: Failed to retrieve document from database
+      parameters:
+      - description: Document ID
+        example: 123e4567-e89b-12d3-a456-426614174000
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Document retrieved successfully
+          schema:
+            $ref: '#/definitions/endpoints.GetResponse'
+        "404":
+          description: Document not found
+          schema:
+            $ref: '#/definitions/endpoints.GetErrorResponse'
+        "500":
+          description: Internal server error - database error
+          schema:
+            $ref: '#/definitions/endpoints.GetErrorResponse'
+      summary: Get document by ID
       tags:
       - documents
   /healthz:
@@ -245,7 +304,7 @@ paths:
         "200":
           description: Service is healthy and operational
           schema:
-            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.HealthCheckResponse'
+            $ref: '#/definitions/endpoints.HealthCheckResponse'
       summary: Health check endpoint
       tags:
       - health

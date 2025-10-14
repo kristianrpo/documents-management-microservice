@@ -15,6 +15,7 @@ const (
 	ErrCodeHashCalculate = "HASH_CALCULATE_ERROR"
 	ErrCodeStorageUpload = "STORAGE_UPLOAD_ERROR"
 	ErrCodePersistence   = "PERSISTENCE_ERROR"
+	ErrCodeNotFound      = "NOT_FOUND"
 )
 
 func NewValidationError(message string) *DomainError {
@@ -35,4 +36,8 @@ func NewStorageUploadError(err error) *DomainError {
 
 func NewPersistenceError(err error) *DomainError {
 	return &DomainError{Code: ErrCodePersistence, Message: "failed to persist document", Err: err}
+}
+
+func NewNotFoundError(message string) *DomainError {
+	return &DomainError{Code: ErrCodeNotFound, Message: message}
 }
