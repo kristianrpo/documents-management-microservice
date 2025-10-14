@@ -138,6 +138,50 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/documents/transfer/{email}": {
+            "get": {
+                "description": "Generates pre-signed URLs for all documents owned by a user for secure transfer to another operator",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "documents"
+                ],
+                "summary": "Prepare documents for transfer",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User email",
+                        "name": "email",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Documents prepared successfully",
+                        "schema": {
+                            "$ref": "#/definitions/endpoints.TransferResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/endpoints.TransferErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/endpoints.TransferErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/documents/user/{email}": {
             "delete": {
                 "description": "Deletes all documents belonging to a specific user (identified by email) and their associated files from S3 storage.\n\n## Features\n- Deletes all document metadata from DynamoDB for the specified user\n- Removes all physical files from S3 storage\n- Returns the count of deleted documents\n- Useful for account closure or data migration scenarios\n\n## Use Cases\n- Account closure/deletion\n- Data migration to another system\n- Bulk cleanup operations\n- GDPR/privacy compliance (right to be forgotten)\n\n## Error Codes\n- ` + "`" + `VALIDATION_ERROR` + "`" + `: Invalid email format\n- ` + "`" + `PERSISTENCE_ERROR` + "`" + `: Failed to delete documents from database",
@@ -411,6 +455,57 @@ const docTemplate = `{
                 }
             }
         },
+        "endpoints.TransferData": {
+            "type": "object",
+            "properties": {
+                "documents": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/shared.TransferDocument"
+                    }
+                },
+                "email": {
+                    "type": "string",
+                    "example": "user@example.com"
+                },
+                "expires_in": {
+                    "type": "string",
+                    "example": "15m"
+                },
+                "total_documents": {
+                    "type": "integer",
+                    "example": 5
+                }
+            }
+        },
+        "endpoints.TransferErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "$ref": "#/definitions/shared.ErrorDetail"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "endpoints.TransferResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/endpoints.TransferData"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Documents prepared for transfer"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
         "endpoints.UploadErrorResponse": {
             "type": "object",
             "properties": {
@@ -495,6 +590,39 @@ const docTemplate = `{
                 "total_pages": {
                     "type": "integer",
                     "example": 5
+                }
+            }
+        },
+        "shared.TransferDocument": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "type": "string",
+                    "example": "2025-10-14T15:30:00Z"
+                },
+                "filename": {
+                    "type": "string",
+                    "example": "passport.pdf"
+                },
+                "hash_sha256": {
+                    "type": "string",
+                    "example": "a1b2c3d4e5f6..."
+                },
+                "id": {
+                    "type": "string",
+                    "example": "123e4567-e89b-12d3-a456-426614174000"
+                },
+                "mime_type": {
+                    "type": "string",
+                    "example": "application/pdf"
+                },
+                "presigned_url": {
+                    "type": "string",
+                    "example": "https://s3.amazonaws.com/bucket/key?signature=..."
+                },
+                "size_bytes": {
+                    "type": "integer",
+                    "example": 1048576
                 }
             }
         }
