@@ -22,7 +22,7 @@ func NewDocumentGetService(repository interfaces.DocumentRepository) DocumentGet
 }
 
 func (s *documentGetService) GetByID(ctx context.Context, id string) (*domain.Document, error) {
-	document, err := s.repository.GetByID(id)
+	document, err := s.repository.GetByID(ctx, id)
 	if err != nil {
 		return nil, domain.NewPersistenceError(err)
 	}

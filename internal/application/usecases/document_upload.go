@@ -48,7 +48,7 @@ func (service *documentService) Upload(ctx context.Context, fileHeader *multipar
 		return nil, domain.NewHashCalculateError(err)
 	}
 
-	existingDoc, _ := service.repository.FindByHashAndOwnerID(hash, ownerID)
+	existingDoc, _ := service.repository.FindByHashAndOwnerID(ctx, hash, ownerID)
 	if existingDoc != nil {
 		return existingDoc, nil
 	}
@@ -85,7 +85,7 @@ func (service *documentService) Upload(ctx context.Context, fileHeader *multipar
 		return nil, err
 	}
 
-	if err := service.repository.Create(document); err != nil {
+	if err := service.repository.Create(ctx, document); err != nil {
 		return nil, domain.NewPersistenceError(err)
 	}
 

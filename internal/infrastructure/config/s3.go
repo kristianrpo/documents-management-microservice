@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -12,60 +13,43 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/storage"
 )
 
-type S3Opts struct {
-	AccessKey, SecretKey, Region, Endpoint string
-	Bucket                                 string
-	UsePathStyle                           bool
-	PublicBase                             string
-}
-
-func NewS3(ctx context.Context, opts S3Opts) (*storage.S3Client, error) {
+func NewS3Client(ctx context.Context, cfg Config) (*storage.S3Client, error) {
 	var configLoaders []func(*awscfg.LoadOptions) error
 
-	if opts.AccessKey != "" && opts.SecretKey != "" {
+	if cfg.AWSAccessKey != "" && cfg.AWSSecretKey != "" {
 		configLoaders = append(configLoaders, awscfg.WithCredentialsProvider(
-			credentials.NewStaticCredentialsProvider(opts.AccessKey, opts.SecretKey, ""),
+			credentials.NewStaticCredentialsProvider(cfg.AWSAccessKey, cfg.AWSSecretKey, ""),
 		))
 	}
 
-	if opts.Region != "" {
-		configLoaders = append(configLoaders, awscfg.WithRegion(opts.Region))
+	if cfg.AWSRegion != "" {
+		configLoaders = append(configLoaders, awscfg.WithRegion(cfg.AWSRegion))
 	}
 
 	awsConfig, err := awscfg.LoadDefaultConfig(ctx, configLoaders...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to load AWS config: %w", err)
 	}
 
 	clientOptions := []func(*s3.Options){}
 
-	if opts.Endpoint != "" {
-		endpointURL, _ := url.Parse(opts.Endpoint)
+	if cfg.S3Endpoint != "" {
+		endpointURL, err := url.Parse(cfg.S3Endpoint)
+		if err != nil {
+			return nil, fmt.Errorf("invalid S3 endpoint URL: %w", err)
+		}
 		clientOptions = append(clientOptions, func(options *s3.Options) {
 			options.BaseEndpoint = aws.String(endpointURL.String())
-			options.Region = opts.Region
-			options.UsePathStyle = opts.UsePathStyle
+			options.Region = cfg.AWSRegion
+			options.UsePathStyle = cfg.S3UsePath
 		})
-	} else if opts.Region != "" {
+	} else if cfg.AWSRegion != "" {
 		clientOptions = append(clientOptions, func(options *s3.Options) {
-			options.Region = opts.Region
+			options.Region = cfg.AWSRegion
 		})
 	}
 
 	s3APIClient := s3.NewFromConfig(awsConfig, clientOptions...)
 
-	return storage.NewS3Client(opts.Bucket, opts.PublicBase, s3APIClient), nil
-}
-
-func NewS3Client(ctx context.Context, cfg Config) (*storage.S3Client, error) {
-	opts := S3Opts{
-		AccessKey:    cfg.AWSAccessKey,
-		SecretKey:    cfg.AWSSecretKey,
-		Region:       cfg.AWSRegion,
-		Endpoint:     cfg.S3Endpoint,
-		Bucket:       cfg.S3Bucket,
-		UsePathStyle: cfg.S3UsePath,
-		PublicBase:   cfg.S3PublicBase,
-	}
-	return NewS3(ctx, opts)
+	return storage.NewS3Client(cfg.S3Bucket, cfg.S3PublicBase, s3APIClient), nil
 }

@@ -44,7 +44,7 @@ func (s *DocumentRequestAuthenticationService) RequestAuthentication(
 	documentID string,
 ) error {
 	// Get the document
-	doc, err := s.repo.GetByID(documentID)
+	doc, err := s.repo.GetByID(ctx, documentID)
 	if err != nil {
 		return err
 	}

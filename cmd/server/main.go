@@ -87,21 +87,44 @@ func main() {
 	fileHasher := util.NewSHA256Hasher()
 	mimeDetector := util.NewExtensionBasedDetector()
 
-	// Initialize RabbitMQ publisher for publishing events
+	// Initialize shared RabbitMQ client
+	var rabbitMQClient *messaging.RabbitMQClient
 	var messagePublisher interfaces.MessagePublisher
+	var messageBroker interfaces.MessageBroker
+	
 	if config.RabbitMQ.URL != "" {
-		rabbitPublisher, err := messaging.NewRabbitMQPublisher(config.RabbitMQ)
+		var err error
+		rabbitMQClient, err = messaging.NewRabbitMQClient(config.RabbitMQ)
 		if err != nil {
-			log.Printf("warning: failed to initialize RabbitMQ publisher: %v", err)
+			log.Printf("warning: failed to initialize RabbitMQ client: %v", err)
+			log.Println("continuing without RabbitMQ...")
 		} else {
-			messagePublisher = rabbitPublisher
 			defer func() {
-				if err := messagePublisher.Close(); err != nil {
-					log.Printf("Error closing message publisher: %v", err)
+				if err := rabbitMQClient.Close(); err != nil {
+					log.Printf("Error closing RabbitMQ client: %v", err)
 				}
 			}()
-			log.Println("RabbitMQ publisher initialized")
+			
+			// Initialize publisher with shared client
+			rabbitPublisher, err := messaging.NewRabbitMQPublisher(rabbitMQClient)
+			if err != nil {
+				log.Printf("warning: failed to initialize RabbitMQ publisher: %v", err)
+			} else {
+				messagePublisher = rabbitPublisher
+				log.Println("RabbitMQ publisher initialized")
+			}
+			
+			// Initialize consumer with shared client
+			rabbitConsumer, err := messaging.NewRabbitMQConsumer(rabbitMQClient)
+			if err != nil {
+				log.Printf("warning: failed to initialize RabbitMQ consumer: %v", err)
+			} else {
+				messageBroker = rabbitConsumer
+				log.Println("RabbitMQ consumer initialized")
+			}
 		}
+	} else {
+		log.Println("RabbitMQ URL not configured, skipping RabbitMQ initialization")
 	}
 
 	documentService := usecases.NewDocumentService(
@@ -122,7 +145,7 @@ func main() {
 			documentRepository,
 			objectStorage,
 			messagePublisher,
-			config.AuthenticationRequestQueue,
+			config.RabbitMQ.AuthenticationRequestQueue,
 			24*time.Hour,
 		)
 	}
@@ -146,35 +169,18 @@ func main() {
 
 	router := httpadapter.NewRouter(uploadHandler, listHandler, getHandler, deleteHandler, deleteAllHandler, transferHandler, requestAuthHandler, healthHandler)
 
-	// Initialize RabbitMQ consumer for event-driven communication
+	// Start consuming messages if messageBroker is initialized
 	ctx := context.Background()
-	var messageBroker interfaces.MessageBroker
+	if messageBroker != nil {
+		// Set up event handler
+		userTransferHandler := events.NewUserTransferHandler(documentDeleteAllService)
 
-	if config.RabbitMQ.URL != "" {
-		rabbitConsumer, err := messaging.NewRabbitMQConsumer(config.RabbitMQ)
-		if err != nil {
-			log.Printf("warning: failed to initialize RabbitMQ consumer: %v", err)
-			log.Println("continuing without message broker...")
+		// Start consuming messages
+		if err := messageBroker.Subscribe(ctx, userTransferHandler.HandleUserTransferred); err != nil {
+			log.Printf("warning: failed to subscribe to queue: %v", err)
 		} else {
-			messageBroker = rabbitConsumer
-			defer func() {
-				if err := messageBroker.Close(); err != nil {
-					log.Printf("Error closing message broker: %v", err)
-				}
-			}()
-
-			// Set up event handler
-			userTransferHandler := events.NewUserTransferHandler(documentDeleteAllService)
-
-			// Start consuming messages
-			if err := messageBroker.Subscribe(ctx, userTransferHandler.HandleUserTransferred); err != nil {
-				log.Printf("warning: failed to subscribe to queue: %v", err)
-			} else {
-				log.Printf("listening for events on queue: %s", config.RabbitMQ.Queue)
-			}
+			log.Printf("listening for events on queue: %s", config.RabbitMQ.ConsumerQueue)
 		}
-	} else {
-		log.Println("RabbitMQ URL not configured, skipping message broker initialization")
 	}
 
 	server := &http.Server{

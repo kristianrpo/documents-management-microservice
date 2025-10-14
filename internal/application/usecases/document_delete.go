@@ -25,7 +25,7 @@ func NewDocumentDeleteService(repository interfaces.DocumentRepository, objectSt
 }
 
 func (s *documentDeleteService) Delete(ctx context.Context, id string) error {
-	document, err := s.repository.DeleteByID(id)
+	document, err := s.repository.DeleteByID(ctx, id)
 	if err != nil {
 		return domain.NewPersistenceError(err)
 	}

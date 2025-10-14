@@ -25,7 +25,7 @@ func NewDocumentDeleteAllService(repository interfaces.DocumentRepository, objec
 }
 
 func (s *documentDeleteAllService) DeleteAll(ctx context.Context, ownerID int64) (int, error) {
-	documents, _, err := s.repository.List(ownerID, 1000, 0)
+	documents, _, err := s.repository.List(ctx, ownerID, 1000, 0)
 	if err != nil {
 		return 0, domain.NewPersistenceError(err)
 	}
@@ -34,7 +34,7 @@ func (s *documentDeleteAllService) DeleteAll(ctx context.Context, ownerID int64)
 		return 0, nil
 	}
 
-	deletedCount, err := s.repository.DeleteAllByOwnerID(ownerID)
+	deletedCount, err := s.repository.DeleteAllByOwnerID(ctx, ownerID)
 	if err != nil {
 		return 0, domain.NewPersistenceError(err)
 	}

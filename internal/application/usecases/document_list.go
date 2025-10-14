@@ -26,7 +26,7 @@ func NewDocumentListService(repository interfaces.DocumentRepository) DocumentLi
 func (s *documentListService) List(ctx context.Context, ownerID int64, page, limit int) ([]*domain.Document, util.PaginationParams, int, int64, error) {
 	pagination := util.NormalizePagination(page, limit)
 
-	documents, totalCount, err := s.repository.List(ownerID, pagination.Limit, pagination.Offset)
+	documents, totalCount, err := s.repository.List(ctx, ownerID, pagination.Limit, pagination.Offset)
 	if err != nil {
 		return nil, util.PaginationParams{}, 0, 0, domain.NewPersistenceError(err)
 	}
