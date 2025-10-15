@@ -90,7 +90,7 @@ func main() {
 	// Initialize shared RabbitMQ client
 	var rabbitMQClient *messaging.RabbitMQClient
 	var messagePublisher interfaces.MessagePublisher
-	var messageBroker interfaces.MessageBroker
+	var messageConsumer interfaces.MessageConsumer
 	
 	if config.RabbitMQ.URL != "" {
 		var err error
@@ -119,7 +119,7 @@ func main() {
 			if err != nil {
 				log.Printf("warning: failed to initialize RabbitMQ consumer: %v", err)
 			} else {
-				messageBroker = rabbitConsumer
+				messageConsumer = rabbitConsumer
 				log.Println("RabbitMQ consumer initialized")
 			}
 		}
@@ -169,14 +169,14 @@ func main() {
 
 	router := httpadapter.NewRouter(uploadHandler, listHandler, getHandler, deleteHandler, deleteAllHandler, transferHandler, requestAuthHandler, healthHandler)
 
-	// Start consuming messages if messageBroker is initialized
+	// Start consuming messages if messageConsumer is initialized
 	ctx := context.Background()
-	if messageBroker != nil {
+	if messageConsumer != nil {
 		// Set up event handler
 		userTransferHandler := events.NewUserTransferHandler(documentDeleteAllService)
 
 		// Start consuming messages
-		if err := messageBroker.Subscribe(ctx, userTransferHandler.HandleUserTransferred); err != nil {
+		if err := messageConsumer.Subscribe(ctx, userTransferHandler.HandleUserTransferred); err != nil {
 			log.Printf("warning: failed to subscribe to queue: %v", err)
 		} else {
 			log.Printf("listening for events on queue: %s", config.RabbitMQ.ConsumerQueue)
