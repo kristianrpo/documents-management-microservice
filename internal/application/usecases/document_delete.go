@@ -2,7 +2,7 @@ package usecases
 
 import (
 	"context"
-	"log"
+	"fmt"
 
 	"github.com/kristianrpo/document-management-microservice/internal/application/interfaces"
 	"github.com/kristianrpo/document-management-microservice/internal/domain/errors"
@@ -35,7 +35,7 @@ func (s *documentDeleteService) Delete(ctx context.Context, id string) error {
 	}
 
 	if err := s.objectStorage.Delete(ctx, document.ObjectKey); err != nil {
-		log.Printf("failed to delete object from S3: %v (document metadata was already deleted)", err)
+		return fmt.Errorf("failed to delete object from storage (metadata was already deleted): %w", err)
 	}
 
 	return nil

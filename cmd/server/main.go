@@ -139,7 +139,7 @@ func main() {
 	documentDeleteAllService := usecases.NewDocumentDeleteAllService(documentRepository, objectStorage)
 	documentTransferService := usecases.NewDocumentTransferService(documentRepository, objectStorage, 15*time.Minute)
 	
-	var documentRequestAuthService *usecases.DocumentRequestAuthenticationService
+	var documentRequestAuthService usecases.DocumentRequestAuthenticationService
 	if messagePublisher != nil {
 		documentRequestAuthService = usecases.NewDocumentRequestAuthenticationService(
 			documentRepository,

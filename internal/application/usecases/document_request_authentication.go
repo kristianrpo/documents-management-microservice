@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/kristianrpo/document-management-microservice/internal/application/interfaces"
@@ -12,7 +11,12 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/domain/events"
 )
 
-type DocumentRequestAuthenticationService struct {
+// DocumentRequestAuthenticationService defines the interface for document authentication request operations
+type DocumentRequestAuthenticationService interface {
+	RequestAuthentication(ctx context.Context, documentID string) error
+}
+
+type documentRequestAuthenticationService struct {
 	repo          interfaces.DocumentRepository
 	objectStorage interfaces.ObjectStorage
 	publisher     interfaces.MessagePublisher
@@ -26,11 +30,11 @@ func NewDocumentRequestAuthenticationService(
 	publisher interfaces.MessagePublisher,
 	queue string,
 	expiration time.Duration,
-) *DocumentRequestAuthenticationService {
+) DocumentRequestAuthenticationService {
 	if expiration == 0 {
 		expiration = 24 * time.Hour // Default: 24 hours for authentication URLs
 	}
-	return &DocumentRequestAuthenticationService{
+	return &documentRequestAuthenticationService{
 		repo:          repo,
 		objectStorage: objectStorage,
 		publisher:     publisher,
@@ -40,7 +44,7 @@ func NewDocumentRequestAuthenticationService(
 }
 
 // RequestAuthentication requests authentication for a document by publishing an event
-func (s *DocumentRequestAuthenticationService) RequestAuthentication(
+func (s *documentRequestAuthenticationService) RequestAuthentication(
 	ctx context.Context,
 	documentID string,
 ) error {
@@ -79,9 +83,6 @@ func (s *DocumentRequestAuthenticationService) RequestAuthentication(
 	if err := s.publisher.Publish(ctx, s.queue, eventJSON); err != nil {
 		return fmt.Errorf("failed to publish authentication request event: %w", err)
 	}
-
-	log.Printf("Authentication requested for document %s (owner ID: %d, title: %s)", 
-		documentID, doc.OwnerID, doc.Filename)
 
 	return nil
 }

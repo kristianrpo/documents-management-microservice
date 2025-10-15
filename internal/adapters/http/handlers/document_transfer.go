@@ -14,12 +14,12 @@ import (
 )
 
 type DocumentTransferHandler struct {
-	transferService *usecases.DocumentTransferService
+	transferService usecases.DocumentTransferService
 	errorHandler    *errors.ErrorHandler
 }
 
 func NewDocumentTransferHandler(
-	transferService *usecases.DocumentTransferService,
+	transferService usecases.DocumentTransferService,
 	errorHandler *errors.ErrorHandler,
 ) *DocumentTransferHandler {
 	return &DocumentTransferHandler{

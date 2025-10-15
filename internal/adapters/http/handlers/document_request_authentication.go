@@ -13,12 +13,12 @@ import (
 )
 
 type DocumentRequestAuthenticationHandler struct {
-	authService  *usecases.DocumentRequestAuthenticationService
+	authService  usecases.DocumentRequestAuthenticationService
 	errorHandler *errors.ErrorHandler
 }
 
 func NewDocumentRequestAuthenticationHandler(
-	authService *usecases.DocumentRequestAuthenticationService,
+	authService usecases.DocumentRequestAuthenticationService,
 	errorHandler *errors.ErrorHandler,
 ) *DocumentRequestAuthenticationHandler {
 	return &DocumentRequestAuthenticationHandler{
