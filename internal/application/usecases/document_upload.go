@@ -6,11 +6,12 @@ import (
 
 	"github.com/kristianrpo/document-management-microservice/internal/application/interfaces"
 	"github.com/kristianrpo/document-management-microservice/internal/application/util"
-	"github.com/kristianrpo/document-management-microservice/internal/domain"
+	"github.com/kristianrpo/document-management-microservice/internal/domain/models"
+	"github.com/kristianrpo/document-management-microservice/internal/domain/errors"
 )
 
 type DocumentService interface {
-	Upload(ctx context.Context, fileHeader *multipart.FileHeader, ownerID int64) (*domain.Document, error)
+	Upload(ctx context.Context, fileHeader *multipart.FileHeader, ownerID int64) (*models.Document, error)
 }
 
 type documentService struct {
@@ -34,10 +35,10 @@ func NewDocumentService(
 	}
 }
 
-func (service *documentService) Upload(ctx context.Context, fileHeader *multipart.FileHeader, ownerID int64) (*domain.Document, error) {
+func (service *documentService) Upload(ctx context.Context, fileHeader *multipart.FileHeader, ownerID int64) (*models.Document, error) {
 	file, err := fileHeader.Open()
 	if err != nil {
-		return nil, domain.NewFileReadError(err)
+		return nil, errors.NewFileReadError(err)
 	}
 	defer func() {
 		_ = file.Close()
@@ -45,7 +46,7 @@ func (service *documentService) Upload(ctx context.Context, fileHeader *multipar
 
 	hash, err := service.hasher.CalculateHash(file)
 	if err != nil {
-		return nil, domain.NewHashCalculateError(err)
+		return nil, errors.NewHashCalculateError(err)
 	}
 
 	existingDoc, _ := service.repository.FindByHashAndOwnerID(ctx, hash, ownerID)
@@ -61,16 +62,16 @@ func (service *documentService) Upload(ctx context.Context, fileHeader *multipar
 		Seek(int64, int) (int64, error)
 	}); ok {
 		if _, err := seeker.Seek(0, 0); err != nil {
-			return nil, domain.NewFileReadError(err)
+			return nil, errors.NewFileReadError(err)
 		}
 	}
 
 	if err := service.storage.Put(ctx, file, objectKey, contentType); err != nil {
-		return nil, domain.NewStorageUploadError(err)
+		return nil, errors.NewStorageUploadError(err)
 	}
 
 	publicURL := service.storage.PublicURL(objectKey)
-	document := &domain.Document{
+	document := &models.Document{
 		Filename:   fileHeader.Filename,
 		MimeType:   contentType,
 		SizeBytes:  fileHeader.Size,
@@ -86,7 +87,7 @@ func (service *documentService) Upload(ctx context.Context, fileHeader *multipar
 	}
 
 	if err := service.repository.Create(ctx, document); err != nil {
-		return nil, domain.NewPersistenceError(err)
+		return nil, errors.NewPersistenceError(err)
 	}
 
 	return document, nil

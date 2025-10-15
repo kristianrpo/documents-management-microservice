@@ -8,7 +8,8 @@ import (
 	"time"
 
 	"github.com/kristianrpo/document-management-microservice/internal/application/interfaces"
-	"github.com/kristianrpo/document-management-microservice/internal/domain"
+	"github.com/kristianrpo/document-management-microservice/internal/domain/errors"
+	"github.com/kristianrpo/document-management-microservice/internal/domain/events"
 )
 
 type DocumentRequestAuthenticationService struct {
@@ -50,7 +51,7 @@ func (s *DocumentRequestAuthenticationService) RequestAuthentication(
 	}
 
 	if doc == nil {
-		return domain.NewNotFoundError(fmt.Sprintf("document with ID %s not found", documentID))
+		return errors.NewNotFoundError(fmt.Sprintf("document with ID %s not found", documentID))
 	}
 
 	// Generate pre-signed URL
@@ -62,7 +63,7 @@ func (s *DocumentRequestAuthenticationService) RequestAuthentication(
 	// Create the event using document information
 	// IDCitizen is the owner's ID
 	// DocumentTitle is the filename
-	event := domain.DocumentAuthenticationRequestedEvent{
+	event := events.DocumentAuthenticationRequestedEvent{
 		IDCitizen:     doc.OwnerID,
 		URLDocument:   presignedURL,
 		DocumentTitle: doc.Filename,

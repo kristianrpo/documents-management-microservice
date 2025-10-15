@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/kristianrpo/document-management-microservice/internal/application/interfaces"
-	"github.com/kristianrpo/document-management-microservice/internal/domain"
+	"github.com/kristianrpo/document-management-microservice/internal/domain/models"
 )
 
 const (
@@ -37,7 +37,7 @@ func NewDynamoDBDocumentRepo(client *dynamodb.Client, tableName string) interfac
 	}
 }
 
-func (repo *dynamoDBDocumentRepository) Create(ctx context.Context, document *domain.Document) error {
+func (repo *dynamoDBDocumentRepository) Create(ctx context.Context, document *models.Document) error {
 	if document.ID == "" {
 		document.ID = uuid.New().String()
 	}
@@ -63,7 +63,7 @@ func (repo *dynamoDBDocumentRepository) Create(ctx context.Context, document *do
 	return nil
 }
 
-func (repo *dynamoDBDocumentRepository) FindByHashAndOwnerID(ctx context.Context, hashSHA256 string, ownerID int64) (*domain.Document, error) {
+func (repo *dynamoDBDocumentRepository) FindByHashAndOwnerID(ctx context.Context, hashSHA256 string, ownerID int64) (*models.Document, error) {
 	result, err := repo.client.Query(ctx, &dynamodb.QueryInput{
 		TableName:              aws.String(repo.tableName),
 		IndexName:              aws.String(hashOwnerIndexName),
@@ -82,14 +82,14 @@ func (repo *dynamoDBDocumentRepository) FindByHashAndOwnerID(ctx context.Context
 		return nil, nil
 	}
 
-	var document domain.Document
+	var document models.Document
 	if err := attributevalue.UnmarshalMap(result.Items[0], &document); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal document: %w", err)
 	}
 	return &document, nil
 }
 
-func (repo *dynamoDBDocumentRepository) GetByID(ctx context.Context, id string) (*domain.Document, error) {
+func (repo *dynamoDBDocumentRepository) GetByID(ctx context.Context, id string) (*models.Document, error) {
 	result, err := repo.client.Query(ctx, &dynamodb.QueryInput{
 		TableName:              aws.String(repo.tableName),
 		KeyConditionExpression: aws.String("DocumentID = :id"),
@@ -106,14 +106,14 @@ func (repo *dynamoDBDocumentRepository) GetByID(ctx context.Context, id string) 
 		return nil, nil
 	}
 
-	var document domain.Document
+	var document models.Document
 	if err := attributevalue.UnmarshalMap(result.Items[0], &document); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal document: %w", err)
 	}
 	return &document, nil
 }
 
-func (repo *dynamoDBDocumentRepository) List(ctx context.Context, ownerID int64, limit, offset int) ([]*domain.Document, int64, error) {
+func (repo *dynamoDBDocumentRepository) List(ctx context.Context, ownerID int64, limit, offset int) ([]*models.Document, int64, error) {
 	// First, get total count
 	countInput := &dynamodb.QueryInput{
 		TableName:              aws.String(repo.tableName),
@@ -133,7 +133,7 @@ func (repo *dynamoDBDocumentRepository) List(ctx context.Context, ownerID int64,
 
 	// If offset is beyond total, return empty
 	if offset >= int(totalCount) {
-		return []*domain.Document{}, totalCount, nil
+		return []*models.Document{}, totalCount, nil
 	}
 
 	// Query with pagination
@@ -147,7 +147,7 @@ func (repo *dynamoDBDocumentRepository) List(ctx context.Context, ownerID int64,
 		ScanIndexForward: aws.Bool(false), // Most recent first
 	}
 
-	var documents []*domain.Document
+	var documents []*models.Document
 	var lastEvaluatedKey map[string]types.AttributeValue
 	itemsSkipped := 0
 	itemsCollected := 0
@@ -174,7 +174,7 @@ func (repo *dynamoDBDocumentRepository) List(ctx context.Context, ownerID int64,
 				return documents, totalCount, nil
 			}
 
-			var doc domain.Document
+			var doc models.Document
 			if err := attributevalue.UnmarshalMap(item, &doc); err != nil {
 				return nil, 0, fmt.Errorf("failed to unmarshal document: %w", err)
 			}
@@ -191,7 +191,7 @@ func (repo *dynamoDBDocumentRepository) List(ctx context.Context, ownerID int64,
 	return documents, totalCount, nil
 }
 
-func (repo *dynamoDBDocumentRepository) DeleteByID(ctx context.Context, id string) (*domain.Document, error) {
+func (repo *dynamoDBDocumentRepository) DeleteByID(ctx context.Context, id string) (*models.Document, error) {
 	document, err := repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err

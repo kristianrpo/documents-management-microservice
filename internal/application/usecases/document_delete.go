@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/kristianrpo/document-management-microservice/internal/application/interfaces"
-	"github.com/kristianrpo/document-management-microservice/internal/domain"
+	"github.com/kristianrpo/document-management-microservice/internal/domain/errors"
 )
 
 type DocumentDeleteService interface {
@@ -27,11 +27,11 @@ func NewDocumentDeleteService(repository interfaces.DocumentRepository, objectSt
 func (s *documentDeleteService) Delete(ctx context.Context, id string) error {
 	document, err := s.repository.DeleteByID(ctx, id)
 	if err != nil {
-		return domain.NewPersistenceError(err)
+		return errors.NewPersistenceError(err)
 	}
 
 	if document == nil {
-		return domain.NewNotFoundError("document not found")
+		return errors.NewNotFoundError("document not found")
 	}
 
 	if err := s.objectStorage.Delete(ctx, document.ObjectKey); err != nil {

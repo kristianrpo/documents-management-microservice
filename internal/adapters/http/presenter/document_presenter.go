@@ -2,10 +2,10 @@ package presenter
 
 import (
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/dto/response/shared"
-	"github.com/kristianrpo/document-management-microservice/internal/domain"
+	"github.com/kristianrpo/document-management-microservice/internal/domain/models"
 )
 
-func ToDocumentResponse(document *domain.Document) *shared.DocumentResponse {
+func ToDocumentResponse(document *models.Document) *shared.DocumentResponse {
 	if document == nil {
 		return nil
 	}
@@ -21,7 +21,7 @@ func ToDocumentResponse(document *domain.Document) *shared.DocumentResponse {
 	}
 }
 
-func ToDocumentResponseList(documents []*domain.Document) []shared.DocumentResponse {
+func ToDocumentResponseList(documents []*models.Document) []shared.DocumentResponse {
 	if documents == nil {
 		return []shared.DocumentResponse{}
 	}

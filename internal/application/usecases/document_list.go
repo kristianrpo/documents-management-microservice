@@ -6,11 +6,12 @@ import (
 
 	"github.com/kristianrpo/document-management-microservice/internal/application/interfaces"
 	"github.com/kristianrpo/document-management-microservice/internal/application/util"
-	"github.com/kristianrpo/document-management-microservice/internal/domain"
+	"github.com/kristianrpo/document-management-microservice/internal/domain/models"
+	"github.com/kristianrpo/document-management-microservice/internal/domain/errors"
 )
 
 type DocumentListService interface {
-	List(ctx context.Context, ownerID int64, page, limit int) ([]*domain.Document, util.PaginationParams, int, int64, error)
+	List(ctx context.Context, ownerID int64, page, limit int) ([]*models.Document, util.PaginationParams, int, int64, error)
 }
 
 type documentListService struct {
@@ -23,12 +24,12 @@ func NewDocumentListService(repository interfaces.DocumentRepository) DocumentLi
 	}
 }
 
-func (s *documentListService) List(ctx context.Context, ownerID int64, page, limit int) ([]*domain.Document, util.PaginationParams, int, int64, error) {
+func (s *documentListService) List(ctx context.Context, ownerID int64, page, limit int) ([]*models.Document, util.PaginationParams, int, int64, error) {
 	pagination := util.NormalizePagination(page, limit)
 
 	documents, totalCount, err := s.repository.List(ctx, ownerID, pagination.Limit, pagination.Offset)
 	if err != nil {
-		return nil, util.PaginationParams{}, 0, 0, domain.NewPersistenceError(err)
+		return nil, util.PaginationParams{}, 0, 0, errors.NewPersistenceError(err)
 	}
 
 	totalPages := int(math.Ceil(float64(totalCount) / float64(pagination.Limit)))

@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/kristianrpo/document-management-microservice/internal/application/interfaces"
-	"github.com/kristianrpo/document-management-microservice/internal/domain"
+	"github.com/kristianrpo/document-management-microservice/internal/domain/errors"
 )
 
 type DocumentDeleteAllService interface {
@@ -27,7 +27,7 @@ func NewDocumentDeleteAllService(repository interfaces.DocumentRepository, objec
 func (s *documentDeleteAllService) DeleteAll(ctx context.Context, ownerID int64) (int, error) {
 	documents, _, err := s.repository.List(ctx, ownerID, 1000, 0)
 	if err != nil {
-		return 0, domain.NewPersistenceError(err)
+		return 0, errors.NewPersistenceError(err)
 	}
 
 	if len(documents) == 0 {
@@ -36,7 +36,7 @@ func (s *documentDeleteAllService) DeleteAll(ctx context.Context, ownerID int64)
 
 	deletedCount, err := s.repository.DeleteAllByOwnerID(ctx, ownerID)
 	if err != nil {
-		return 0, domain.NewPersistenceError(err)
+		return 0, errors.NewPersistenceError(err)
 	}
 
 	for _, doc := range documents {

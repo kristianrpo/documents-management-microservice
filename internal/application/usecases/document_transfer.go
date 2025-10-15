@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/kristianrpo/document-management-microservice/internal/application/interfaces"
-	"github.com/kristianrpo/document-management-microservice/internal/domain"
+	"github.com/kristianrpo/document-management-microservice/internal/domain/models"
 )
 
 // DocumentTransferResult represents a document with its pre-signed URL
 type DocumentTransferResult struct {
-	Document     *domain.Document
+	Document     *models.Document
 	PresignedURL string
 	ExpiresAt    time.Time
 }

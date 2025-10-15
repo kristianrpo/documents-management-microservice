@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/kristianrpo/document-management-microservice/internal/domain"
+	domainerrors "github.com/kristianrpo/document-management-microservice/internal/domain/errors"
 )
 
 type ErrorHandler struct {
@@ -20,7 +20,7 @@ func NewErrorHandler(mapper *ErrorMapper) *ErrorHandler {
 }
 
 func (h *ErrorHandler) HandleError(ctx *gin.Context, err error) {
-	var domainErr *domain.DomainError
+	var domainErr *domainerrors.DomainError
 	var validationErr *ValidationError
 	debug := os.Getenv("DEBUG") == "true"
 

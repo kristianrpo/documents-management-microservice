@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
-	"github.com/kristianrpo/document-management-microservice/internal/domain"
+	"github.com/kristianrpo/document-management-microservice/internal/domain/events"
 )
 
 type UserTransferHandler struct {
@@ -21,7 +21,7 @@ func NewUserTransferHandler(deleteAllService usecases.DocumentDeleteAllService) 
 
 // HandleUserTransferred processes user transfer events and deletes all associated documents
 func (h *UserTransferHandler) HandleUserTransferred(ctx context.Context, message []byte) error {
-	var event domain.UserTransferredEvent
+	var event events.UserTransferredEvent
 
 	if err := json.Unmarshal(message, &event); err != nil {
 		log.Printf("failed to unmarshal user transfer event: %v", err)
