@@ -172,14 +172,22 @@ func main() {
 	// Start consuming messages if messageConsumer is initialized
 	ctx := context.Background()
 	if messageConsumer != nil {
-		// Set up event handler
+		// Set up event handlers
 		userTransferHandler := events.NewUserTransferHandler(documentDeleteAllService)
+		authenticationHandler := events.NewDocumentAuthenticationHandler(documentRepository)
 
-		// Start consuming messages
-		if err := messageConsumer.Subscribe(ctx, userTransferHandler.HandleUserTransferred); err != nil {
-			log.Printf("warning: failed to subscribe to queue: %v", err)
+		// Subscribe to user transfer events
+		if err := messageConsumer.SubscribeToQueue(ctx, config.RabbitMQ.ConsumerQueue, userTransferHandler.HandleUserTransferred); err != nil {
+			log.Printf("warning: failed to subscribe to user transfer queue: %v", err)
 		} else {
-			log.Printf("listening for events on queue: %s", config.RabbitMQ.ConsumerQueue)
+			log.Printf("listening for user transfer events on queue: %s", config.RabbitMQ.ConsumerQueue)
+		}
+
+		// Subscribe to authentication result events
+		if err := messageConsumer.SubscribeToQueue(ctx, config.RabbitMQ.AuthenticationResultQueue, authenticationHandler.HandleAuthenticationCompleted); err != nil {
+			log.Printf("warning: failed to subscribe to authentication result queue: %v", err)
+		} else {
+			log.Printf("listening for authentication result events on queue: %s", config.RabbitMQ.AuthenticationResultQueue)
 		}
 	}
 

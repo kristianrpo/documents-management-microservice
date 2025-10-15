@@ -11,13 +11,14 @@ func ToDocumentResponse(document *models.Document) *shared.DocumentResponse {
 	}
 
 	return &shared.DocumentResponse{
-		ID:        document.ID,
-		Filename:  document.Filename,
-		MimeType:  document.MimeType,
-		SizeBytes: document.SizeBytes,
-		HashSHA256: document.HashSHA256,
-		URL:       document.URL,
-		OwnerID:   document.OwnerID,
+		ID:                   document.ID,
+		Filename:             document.Filename,
+		MimeType:             document.MimeType,
+		SizeBytes:            document.SizeBytes,
+		HashSHA256:           document.HashSHA256,
+		URL:                  document.URL,
+		OwnerID:              document.OwnerID,
+		AuthenticationStatus: string(document.AuthenticationStatus),
 	}
 }
 

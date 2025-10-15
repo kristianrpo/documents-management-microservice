@@ -72,14 +72,15 @@ func (service *documentService) Upload(ctx context.Context, fileHeader *multipar
 
 	publicURL := service.storage.PublicURL(objectKey)
 	document := &models.Document{
-		Filename:   fileHeader.Filename,
-		MimeType:   contentType,
-		SizeBytes:  fileHeader.Size,
-		HashSHA256: hash,
-		Bucket:     service.storage.Bucket(),
-		ObjectKey:  objectKey,
-		URL:        publicURL,
-		OwnerID:    ownerID,
+		Filename:             fileHeader.Filename,
+		MimeType:             contentType,
+		SizeBytes:            fileHeader.Size,
+		HashSHA256:           hash,
+		Bucket:               service.storage.Bucket(),
+		ObjectKey:            objectKey,
+		URL:                  publicURL,
+		OwnerID:              ownerID,
+		AuthenticationStatus: models.AuthenticationStatusUnauthenticated,
 	}
 
 	if err := document.Validate(); err != nil {

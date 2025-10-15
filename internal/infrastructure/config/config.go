@@ -41,6 +41,7 @@ func Load() *Config {
 	rabbitMQConfig.URL = getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
 	rabbitMQConfig.ConsumerQueue = getenv("RABBITMQ_CONSUMER_QUEUE", "user.transferred")
 	rabbitMQConfig.AuthenticationRequestQueue = getenv("RABBITMQ_AUTH_REQUEST_QUEUE", "document.authentication.requested")
+	rabbitMQConfig.AuthenticationResultQueue = getenv("RABBITMQ_AUTH_RESULT_QUEUE", "document.authentication.completed")
 
 	return &Config{
 		Port:              port,

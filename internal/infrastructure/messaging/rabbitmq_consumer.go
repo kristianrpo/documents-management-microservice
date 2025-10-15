@@ -27,11 +27,11 @@ func NewRabbitMQConsumer(client *RabbitMQClient) (*RabbitMQConsumer, error) {
 	}, nil
 }
 
-func (r *RabbitMQConsumer) Subscribe(ctx context.Context, handler interfaces.MessageHandler) error {
+func (r *RabbitMQConsumer) SubscribeToQueue(ctx context.Context, queueName string, handler interfaces.MessageHandler) error {
 	cfg := r.client.GetConfig()
 	
 	// Declare the queue (idempotent operation)
-	if err := r.client.DeclareQueue(r.channel, cfg.ConsumerQueue); err != nil {
+	if err := r.client.DeclareQueue(r.channel, queueName); err != nil {
 		return err
 	}
 
@@ -47,53 +47,53 @@ func (r *RabbitMQConsumer) Subscribe(ctx context.Context, handler interfaces.Mes
 
 	// Start consuming messages
 	msgs, err := r.channel.Consume(
-		cfg.ConsumerQueue, // queue
-		"",                // consumer tag
-		cfg.AutoAck,       // auto-ack
-		false,             // exclusive
-		false,             // no-local
-		false,             // no-wait
-		nil,               // args
+		queueName,   // queue
+		"",          // consumer tag
+		cfg.AutoAck, // auto-ack
+		false,       // exclusive
+		false,       // no-local
+		false,       // no-wait
+		nil,         // args
 	)
 	if err != nil {
-		return fmt.Errorf("failed to register consumer: %w", err)
+		return fmt.Errorf("failed to register consumer for queue %s: %w", queueName, err)
 	}
 
-	log.Printf("RabbitMQ consumer subscribed to queue: %s", cfg.ConsumerQueue)
+	log.Printf("RabbitMQ consumer subscribed to queue: %s", queueName)
 
 	// Process messages in a goroutine
 	go func() {
 		for {
 			select {
 			case <-ctx.Done():
-				log.Println("Context canceled, stopping consumer")
+				log.Printf("Context canceled, stopping consumer for queue: %s", queueName)
 				return
 			case msg, ok := <-msgs:
 				if !ok {
-					log.Println("Message channel closed")
+					log.Printf("Message channel closed for queue: %s", queueName)
 					return
 				}
 
 				// Process the message
 				err := handler(ctx, msg.Body)
 				if err != nil {
-				log.Printf("Error processing message: %v", err)
-				// NACK the message (requeue it)
-				if nackErr := msg.Nack(false, true); nackErr != nil {
-					log.Printf("Failed to NACK message: %v", nackErr)
-				}
-			} else {
-				// ACK the message
-				cfg := r.client.GetConfig()
-				if !cfg.AutoAck {
-					if ackErr := msg.Ack(false); ackErr != nil {
-						log.Printf("Failed to ACK message: %v", ackErr)
+					log.Printf("Error processing message from queue %s: %v", queueName, err)
+					// NACK the message (requeue it)
+					if nackErr := msg.Nack(false, true); nackErr != nil {
+						log.Printf("Failed to NACK message: %v", nackErr)
+					}
+				} else {
+					// ACK the message
+					cfg := r.client.GetConfig()
+					if !cfg.AutoAck {
+						if ackErr := msg.Ack(false); ackErr != nil {
+							log.Printf("Failed to ACK message: %v", ackErr)
+						}
 					}
 				}
 			}
 		}
-	}
-}()
+	}()
 	return nil
 }
 

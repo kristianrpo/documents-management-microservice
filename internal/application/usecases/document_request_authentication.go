@@ -9,6 +9,7 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/application/interfaces"
 	"github.com/kristianrpo/document-management-microservice/internal/domain/errors"
 	"github.com/kristianrpo/document-management-microservice/internal/domain/events"
+	"github.com/kristianrpo/document-management-microservice/internal/domain/models"
 )
 
 // DocumentRequestAuthenticationService defines the interface for document authentication request operations
@@ -58,6 +59,11 @@ func (s *documentRequestAuthenticationService) RequestAuthentication(
 		return errors.NewNotFoundError(fmt.Sprintf("document with ID %s not found", documentID))
 	}
 
+	// Update status to Authenticating
+	if err := s.repo.UpdateAuthenticationStatus(ctx, documentID, models.AuthenticationStatusAuthenticating); err != nil {
+		return fmt.Errorf("failed to update authentication status: %w", err)
+	}
+
 	// Generate pre-signed URL
 	presignedURL, err := s.objectStorage.GeneratePresignedURL(ctx, doc.ObjectKey, s.expiration)
 	if err != nil {
@@ -71,6 +77,7 @@ func (s *documentRequestAuthenticationService) RequestAuthentication(
 		IDCitizen:     doc.OwnerID,
 		URLDocument:   presignedURL,
 		DocumentTitle: doc.Filename,
+		DocumentID:    doc.ID,
 	}
 
 	// Marshal event to JSON

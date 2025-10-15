@@ -263,3 +263,35 @@ func (repo *dynamoDBDocumentRepository) DeleteAllByOwnerID(ctx context.Context, 
 
 	return deletedCount, nil
 }
+
+func (repo *dynamoDBDocumentRepository) UpdateAuthenticationStatus(ctx context.Context, documentID string, status models.AuthenticationStatus) error {
+	now := time.Now()
+	
+	// We need to get the document first to get the OwnerID (part of the composite key)
+	document, err := repo.GetByID(ctx, documentID)
+	if err != nil {
+		return fmt.Errorf("failed to get document: %w", err)
+	}
+	
+	if document == nil {
+		return fmt.Errorf("document not found")
+	}
+	
+	_, err = repo.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(repo.tableName),
+		Key: map[string]types.AttributeValue{
+			"DocumentID": &types.AttributeValueMemberS{Value: documentID},
+			"OwnerID":    &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", document.OwnerID)},
+		},
+		UpdateExpression: aws.String("SET AuthenticationStatus = :status, UpdatedAt = :updated"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":status":  &types.AttributeValueMemberS{Value: string(status)},
+			":updated": &types.AttributeValueMemberS{Value: now.Format(time.RFC3339Nano)},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update authentication status: %w", err)
+	}
+	
+	return nil
+}

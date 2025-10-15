@@ -10,6 +10,9 @@ type RabbitMQConfig struct {
 	// Publisher queue configuration
 	AuthenticationRequestQueue string
 	
+	// Consumer queue for authentication results
+	AuthenticationResultQueue string
+	
 	// Queue settings
 	Durable       bool
 	PrefetchCount int

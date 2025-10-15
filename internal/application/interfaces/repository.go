@@ -18,4 +18,6 @@ type DocumentRepository interface {
 	DeleteByID(ctx context.Context, id string) (*models.Document, error)
 
 	DeleteAllByOwnerID(ctx context.Context, ownerID int64) (int, error)
+
+	UpdateAuthenticationStatus(ctx context.Context, documentID string, status models.AuthenticationStatus) error
 }
