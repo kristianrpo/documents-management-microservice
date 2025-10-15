@@ -27,13 +27,16 @@ import (
 
 // @title Document Management Microservice API
 // @version 1.0
-// @description Microservice for managing document uploads, storage, and metadata
+// @description Microservice for managing document uploads, storage, metadata, and authentication workflows
 // @description
 // @description Features:
-// @description - Upload documents to S3
-// @description - Store metadata in DynamoDB
+// @description - Upload documents to S3 with automatic storage in DynamoDB
+// @description - List, retrieve, and delete documents (individual or bulk)
 // @description - Automatic file deduplication based on SHA256 hash
-// @description - Support for multiple file types
+// @description - Support for multiple file types with MIME type detection
+// @description - Document authentication workflow via RabbitMQ events
+// @description - Transfer documents between operators (generating temporary access links for documents)
+// @description - Event-driven architecture for user transfers and authentication results
 // @description - Health check endpoint
 //
 // @contact.name API Support
@@ -47,7 +50,7 @@ import (
 // @schemes http https
 //
 // @tag.name documents
-// @tag.description Document upload and management operations
+// @tag.description Document upload, retrieval, deletion, transfer, and authentication operations
 //
 // @tag.name health
 // @tag.description Health check endpoints

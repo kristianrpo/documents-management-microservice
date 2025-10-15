@@ -144,26 +144,21 @@ definitions:
     type: object
   shared.DocumentResponse:
     properties:
+      authentication_status:
+        type: string
       filename:
-        example: my-document.pdf
         type: string
       hash_sha256:
-        example: abc123def456789...
         type: string
       id:
-        example: 123e4567-e89b-12d3-a456-426614174000
         type: string
       mime_type:
-        example: application/pdf
         type: string
       owner_id:
-        example: 1234567890
         type: integer
       size_bytes:
-        example: 102400
         type: integer
       url:
-        example: https://my-bucket.s3.amazonaws.com/ab/abc123def456.pdf
         type: string
     type: object
   shared.ErrorDetail:
@@ -220,13 +215,16 @@ info:
     email: support@example.com
     name: API Support
   description: |-
-    Microservice for managing document uploads, storage, and metadata
+    Microservice for managing document uploads, storage, metadata, and authentication workflows
 
     Features:
-    - Upload documents to S3
-    - Store metadata in DynamoDB
+    - Upload documents to S3 with automatic storage in DynamoDB
+    - List, retrieve, and delete documents (individual or bulk)
     - Automatic file deduplication based on SHA256 hash
-    - Support for multiple file types
+    - Support for multiple file types with MIME type detection
+    - Document authentication workflow via RabbitMQ events
+    - Transfer documents between operators (generating temporary access links for documents)
+    - Event-driven architecture for user transfers and authentication results
     - Health check endpoint
   license:
     name: MIT
@@ -578,7 +576,8 @@ schemes:
 - https
 swagger: "2.0"
 tags:
-- description: Document upload and management operations
+- description: Document upload, retrieval, deletion, transfer, and authentication
+    operations
   name: documents
 - description: Health check endpoints
   name: health
