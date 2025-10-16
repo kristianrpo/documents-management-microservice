@@ -10,11 +10,13 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
 )
 
+// DocumentDeleteHandler handles HTTP requests for deleting individual documents
 type DocumentDeleteHandler struct {
 	service      usecases.DocumentDeleteService
 	errorHandler *errors.ErrorHandler
 }
 
+// NewDocumentDeleteHandler creates a new handler for document deletion operations
 func NewDocumentDeleteHandler(service usecases.DocumentDeleteService, errorHandler *errors.ErrorHandler) *DocumentDeleteHandler {
 	return &DocumentDeleteHandler{
 		service:      service,

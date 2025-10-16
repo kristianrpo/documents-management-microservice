@@ -10,6 +10,7 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/domain/errors"
 )
 
+// DocumentListService defines the interface for listing documents with pagination
 type DocumentListService interface {
 	List(ctx context.Context, ownerID int64, page, limit int) ([]*models.Document, util.PaginationParams, int, int64, error)
 }
@@ -18,12 +19,14 @@ type documentListService struct {
 	repository interfaces.DocumentRepository
 }
 
+// NewDocumentListService creates a new document list service
 func NewDocumentListService(repository interfaces.DocumentRepository) DocumentListService {
 	return &documentListService{
 		repository: repository,
 	}
 }
 
+// List retrieves a paginated list of documents for a specific owner
 func (s *documentListService) List(ctx context.Context, ownerID int64, page, limit int) ([]*models.Document, util.PaginationParams, int, int64, error) {
 	pagination := util.NormalizePagination(page, limit)
 

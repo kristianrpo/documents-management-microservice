@@ -9,10 +9,12 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/domain/events"
 )
 
+// UserTransferHandler handles user transfer events by deleting all documents owned by the transferred user
 type UserTransferHandler struct {
 	deleteAllService usecases.DocumentDeleteAllService
 }
 
+// NewUserTransferHandler creates a new handler for user transfer events
 func NewUserTransferHandler(deleteAllService usecases.DocumentDeleteAllService) *UserTransferHandler {
 	return &UserTransferHandler{
 		deleteAllService: deleteAllService,
@@ -30,7 +32,6 @@ func (h *UserTransferHandler) HandleUserTransferred(ctx context.Context, message
 
 	log.Printf("processing user transfer event for citizen ID: %d", event.IDCitizen)
 
-	// Reuse the existing delete all service
 	deletedCount, err := h.deleteAllService.DeleteAll(ctx, event.IDCitizen)
 	if err != nil {
 		log.Printf("failed to delete documents for user %d: %v", event.IDCitizen, err)

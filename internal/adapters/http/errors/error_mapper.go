@@ -6,12 +6,15 @@ import (
 	domainerrors "github.com/kristianrpo/document-management-microservice/internal/domain/errors"
 )
 
+// ErrorMapper maps domain errors to HTTP status codes
 type ErrorMapper struct{}
 
+// NewErrorMapper creates a new error mapper
 func NewErrorMapper() *ErrorMapper {
 	return &ErrorMapper{}
 }
 
+// MapDomainErrorToHTTPStatus maps a domain error to its corresponding HTTP status code
 func (m *ErrorMapper) MapDomainErrorToHTTPStatus(err *domainerrors.DomainError) int {
 	switch err.Code {
 	case domainerrors.ErrCodeValidation:

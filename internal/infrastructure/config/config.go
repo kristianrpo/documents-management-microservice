@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// Config holds all configuration parameters for the application
 type Config struct {
 	Port string
 
@@ -33,6 +34,7 @@ func getenv(k, def string) string {
 }
 func getbool(k string) bool { return os.Getenv(k) == "true" }
 
+// Load reads configuration from environment variables with sensible defaults
 func Load() *Config {
 	port := ":" + getenv("APP_PORT", "8080")
 
@@ -59,6 +61,7 @@ func Load() *Config {
 	}
 }
 
+// Validate checks that all required configuration values are present and valid
 func (c *Config) Validate() error {
 	if c.S3Bucket == "" {
 		return errors.New("S3_BUCKET required")

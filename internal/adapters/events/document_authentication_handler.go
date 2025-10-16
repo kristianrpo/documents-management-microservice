@@ -33,12 +33,10 @@ func (h *DocumentAuthenticationHandler) HandleAuthenticationCompleted(ctx contex
 	log.Printf("processing authentication completed event for document ID: %s, citizen ID: %d, authenticated: %v",
 		event.DocumentID, event.IDCitizen, event.Authenticated)
 
-	// Update document status based on authentication result
 	var newStatus models.AuthenticationStatus
 	if event.Authenticated {
 		newStatus = models.AuthenticationStatusAuthenticated
 	} else {
-		// If authentication failed, revert to unauthenticated
 		newStatus = models.AuthenticationStatusUnauthenticated
 	}
 

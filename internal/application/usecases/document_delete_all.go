@@ -8,6 +8,7 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/domain/errors"
 )
 
+// DocumentDeleteAllService defines the interface for bulk document deletion
 type DocumentDeleteAllService interface {
 	DeleteAll(ctx context.Context, ownerID int64) (int, error)
 }
@@ -17,6 +18,7 @@ type documentDeleteAllService struct {
 	objectStorage interfaces.ObjectStorage
 }
 
+// NewDocumentDeleteAllService creates a new bulk document deletion service
 func NewDocumentDeleteAllService(repository interfaces.DocumentRepository, objectStorage interfaces.ObjectStorage) DocumentDeleteAllService {
 	return &documentDeleteAllService{
 		repository:    repository,
@@ -24,6 +26,7 @@ func NewDocumentDeleteAllService(repository interfaces.DocumentRepository, objec
 	}
 }
 
+// DeleteAll removes all documents owned by a specific user and their associated files from storage
 func (s *documentDeleteAllService) DeleteAll(ctx context.Context, ownerID int64) (int, error) {
 	documents, _, err := s.repository.List(ctx, ownerID, 1000, 0)
 	if err != nil {

@@ -10,6 +10,7 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/domain/errors"
 )
 
+// DocumentService defines the interface for document upload operations
 type DocumentService interface {
 	Upload(ctx context.Context, fileHeader *multipart.FileHeader, ownerID int64) (*models.Document, error)
 }
@@ -21,6 +22,7 @@ type documentService struct {
 	mimeDetector util.MimeTypeDetector
 }
 
+// NewDocumentService creates a new document upload service
 func NewDocumentService(
 	repository interfaces.DocumentRepository,
 	storage interfaces.ObjectStorage,
@@ -35,6 +37,8 @@ func NewDocumentService(
 	}
 }
 
+// Upload uploads a document to storage and saves its metadata to the repository
+// If a document with the same hash already exists for the owner, returns the existing document
 func (service *documentService) Upload(ctx context.Context, fileHeader *multipart.FileHeader, ownerID int64) (*models.Document, error) {
 	file, err := fileHeader.Open()
 	if err != nil {

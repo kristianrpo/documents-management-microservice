@@ -32,6 +32,7 @@ type documentTransferService struct {
 	expiration    time.Duration
 }
 
+// NewDocumentTransferService creates a new document transfer service
 func NewDocumentTransferService(
 	repo interfaces.DocumentRepository,
 	objectStorage interfaces.ObjectStorage,
@@ -63,11 +64,8 @@ func (s *documentTransferService) PrepareTransfer(ctx context.Context, ownerID i
 	expiresAt := time.Now().Add(s.expiration)
 
 	for _, doc := range documents {
-		// Generate pre-signed URL for each document
 		presignedURL, err := s.objectStorage.GeneratePresignedURL(ctx, doc.ObjectKey, s.expiration)
 		if err != nil {
-			// Return error instead of logging and skipping
-			// The caller should decide how to handle partial failures
 			return nil, fmt.Errorf("failed to generate pre-signed URL for document %s: %w", doc.ID, err)
 		}
 

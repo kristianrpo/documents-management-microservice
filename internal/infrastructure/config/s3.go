@@ -13,6 +13,8 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/storage"
 )
 
+// NewS3Client creates a new S3 client with the provided configuration
+// Supports both AWS S3 and S3-compatible storage (MinIO)
 func NewS3Client(ctx context.Context, cfg Config) (*storage.S3Client, error) {
 	var configLoaders []func(*awscfg.LoadOptions) error
 

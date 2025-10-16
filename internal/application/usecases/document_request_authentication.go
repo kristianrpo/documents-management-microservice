@@ -25,6 +25,7 @@ type documentRequestAuthenticationService struct {
 	expiration    time.Duration
 }
 
+// NewDocumentRequestAuthenticationService creates a new document authentication request service
 func NewDocumentRequestAuthenticationService(
 	repo interfaces.DocumentRepository,
 	objectStorage interfaces.ObjectStorage,
@@ -49,7 +50,6 @@ func (s *documentRequestAuthenticationService) RequestAuthentication(
 	ctx context.Context,
 	documentID string,
 ) error {
-	// Get the document
 	doc, err := s.repo.GetByID(ctx, documentID)
 	if err != nil {
 		return err
@@ -59,20 +59,15 @@ func (s *documentRequestAuthenticationService) RequestAuthentication(
 		return errors.NewNotFoundError(fmt.Sprintf("document with ID %s not found", documentID))
 	}
 
-	// Update status to Authenticating
 	if err := s.repo.UpdateAuthenticationStatus(ctx, documentID, models.AuthenticationStatusAuthenticating); err != nil {
 		return fmt.Errorf("failed to update authentication status: %w", err)
 	}
 
-	// Generate pre-signed URL
 	presignedURL, err := s.objectStorage.GeneratePresignedURL(ctx, doc.ObjectKey, s.expiration)
 	if err != nil {
 		return fmt.Errorf("failed to generate pre-signed URL: %w", err)
 	}
 
-	// Create the event using document information
-	// IDCitizen is the owner's ID
-	// DocumentTitle is the filename
 	event := events.DocumentAuthenticationRequestedEvent{
 		IDCitizen:     doc.OwnerID,
 		URLDocument:   presignedURL,
@@ -80,13 +75,11 @@ func (s *documentRequestAuthenticationService) RequestAuthentication(
 		DocumentID:    doc.ID,
 	}
 
-	// Marshal event to JSON
 	eventJSON, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("failed to marshal event: %w", err)
 	}
 
-	// Publish the event
 	if err := s.publisher.Publish(ctx, s.queue, eventJSON); err != nil {
 		return fmt.Errorf("failed to publish authentication request event: %w", err)
 	}

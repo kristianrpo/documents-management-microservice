@@ -10,11 +10,13 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/application/interfaces"
 )
 
+// RabbitMQConsumer implements the MessageConsumer interface for RabbitMQ
 type RabbitMQConsumer struct {
 	client  *RabbitMQClient
 	channel *amqp091.Channel
 }
 
+// NewRabbitMQConsumer creates a new RabbitMQ message consumer
 func NewRabbitMQConsumer(client *RabbitMQClient) (*RabbitMQConsumer, error) {
 	channel, err := client.CreateChannel()
 	if err != nil {
@@ -27,15 +29,14 @@ func NewRabbitMQConsumer(client *RabbitMQClient) (*RabbitMQConsumer, error) {
 	}, nil
 }
 
+// SubscribeToQueue starts consuming messages from the specified queue with the provided handler
 func (r *RabbitMQConsumer) SubscribeToQueue(ctx context.Context, queueName string, handler interfaces.MessageHandler) error {
 	cfg := r.client.GetConfig()
 	
-	// Declare the queue (idempotent operation)
 	if err := r.client.DeclareQueue(r.channel, queueName); err != nil {
 		return err
 	}
 
-	// Set QoS (quality of service)
 	err := r.channel.Qos(
 		cfg.PrefetchCount, // prefetch count
 		0,                 // prefetch size
@@ -45,7 +46,6 @@ func (r *RabbitMQConsumer) SubscribeToQueue(ctx context.Context, queueName strin
 		return fmt.Errorf("failed to set QoS: %w", err)
 	}
 
-	// Start consuming messages
 	msgs, err := r.channel.Consume(
 		queueName,   // queue
 		"",          // consumer tag
@@ -61,7 +61,6 @@ func (r *RabbitMQConsumer) SubscribeToQueue(ctx context.Context, queueName strin
 
 	log.Printf("RabbitMQ consumer subscribed to queue: %s", queueName)
 
-	// Process messages in a goroutine
 	go func() {
 		for {
 			select {
@@ -74,16 +73,13 @@ func (r *RabbitMQConsumer) SubscribeToQueue(ctx context.Context, queueName strin
 					return
 				}
 
-				// Process the message
 				err := handler(ctx, msg.Body)
 				if err != nil {
 					log.Printf("Error processing message from queue %s: %v", queueName, err)
-					// NACK the message (requeue it)
 					if nackErr := msg.Nack(false, true); nackErr != nil {
 						log.Printf("Failed to NACK message: %v", nackErr)
 					}
 				} else {
-					// ACK the message
 					cfg := r.client.GetConfig()
 					if !cfg.AutoAck {
 						if ackErr := msg.Ack(false); ackErr != nil {
@@ -97,12 +93,12 @@ func (r *RabbitMQConsumer) SubscribeToQueue(ctx context.Context, queueName strin
 	return nil
 }
 
+// Close closes the consumer channel (connection is managed by RabbitMQClient)
 func (r *RabbitMQConsumer) Close() error {
 	if r.channel != nil {
 		if err := r.channel.Close(); err != nil {
 			log.Printf("error closing channel: %v", err)
 		}
 	}
-	// Connection is managed by RabbitMQClient, only close the channel
 	return nil
 }

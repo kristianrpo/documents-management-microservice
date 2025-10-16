@@ -7,7 +7,10 @@ type DomainError struct {
 	Err     error  // Wrapped underlying error (if any)
 }
 
+// Error implements the error interface for DomainError
 func (e *DomainError) Error() string { return e.Message }
+
+// Unwrap returns the wrapped underlying error if any
 func (e *DomainError) Unwrap() error { return e.Err }
 
 // Error codes for different domain error types

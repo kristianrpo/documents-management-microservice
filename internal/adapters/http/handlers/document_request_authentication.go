@@ -12,11 +12,13 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
 )
 
+// DocumentRequestAuthenticationHandler handles HTTP requests for requesting document authentication
 type DocumentRequestAuthenticationHandler struct {
 	authService  usecases.DocumentRequestAuthenticationService
 	errorHandler *errors.ErrorHandler
 }
 
+// NewDocumentRequestAuthenticationHandler creates a new handler for document authentication request operations
 func NewDocumentRequestAuthenticationHandler(
 	authService usecases.DocumentRequestAuthenticationService,
 	errorHandler *errors.ErrorHandler,

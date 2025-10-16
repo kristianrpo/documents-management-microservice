@@ -11,11 +11,13 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
 )
 
+// DocumentDeleteAllHandler handles HTTP requests for bulk document deletion for a specific user
 type DocumentDeleteAllHandler struct {
 	service      usecases.DocumentDeleteAllService
 	errorHandler *errors.ErrorHandler
 }
 
+// NewDocumentDeleteAllHandler creates a new handler for bulk document deletion operations
 func NewDocumentDeleteAllHandler(service usecases.DocumentDeleteAllService, errorHandler *errors.ErrorHandler) *DocumentDeleteAllHandler {
 	return &DocumentDeleteAllHandler{
 		service:      service,

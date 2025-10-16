@@ -25,11 +25,13 @@ const (
 	bulkQueryLimit     = 1000
 )
 
+// dynamoDBDocumentRepository implements the DocumentRepository interface using AWS DynamoDB
 type dynamoDBDocumentRepository struct {
 	client    *dynamodb.Client
 	tableName string
 }
 
+// NewDynamoDBDocumentRepo creates a new DynamoDB document repository
 func NewDynamoDBDocumentRepo(client *dynamodb.Client, tableName string) interfaces.DocumentRepository {
 	return &dynamoDBDocumentRepository{
 		client:    client,
@@ -37,6 +39,7 @@ func NewDynamoDBDocumentRepo(client *dynamodb.Client, tableName string) interfac
 	}
 }
 
+// Create stores a new document in DynamoDB, generating an ID and timestamps if not present
 func (repo *dynamoDBDocumentRepository) Create(ctx context.Context, document *models.Document) error {
 	if document.ID == "" {
 		document.ID = uuid.New().String()
@@ -63,6 +66,8 @@ func (repo *dynamoDBDocumentRepository) Create(ctx context.Context, document *mo
 	return nil
 }
 
+// FindByHashAndOwnerID retrieves a document by its hash and owner ID using the HashOwnerIndex GSI
+// This is used for file deduplication
 func (repo *dynamoDBDocumentRepository) FindByHashAndOwnerID(ctx context.Context, hashSHA256 string, ownerID int64) (*models.Document, error) {
 	result, err := repo.client.Query(ctx, &dynamodb.QueryInput{
 		TableName:              aws.String(repo.tableName),
@@ -89,6 +94,7 @@ func (repo *dynamoDBDocumentRepository) FindByHashAndOwnerID(ctx context.Context
 	return &document, nil
 }
 
+// GetByID retrieves a document by its unique identifier
 func (repo *dynamoDBDocumentRepository) GetByID(ctx context.Context, id string) (*models.Document, error) {
 	result, err := repo.client.Query(ctx, &dynamodb.QueryInput{
 		TableName:              aws.String(repo.tableName),
@@ -113,6 +119,8 @@ func (repo *dynamoDBDocumentRepository) GetByID(ctx context.Context, id string) 
 	return &document, nil
 }
 
+// List retrieves a paginated list of documents for a specific owner using the OwnerIDIndex GSI
+// Returns documents sorted by creation date (most recent first)
 func (repo *dynamoDBDocumentRepository) List(ctx context.Context, ownerID int64, limit, offset int) ([]*models.Document, int64, error) {
 	// First, get total count
 	countInput := &dynamodb.QueryInput{
@@ -131,12 +139,10 @@ func (repo *dynamoDBDocumentRepository) List(ctx context.Context, ownerID int64,
 	}
 	totalCount := int64(countResult.Count)
 
-	// If offset is beyond total, return empty
 	if offset >= int(totalCount) {
 		return []*models.Document{}, totalCount, nil
 	}
 
-	// Query with pagination
 	queryInput := &dynamodb.QueryInput{
 		TableName:              aws.String(repo.tableName),
 		IndexName:              aws.String(ownerIDIndexName),
@@ -144,7 +150,7 @@ func (repo *dynamoDBDocumentRepository) List(ctx context.Context, ownerID int64,
 		ExpressionAttributeValues: map[string]types.AttributeValue{
 			":ownerid": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", ownerID)},
 		},
-		ScanIndexForward: aws.Bool(false), // Most recent first
+		ScanIndexForward: aws.Bool(false),
 	}
 
 	var documents []*models.Document
@@ -163,13 +169,11 @@ func (repo *dynamoDBDocumentRepository) List(ctx context.Context, ownerID int64,
 		}
 
 		for _, item := range result.Items {
-			// Skip items until we reach the offset
 			if itemsSkipped < offset {
 				itemsSkipped++
 				continue
 			}
 
-			// Stop if we've collected enough items
 			if itemsCollected >= limit {
 				return documents, totalCount, nil
 			}
@@ -191,6 +195,8 @@ func (repo *dynamoDBDocumentRepository) List(ctx context.Context, ownerID int64,
 	return documents, totalCount, nil
 }
 
+// DeleteByID removes a document by its ID and returns the deleted document
+// Returns nil if the document doesn't exist
 func (repo *dynamoDBDocumentRepository) DeleteByID(ctx context.Context, id string) (*models.Document, error) {
 	document, err := repo.GetByID(ctx, id)
 	if err != nil {
@@ -215,6 +221,8 @@ func (repo *dynamoDBDocumentRepository) DeleteByID(ctx context.Context, id strin
 	return document, nil
 }
 
+// DeleteAllByOwnerID removes all documents owned by a specific user
+// Uses batch operations for efficiency (max 25 items per batch)
 func (repo *dynamoDBDocumentRepository) DeleteAllByOwnerID(ctx context.Context, ownerID int64) (int, error) {
 	documents, _, err := repo.List(ctx, ownerID, bulkQueryLimit, 0)
 	if err != nil {
@@ -227,7 +235,6 @@ func (repo *dynamoDBDocumentRepository) DeleteAllByOwnerID(ctx context.Context, 
 
 	deletedCount := 0
 	
-	// Process in batches (DynamoDB BatchWriteItem limit is 25)
 	for i := 0; i < len(documents); i += maxBatchDeleteSize {
 		end := i + maxBatchDeleteSize
 		if end > len(documents) {
@@ -235,7 +242,6 @@ func (repo *dynamoDBDocumentRepository) DeleteAllByOwnerID(ctx context.Context, 
 		}
 		batch := documents[i:end]
 
-		// Build batch delete requests
 		var writeRequests []types.WriteRequest
 		for _, doc := range batch {
 			writeRequests = append(writeRequests, types.WriteRequest{
@@ -248,7 +254,6 @@ func (repo *dynamoDBDocumentRepository) DeleteAllByOwnerID(ctx context.Context, 
 			})
 		}
 
-		// Execute batch delete
 		_, err := repo.client.BatchWriteItem(ctx, &dynamodb.BatchWriteItemInput{
 			RequestItems: map[string][]types.WriteRequest{
 				repo.tableName: writeRequests,
@@ -264,10 +269,10 @@ func (repo *dynamoDBDocumentRepository) DeleteAllByOwnerID(ctx context.Context, 
 	return deletedCount, nil
 }
 
+// UpdateAuthenticationStatus updates the authentication status of a document and its updated timestamp
 func (repo *dynamoDBDocumentRepository) UpdateAuthenticationStatus(ctx context.Context, documentID string, status models.AuthenticationStatus) error {
 	now := time.Now()
 	
-	// We need to get the document first to get the OwnerID (part of the composite key)
 	document, err := repo.GetByID(ctx, documentID)
 	if err != nil {
 		return fmt.Errorf("failed to get document: %w", err)

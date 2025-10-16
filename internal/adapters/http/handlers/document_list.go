@@ -13,11 +13,13 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
 )
 
+// DocumentListHandler handles HTTP requests for listing documents
 type DocumentListHandler struct {
 	service      usecases.DocumentListService
 	errorHandler *errors.ErrorHandler
 }
 
+// NewDocumentListHandler creates a new handler for document list operations
 func NewDocumentListHandler(service usecases.DocumentListService, errorHandler *errors.ErrorHandler) *DocumentListHandler {
 	return &DocumentListHandler{
 		service:      service,

@@ -8,6 +8,7 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/domain/errors"
 )
 
+// DocumentGetService defines the interface for retrieving individual documents
 type DocumentGetService interface {
 	GetByID(ctx context.Context, id string) (*models.Document, error)
 }
@@ -16,12 +17,14 @@ type documentGetService struct {
 	repository interfaces.DocumentRepository
 }
 
+// NewDocumentGetService creates a new document retrieval service
 func NewDocumentGetService(repository interfaces.DocumentRepository) DocumentGetService {
 	return &documentGetService{
 		repository: repository,
 	}
 }
 
+// GetByID retrieves a document by its unique identifier
 func (s *documentGetService) GetByID(ctx context.Context, id string) (*models.Document, error) {
 	document, err := s.repository.GetByID(ctx, id)
 	if err != nil {

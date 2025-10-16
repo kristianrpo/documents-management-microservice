@@ -9,6 +9,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 )
 
+// NewDynamoDBClient creates a new DynamoDB client with the provided configuration
+// Supports both AWS DynamoDB and local DynamoDB instances
 func NewDynamoDBClient(ctx context.Context, accessKey, secretKey, region, endpoint string) (*dynamodb.Client, error) {
 	var opts []func(*awsconfig.LoadOptions) error
 

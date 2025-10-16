@@ -8,6 +8,7 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/handlers"
 )
 
+// NewRouter creates and configures a new HTTP router with all API endpoints
 func NewRouter(
 	uploadHandler *handlers.DocumentUploadHandler,
 	listHandler *handlers.DocumentListHandler,

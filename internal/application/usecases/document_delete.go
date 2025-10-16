@@ -8,6 +8,7 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/domain/errors"
 )
 
+// DocumentDeleteService defines the interface for deleting individual documents
 type DocumentDeleteService interface {
 	Delete(ctx context.Context, id string) error
 }
@@ -17,6 +18,7 @@ type documentDeleteService struct {
 	objectStorage interfaces.ObjectStorage
 }
 
+// NewDocumentDeleteService creates a new document deletion service
 func NewDocumentDeleteService(repository interfaces.DocumentRepository, objectStorage interfaces.ObjectStorage) DocumentDeleteService {
 	return &documentDeleteService{
 		repository:    repository,
@@ -24,6 +26,7 @@ func NewDocumentDeleteService(repository interfaces.DocumentRepository, objectSt
 	}
 }
 
+// Delete removes a document and its associated file from storage
 func (s *documentDeleteService) Delete(ctx context.Context, id string) error {
 	document, err := s.repository.DeleteByID(ctx, id)
 	if err != nil {

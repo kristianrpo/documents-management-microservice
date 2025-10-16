@@ -8,11 +8,13 @@ import (
 	"github.com/rabbitmq/amqp091-go"
 )
 
+// RabbitMQPublisher implements the MessagePublisher interface for RabbitMQ
 type RabbitMQPublisher struct {
 	client  *RabbitMQClient
 	channel *amqp091.Channel
 }
 
+// NewRabbitMQPublisher creates a new RabbitMQ message publisher
 func NewRabbitMQPublisher(client *RabbitMQClient) (*RabbitMQPublisher, error) {
 	channel, err := client.CreateChannel()
 	if err != nil {
@@ -25,6 +27,7 @@ func NewRabbitMQPublisher(client *RabbitMQClient) (*RabbitMQPublisher, error) {
 	}, nil
 }
 
+// Publish sends a message to the specified RabbitMQ queue
 func (p *RabbitMQPublisher) Publish(ctx context.Context, queue string, message []byte) error {
 	// Declare the queue (idempotent operation)
 	if err := p.client.DeclareQueue(p.channel, queue); err != nil {
@@ -52,6 +55,7 @@ func (p *RabbitMQPublisher) Publish(ctx context.Context, queue string, message [
 	return nil
 }
 
+// Close closes the publisher channel (connection is managed by RabbitMQClient)
 func (p *RabbitMQPublisher) Close() error {
 	if p.channel != nil {
 		if err := p.channel.Close(); err != nil {

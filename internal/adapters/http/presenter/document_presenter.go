@@ -5,6 +5,7 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/domain/models"
 )
 
+// ToDocumentResponse converts a domain document model to an HTTP response DTO
 func ToDocumentResponse(document *models.Document) *shared.DocumentResponse {
 	if document == nil {
 		return nil
@@ -22,6 +23,7 @@ func ToDocumentResponse(document *models.Document) *shared.DocumentResponse {
 	}
 }
 
+// ToDocumentResponseList converts a list of domain document models to a list of HTTP response DTOs
 func ToDocumentResponseList(documents []*models.Document) []shared.DocumentResponse {
 	if documents == nil {
 		return []shared.DocumentResponse{}
