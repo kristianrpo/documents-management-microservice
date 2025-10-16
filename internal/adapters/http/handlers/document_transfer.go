@@ -13,13 +13,15 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
 )
 
+// DocumentTransferHandler handles HTTP requests for preparing documents for transfer between operators
 type DocumentTransferHandler struct {
-	transferService *usecases.DocumentTransferService
+	transferService usecases.DocumentTransferService
 	errorHandler    *errors.ErrorHandler
 }
 
+// NewDocumentTransferHandler creates a new handler for document transfer operations
 func NewDocumentTransferHandler(
-	transferService *usecases.DocumentTransferService,
+	transferService usecases.DocumentTransferService,
 	errorHandler *errors.ErrorHandler,
 ) *DocumentTransferHandler {
 	return &DocumentTransferHandler{

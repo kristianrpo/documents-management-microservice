@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// Config holds all configuration parameters for the application
 type Config struct {
 	Port string
 
@@ -20,8 +21,7 @@ type Config struct {
 	S3UsePath    bool
 	S3PublicBase string
 
-	RabbitMQ                      RabbitMQConfig
-	AuthenticationRequestQueue    string
+	RabbitMQ RabbitMQConfig
 
 	ReadHeaderTimeout time.Duration
 }
@@ -34,31 +34,34 @@ func getenv(k, def string) string {
 }
 func getbool(k string) bool { return os.Getenv(k) == "true" }
 
+// Load reads configuration from environment variables with sensible defaults
 func Load() *Config {
 	port := ":" + getenv("APP_PORT", "8080")
 
 	// Load RabbitMQ config with defaults
 	rabbitMQConfig := DefaultRabbitMQConfig()
 	rabbitMQConfig.URL = getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
-	rabbitMQConfig.Queue = getenv("RABBITMQ_QUEUE", "user.transferred")
+	rabbitMQConfig.ConsumerQueue = getenv("RABBITMQ_CONSUMER_QUEUE", "user.transferred")
+	rabbitMQConfig.AuthenticationRequestQueue = getenv("RABBITMQ_AUTH_REQUEST_QUEUE", "document.authentication.requested")
+	rabbitMQConfig.AuthenticationResultQueue = getenv("RABBITMQ_AUTH_RESULT_QUEUE", "document.authentication.completed")
 
 	return &Config{
-		Port:                       port,
-		DynamoDBTable:              getenv("DYNAMODB_TABLE", "documents"),
-		DynamoDBEndpoint:           getenv("DYNAMODB_ENDPOINT", ""),
-		AWSAccessKey:               getenv("AWS_ACCESS_KEY_ID", "local"),
-		AWSSecretKey:               getenv("AWS_SECRET_ACCESS_KEY", "local"),
-		AWSRegion:                  getenv("AWS_REGION", "us-east-1"),
-		S3Bucket:                   getenv("S3_BUCKET", "documents"),
-		S3Endpoint:                 getenv("S3_ENDPOINT", ""),
-		S3UsePath:                  getbool("S3_USE_PATH_STYLE"),
-		S3PublicBase:               getenv("S3_PUBLIC_BASE_URL", ""),
-		RabbitMQ:                   rabbitMQConfig,
-		AuthenticationRequestQueue: getenv("AUTHENTICATION_REQUEST_QUEUE", "document.authentication.requested"),
-		ReadHeaderTimeout:          5 * time.Second,
+		Port:              port,
+		DynamoDBTable:     getenv("DYNAMODB_TABLE", "documents"),
+		DynamoDBEndpoint:  getenv("DYNAMODB_ENDPOINT", ""),
+		AWSAccessKey:      getenv("AWS_ACCESS_KEY_ID", "local"),
+		AWSSecretKey:      getenv("AWS_SECRET_ACCESS_KEY", "local"),
+		AWSRegion:         getenv("AWS_REGION", "us-east-1"),
+		S3Bucket:          getenv("S3_BUCKET", "documents"),
+		S3Endpoint:        getenv("S3_ENDPOINT", ""),
+		S3UsePath:         getbool("S3_USE_PATH_STYLE"),
+		S3PublicBase:      getenv("S3_PUBLIC_BASE_URL", ""),
+		RabbitMQ:          rabbitMQConfig,
+		ReadHeaderTimeout: 5 * time.Second,
 	}
 }
 
+// Validate checks that all required configuration values are present and valid
 func (c *Config) Validate() error {
 	if c.S3Bucket == "" {
 		return errors.New("S3_BUCKET required")

@@ -12,11 +12,13 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
 )
 
+// DocumentUploadHandler handles HTTP requests for document upload operations
 type DocumentUploadHandler struct {
 	service      usecases.DocumentService
 	errorHandler *errors.ErrorHandler
 }
 
+// NewDocumentUploadHandler creates a new handler for document upload operations
 func NewDocumentUploadHandler(service usecases.DocumentService, errorHandler *errors.ErrorHandler) *DocumentUploadHandler {
 	return &DocumentUploadHandler{
 		service:      service,

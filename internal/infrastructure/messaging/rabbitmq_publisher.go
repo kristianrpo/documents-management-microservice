@@ -6,51 +6,36 @@ import (
 	"log"
 
 	"github.com/rabbitmq/amqp091-go"
-
-	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/config"
 )
 
+// RabbitMQPublisher implements the MessagePublisher interface for RabbitMQ
 type RabbitMQPublisher struct {
-	conn    *amqp091.Connection
+	client  *RabbitMQClient
 	channel *amqp091.Channel
 }
 
-func NewRabbitMQPublisher(cfg config.RabbitMQConfig) (*RabbitMQPublisher, error) {
-	conn, err := amqp091.Dial(cfg.URL)
+// NewRabbitMQPublisher creates a new RabbitMQ message publisher
+func NewRabbitMQPublisher(client *RabbitMQClient) (*RabbitMQPublisher, error) {
+	channel, err := client.CreateChannel()
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to RabbitMQ: %w", err)
-	}
-
-	channel, err := conn.Channel()
-	if err != nil {
-		if err := conn.Close(); err != nil {
-			log.Printf("Error closing RabbitMQ connection: %v", err)
-		}
-		return nil, fmt.Errorf("failed to open channel: %w", err)
+		return nil, fmt.Errorf("failed to create publisher channel: %w", err)
 	}
 
 	return &RabbitMQPublisher{
-		conn:    conn,
+		client:  client,
 		channel: channel,
 	}, nil
 }
 
+// Publish sends a message to the specified RabbitMQ queue
 func (p *RabbitMQPublisher) Publish(ctx context.Context, queue string, message []byte) error {
 	// Declare the queue (idempotent operation)
-	_, err := p.channel.QueueDeclare(
-		queue, // name
-		true,  // durable
-		false, // delete when unused
-		false, // exclusive
-		false, // no-wait
-		nil,   // arguments
-	)
-	if err != nil {
-		return fmt.Errorf("failed to declare queue: %w", err)
+	if err := p.client.DeclareQueue(p.channel, queue); err != nil {
+		return err
 	}
 
 	// Publish the message
-	err = p.channel.PublishWithContext(
+	err := p.channel.PublishWithContext(
 		ctx,
 		"",    // exchange (empty = default exchange)
 		queue, // routing key (queue name)
@@ -70,16 +55,14 @@ func (p *RabbitMQPublisher) Publish(ctx context.Context, queue string, message [
 	return nil
 }
 
+// Close closes the publisher channel (connection is managed by RabbitMQClient)
 func (p *RabbitMQPublisher) Close() error {
 	if p.channel != nil {
 		if err := p.channel.Close(); err != nil {
-			log.Printf("Error closing RabbitMQ channel: %v", err)
+			log.Printf("Error closing RabbitMQ publisher channel: %v", err)
+			return err
 		}
 	}
-	if p.conn != nil {
-		if err := p.conn.Close(); err != nil {
-			return fmt.Errorf("failed to close connection: %w", err)
-		}
-	}
+	// Connection is managed by RabbitMQClient
 	return nil
 }

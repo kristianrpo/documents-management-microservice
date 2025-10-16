@@ -27,13 +27,16 @@ import (
 
 // @title Document Management Microservice API
 // @version 1.0
-// @description Microservice for managing document uploads, storage, and metadata
+// @description Microservice for managing document uploads, storage, metadata, and authentication workflows
 // @description
 // @description Features:
-// @description - Upload documents to S3
-// @description - Store metadata in DynamoDB
+// @description - Upload documents to S3 with automatic storage in DynamoDB
+// @description - List, retrieve, and delete documents (individual or bulk)
 // @description - Automatic file deduplication based on SHA256 hash
-// @description - Support for multiple file types
+// @description - Support for multiple file types with MIME type detection
+// @description - Document authentication workflow via RabbitMQ events
+// @description - Transfer documents between operators (generating temporary access links for documents)
+// @description - Event-driven architecture for user transfers and authentication results
 // @description - Health check endpoint
 //
 // @contact.name API Support
@@ -47,7 +50,7 @@ import (
 // @schemes http https
 //
 // @tag.name documents
-// @tag.description Document upload and management operations
+// @tag.description Document upload, retrieval, deletion, transfer, and authentication operations
 //
 // @tag.name health
 // @tag.description Health check endpoints
@@ -87,21 +90,44 @@ func main() {
 	fileHasher := util.NewSHA256Hasher()
 	mimeDetector := util.NewExtensionBasedDetector()
 
-	// Initialize RabbitMQ publisher for publishing events
+	// Initialize shared RabbitMQ client
+	var rabbitMQClient *messaging.RabbitMQClient
 	var messagePublisher interfaces.MessagePublisher
+	var messageConsumer interfaces.MessageConsumer
+	
 	if config.RabbitMQ.URL != "" {
-		rabbitPublisher, err := messaging.NewRabbitMQPublisher(config.RabbitMQ)
+		var err error
+		rabbitMQClient, err = messaging.NewRabbitMQClient(config.RabbitMQ)
 		if err != nil {
-			log.Printf("warning: failed to initialize RabbitMQ publisher: %v", err)
+			log.Printf("warning: failed to initialize RabbitMQ client: %v", err)
+			log.Println("continuing without RabbitMQ...")
 		} else {
-			messagePublisher = rabbitPublisher
 			defer func() {
-				if err := messagePublisher.Close(); err != nil {
-					log.Printf("Error closing message publisher: %v", err)
+				if err := rabbitMQClient.Close(); err != nil {
+					log.Printf("Error closing RabbitMQ client: %v", err)
 				}
 			}()
-			log.Println("RabbitMQ publisher initialized")
+			
+			// Initialize publisher with shared client
+			rabbitPublisher, err := messaging.NewRabbitMQPublisher(rabbitMQClient)
+			if err != nil {
+				log.Printf("warning: failed to initialize RabbitMQ publisher: %v", err)
+			} else {
+				messagePublisher = rabbitPublisher
+				log.Println("RabbitMQ publisher initialized")
+			}
+			
+			// Initialize consumer with shared client
+			rabbitConsumer, err := messaging.NewRabbitMQConsumer(rabbitMQClient)
+			if err != nil {
+				log.Printf("warning: failed to initialize RabbitMQ consumer: %v", err)
+			} else {
+				messageConsumer = rabbitConsumer
+				log.Println("RabbitMQ consumer initialized")
+			}
 		}
+	} else {
+		log.Println("RabbitMQ URL not configured, skipping RabbitMQ initialization")
 	}
 
 	documentService := usecases.NewDocumentService(
@@ -116,13 +142,13 @@ func main() {
 	documentDeleteAllService := usecases.NewDocumentDeleteAllService(documentRepository, objectStorage)
 	documentTransferService := usecases.NewDocumentTransferService(documentRepository, objectStorage, 15*time.Minute)
 	
-	var documentRequestAuthService *usecases.DocumentRequestAuthenticationService
+	var documentRequestAuthService usecases.DocumentRequestAuthenticationService
 	if messagePublisher != nil {
 		documentRequestAuthService = usecases.NewDocumentRequestAuthenticationService(
 			documentRepository,
 			objectStorage,
 			messagePublisher,
-			config.AuthenticationRequestQueue,
+			config.RabbitMQ.AuthenticationRequestQueue,
 			24*time.Hour,
 		)
 	}
@@ -146,35 +172,26 @@ func main() {
 
 	router := httpadapter.NewRouter(uploadHandler, listHandler, getHandler, deleteHandler, deleteAllHandler, transferHandler, requestAuthHandler, healthHandler)
 
-	// Initialize RabbitMQ consumer for event-driven communication
+	// Start consuming messages if messageConsumer is initialized
 	ctx := context.Background()
-	var messageBroker interfaces.MessageBroker
+	if messageConsumer != nil {
+		// Set up event handlers
+		userTransferHandler := events.NewUserTransferHandler(documentDeleteAllService)
+		authenticationHandler := events.NewDocumentAuthenticationHandler(documentRepository)
 
-	if config.RabbitMQ.URL != "" {
-		rabbitConsumer, err := messaging.NewRabbitMQConsumer(config.RabbitMQ)
-		if err != nil {
-			log.Printf("warning: failed to initialize RabbitMQ consumer: %v", err)
-			log.Println("continuing without message broker...")
+		// Subscribe to user transfer events
+		if err := messageConsumer.SubscribeToQueue(ctx, config.RabbitMQ.ConsumerQueue, userTransferHandler.HandleUserTransferred); err != nil {
+			log.Printf("warning: failed to subscribe to user transfer queue: %v", err)
 		} else {
-			messageBroker = rabbitConsumer
-			defer func() {
-				if err := messageBroker.Close(); err != nil {
-					log.Printf("Error closing message broker: %v", err)
-				}
-			}()
-
-			// Set up event handler
-			userTransferHandler := events.NewUserTransferHandler(documentDeleteAllService)
-
-			// Start consuming messages
-			if err := messageBroker.Subscribe(ctx, userTransferHandler.HandleUserTransferred); err != nil {
-				log.Printf("warning: failed to subscribe to queue: %v", err)
-			} else {
-				log.Printf("listening for events on queue: %s", config.RabbitMQ.Queue)
-			}
+			log.Printf("listening for user transfer events on queue: %s", config.RabbitMQ.ConsumerQueue)
 		}
-	} else {
-		log.Println("RabbitMQ URL not configured, skipping message broker initialization")
+
+		// Subscribe to authentication result events
+		if err := messageConsumer.SubscribeToQueue(ctx, config.RabbitMQ.AuthenticationResultQueue, authenticationHandler.HandleAuthenticationCompleted); err != nil {
+			log.Printf("warning: failed to subscribe to authentication result queue: %v", err)
+		} else {
+			log.Printf("listening for authentication result events on queue: %s", config.RabbitMQ.AuthenticationResultQueue)
+		}
 	}
 
 	server := &http.Server{

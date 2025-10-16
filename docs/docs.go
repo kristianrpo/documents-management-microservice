@@ -601,33 +601,29 @@ const docTemplate = `{
         "shared.DocumentResponse": {
             "type": "object",
             "properties": {
+                "authentication_status": {
+                    "type": "string"
+                },
                 "filename": {
-                    "type": "string",
-                    "example": "my-document.pdf"
+                    "type": "string"
                 },
                 "hash_sha256": {
-                    "type": "string",
-                    "example": "abc123def456789..."
+                    "type": "string"
                 },
                 "id": {
-                    "type": "string",
-                    "example": "123e4567-e89b-12d3-a456-426614174000"
+                    "type": "string"
                 },
                 "mime_type": {
-                    "type": "string",
-                    "example": "application/pdf"
+                    "type": "string"
                 },
                 "owner_id": {
-                    "type": "integer",
-                    "example": 1234567890
+                    "type": "integer"
                 },
                 "size_bytes": {
-                    "type": "integer",
-                    "example": 102400
+                    "type": "integer"
                 },
                 "url": {
-                    "type": "string",
-                    "example": "https://my-bucket.s3.amazonaws.com/ab/abc123def456.pdf"
+                    "type": "string"
                 }
             }
         },
@@ -701,7 +697,7 @@ const docTemplate = `{
     },
     "tags": [
         {
-            "description": "Document upload and management operations",
+            "description": "Document upload, retrieval, deletion, transfer, and authentication operations",
             "name": "documents"
         },
         {
@@ -718,7 +714,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/",
 	Schemes:          []string{"http", "https"},
 	Title:            "Document Management Microservice API",
-	Description:      "Microservice for managing document uploads, storage, and metadata\n\nFeatures:\n- Upload documents to S3\n- Store metadata in DynamoDB\n- Automatic file deduplication based on SHA256 hash\n- Support for multiple file types\n- Health check endpoint",
+	Description:      "Microservice for managing document uploads, storage, metadata, and authentication workflows\n\nFeatures:\n- Upload documents to S3 with automatic storage in DynamoDB\n- List, retrieve, and delete documents (individual or bulk)\n- Automatic file deduplication based on SHA256 hash\n- Support for multiple file types with MIME type detection\n- Document authentication workflow via RabbitMQ events\n- Transfer documents between operators (generating temporary access links for documents)\n- Event-driven architecture for user transfers and authentication results\n- Health check endpoint",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

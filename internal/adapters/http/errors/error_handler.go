@@ -8,19 +8,22 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/kristianrpo/document-management-microservice/internal/domain"
+	domainerrors "github.com/kristianrpo/document-management-microservice/internal/domain/errors"
 )
 
+// ErrorHandler handles error responses for HTTP requests
 type ErrorHandler struct {
 	mapper *ErrorMapper
 }
 
+// NewErrorHandler creates a new error handler with the provided error mapper
 func NewErrorHandler(mapper *ErrorMapper) *ErrorHandler {
 	return &ErrorHandler{mapper: mapper}
 }
 
+// HandleError processes errors and sends appropriate HTTP responses based on error type
 func (h *ErrorHandler) HandleError(ctx *gin.Context, err error) {
-	var domainErr *domain.DomainError
+	var domainErr *domainerrors.DomainError
 	var validationErr *ValidationError
 	debug := os.Getenv("DEBUG") == "true"
 
@@ -35,11 +38,9 @@ func (h *ErrorHandler) HandleError(ctx *gin.Context, err error) {
 		})
 	case errors.As(err, &domainErr):
 		statusCode := h.mapper.MapDomainErrorToHTTPStatus(domainErr)
-		// Log underlying error details to server logs for debugging/observability
 		if domainErr.Err != nil {
 			log.Printf("domain error %s: %v", domainErr.Code, domainErr.Err)
 		}
-		// Build error payload and include details in debug mode
 		payload := gin.H{
 			"success": false,
 			"error": gin.H{
@@ -52,7 +53,6 @@ func (h *ErrorHandler) HandleError(ctx *gin.Context, err error) {
 		}
 		ctx.JSON(statusCode, payload)
 	default:
-		// Log unexpected error
 		if err != nil {
 			log.Printf("internal error: %v", err)
 		}

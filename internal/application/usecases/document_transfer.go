@@ -3,35 +3,45 @@ package usecases
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/kristianrpo/document-management-microservice/internal/application/interfaces"
-	"github.com/kristianrpo/document-management-microservice/internal/domain"
+	"github.com/kristianrpo/document-management-microservice/internal/domain/models"
+)
+
+const (
+	// maxTransferDocuments defines the maximum number of documents that can be transferred in one operation
+	maxTransferDocuments = 1000
 )
 
 // DocumentTransferResult represents a document with its pre-signed URL
 type DocumentTransferResult struct {
-	Document     *domain.Document
+	Document     *models.Document
 	PresignedURL string
 	ExpiresAt    time.Time
 }
 
-type DocumentTransferService struct {
+// DocumentTransferService defines the interface for document transfer operations
+type DocumentTransferService interface {
+	PrepareTransfer(ctx context.Context, ownerID int64) ([]DocumentTransferResult, error)
+}
+
+type documentTransferService struct {
 	repo          interfaces.DocumentRepository
 	objectStorage interfaces.ObjectStorage
 	expiration    time.Duration
 }
 
+// NewDocumentTransferService creates a new document transfer service
 func NewDocumentTransferService(
 	repo interfaces.DocumentRepository,
 	objectStorage interfaces.ObjectStorage,
 	expiration time.Duration,
-) *DocumentTransferService {
+) DocumentTransferService {
 	if expiration == 0 {
 		expiration = 15 * time.Minute // Default: 15 minutes
 	}
-	return &DocumentTransferService{
+	return &documentTransferService{
 		repo:          repo,
 		objectStorage: objectStorage,
 		expiration:    expiration,
@@ -39,9 +49,9 @@ func NewDocumentTransferService(
 }
 
 // PrepareTransfer generates pre-signed URLs for all documents owned by a user
-func (s *DocumentTransferService) PrepareTransfer(ctx context.Context, ownerID int64) ([]DocumentTransferResult, error) {
+func (s *documentTransferService) PrepareTransfer(ctx context.Context, ownerID int64) ([]DocumentTransferResult, error) {
 	// List all documents for the user
-	documents, _, err := s.repo.List(ownerID, 1000, 0) // Get up to 1000 documents
+	documents, _, err := s.repo.List(ctx, ownerID, maxTransferDocuments, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list documents: %w", err)
 	}
@@ -54,11 +64,9 @@ func (s *DocumentTransferService) PrepareTransfer(ctx context.Context, ownerID i
 	expiresAt := time.Now().Add(s.expiration)
 
 	for _, doc := range documents {
-		// Generate pre-signed URL for each document
 		presignedURL, err := s.objectStorage.GeneratePresignedURL(ctx, doc.ObjectKey, s.expiration)
 		if err != nil {
-			log.Printf("Warning: failed to generate pre-signed URL for document %s: %v", doc.ID, err)
-			continue // Skip this document but continue with others
+			return nil, fmt.Errorf("failed to generate pre-signed URL for document %s: %w", doc.ID, err)
 		}
 
 		results = append(results, DocumentTransferResult{

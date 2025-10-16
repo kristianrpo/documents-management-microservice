@@ -8,8 +8,10 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/dto/response/endpoints"
 )
 
+// HealthHandler handles health check requests for service monitoring
 type HealthHandler struct{}
 
+// NewHealthHandler creates a new handler for health check operations
 func NewHealthHandler() *HealthHandler { return &HealthHandler{} }
 
 // Ping godoc

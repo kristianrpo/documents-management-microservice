@@ -11,11 +11,13 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
 )
 
+// DocumentGetHandler handles HTTP requests for retrieving individual documents
 type DocumentGetHandler struct {
 	service      usecases.DocumentGetService
 	errorHandler *errors.ErrorHandler
 }
 
+// NewDocumentGetHandler creates a new handler for document retrieval operations
 func NewDocumentGetHandler(service usecases.DocumentGetService, errorHandler *errors.ErrorHandler) *DocumentGetHandler {
 	return &DocumentGetHandler{
 		service:      service,
