@@ -1,0 +1,209 @@
+version: '3.8'
+
+services:
+  # Documents Microservice
+  documents-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: documents-service
+    ports:
+      - "8080:8080"
+    environment:
+      - APP_PORT=8080
+      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - DYNAMODB_TABLE=Documents
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=admin123
+      - AWS_REGION=us-east-1
+      - S3_BUCKET=documents
+      - S3_ENDPOINT=http://minio:9000
+      - S3_USE_PATH_STYLE=true
+      - S3_PUBLIC_BASE_URL=http://localhost:9000/documents
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - RABBITMQ_CONSUMER_QUEUE=user.transferred
+      - RABBITMQ_AUTH_REQUEST_QUEUE=document.authentication.requested
+      - RABBITMQ_AUTH_RESULT_QUEUE=document.authentication.completed
+    networks:
+      - app-network
+    depends_on:
+      dynamodb-init:
+        condition: service_completed_successfully
+      minio-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_started
+    restart: unless-stopped
+
+  # DynamoDB Local
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    container_name: dynamodb-local
+    ports:
+      - "8000:8000"
+    command: "-jar DynamoDBLocal.jar -inMemory -sharedDb"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # DynamoDB Admin Web Shell (AWS Console)
+  dynamodb-admin:
+    image: amazon/dynamodb-local:latest
+    container_name: dynamodb-admin-shell
+    ports:
+      - "8001:8000"
+    command: "-jar DynamoDBLocal.jar -inMemory -port 8000"
+    networks:
+      - app-network
+    depends_on:
+      - dynamodb-local
+    restart: unless-stopped
+
+  # MinIO (S3-compatible storage)
+  minio:
+    image: minio/minio:latest
+    container_name: documents-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=admin123
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # RabbitMQ
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # DynamoDB Initialization
+  dynamodb-init:
+    image: amazon/aws-cli:latest
+    container_name: dynamodb-init
+    depends_on:
+      - dynamodb-local
+    networks:
+      - app-network
+    environment:
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=admin123
+      - AWS_DEFAULT_REGION=us-east-1
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        echo "Waiting for DynamoDB to be ready..."
+        sleep 5
+        echo "Creating Documents table..."
+        aws dynamodb create-table \
+          --table-name Documents \
+          --attribute-definitions \
+            AttributeName=DocumentID,AttributeType=S \
+            AttributeName=OwnerID,AttributeType=N \
+            AttributeName=HashSHA256,AttributeType=S \
+          --key-schema \
+            AttributeName=DocumentID,KeyType=HASH \
+            AttributeName=OwnerID,KeyType=RANGE \
+          --provisioned-throughput \
+            ReadCapacityUnits=5,WriteCapacityUnits=5 \
+          --global-secondary-indexes \
+            '[{"IndexName":"OwnerIDIndex","KeySchema":[{"AttributeName":"OwnerID","KeyType":"HASH"}],"Projection":{"ProjectionType":"ALL"},"ProvisionedThroughput":{"ReadCapacityUnits":5,"WriteCapacityUnits":5}},{"IndexName":"HashOwnerIndex","KeySchema":[{"AttributeName":"HashSHA256","KeyType":"HASH"},{"AttributeName":"OwnerID","KeyType":"RANGE"}],"Projection":{"ProjectionType":"ALL"},"ProvisionedThroughput":{"ReadCapacityUnits":5,"WriteCapacityUnits":5}}]' \
+          --endpoint-url http://dynamodb-local:8000 \
+          --region us-east-1 || echo "Table already exists"
+        echo "DynamoDB initialization complete"
+
+  # MinIO Initialization
+  minio-init:
+    image: minio/mc:latest
+    container_name: minio-init
+    depends_on:
+      - minio
+    networks:
+      - app-network
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        echo "Waiting for MinIO to be ready..."
+        sleep 5
+        mc alias set myminio http://minio:9000 admin admin123
+        mc mb myminio/documents --ignore-existing
+        mc anonymous set download myminio/documents
+        echo "MinIO initialization complete"
+
+  # Prometheus - Time series database and monitoring system
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: documents-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - app-network
+    depends_on:
+      - documents-service
+    restart: unless-stopped
+
+  # Grafana - Visualization and analytics platform
+  grafana:
+    image: grafana/grafana:latest
+    container_name: documents-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - app-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  dynamodb-data:
+    driver: local
+  minio-data:
+    driver: local
+  rabbitmq-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

@@ -22,6 +22,7 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/application/util"
 	cfgpkg "github.com/kristianrpo/document-management-microservice/internal/infrastructure/config"
 	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/messaging"
+	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/metrics"
 	infrapkg "github.com/kristianrpo/document-management-microservice/internal/infrastructure/repository"
 )
 
@@ -60,6 +61,10 @@ func main() {
 	}
 
 	config := cfgpkg.Load()
+
+	// Initialize Prometheus metrics
+	metricsCollector := metrics.NewPrometheusMetrics("documents_service")
+	log.Println("Prometheus metrics initialized")
 
 	dynamoClient, err := cfgpkg.NewDynamoDBClient(
 		context.Background(),
@@ -156,21 +161,21 @@ func main() {
 	errorMapper := errors.NewErrorMapper()
 	errorHandler := errors.NewErrorHandler(errorMapper)
 
-	uploadHandler := handlers.NewDocumentUploadHandler(documentService, errorHandler)
-	listHandler := handlers.NewDocumentListHandler(documentListService, errorHandler)
-	getHandler := handlers.NewDocumentGetHandler(documentGetService, errorHandler)
-	deleteHandler := handlers.NewDocumentDeleteHandler(documentDeleteService, errorHandler)
-	deleteAllHandler := handlers.NewDocumentDeleteAllHandler(documentDeleteAllService, errorHandler)
-	transferHandler := handlers.NewDocumentTransferHandler(documentTransferService, errorHandler)
+	uploadHandler := handlers.NewDocumentUploadHandler(documentService, errorHandler, metricsCollector)
+	listHandler := handlers.NewDocumentListHandler(documentListService, errorHandler, metricsCollector)
+	getHandler := handlers.NewDocumentGetHandler(documentGetService, errorHandler, metricsCollector)
+	deleteHandler := handlers.NewDocumentDeleteHandler(documentDeleteService, errorHandler, metricsCollector)
+	deleteAllHandler := handlers.NewDocumentDeleteAllHandler(documentDeleteAllService, errorHandler, metricsCollector)
+	transferHandler := handlers.NewDocumentTransferHandler(documentTransferService, errorHandler, metricsCollector)
 	
 	var requestAuthHandler *handlers.DocumentRequestAuthenticationHandler
 	if documentRequestAuthService != nil {
-		requestAuthHandler = handlers.NewDocumentRequestAuthenticationHandler(documentRequestAuthService, errorHandler)
+		requestAuthHandler = handlers.NewDocumentRequestAuthenticationHandler(documentRequestAuthService, errorHandler, metricsCollector)
 	}
 	
 	healthHandler := handlers.NewHealthHandler()
 
-	router := httpadapter.NewRouter(uploadHandler, listHandler, getHandler, deleteHandler, deleteAllHandler, transferHandler, requestAuthHandler, healthHandler)
+	router := httpadapter.NewRouter(uploadHandler, listHandler, getHandler, deleteHandler, deleteAllHandler, transferHandler, requestAuthHandler, healthHandler, metricsCollector)
 
 	// Start consuming messages if messageConsumer is initialized
 	ctx := context.Background()

@@ -11,19 +11,22 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/presenter"
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
+	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/metrics"
 )
 
 // DocumentListHandler handles HTTP requests for listing documents
 type DocumentListHandler struct {
 	service      usecases.DocumentListService
 	errorHandler *errors.ErrorHandler
+	metrics      *metrics.PrometheusMetrics
 }
 
 // NewDocumentListHandler creates a new handler for document list operations
-func NewDocumentListHandler(service usecases.DocumentListService, errorHandler *errors.ErrorHandler) *DocumentListHandler {
+func NewDocumentListHandler(service usecases.DocumentListService, errorHandler *errors.ErrorHandler, metrics *metrics.PrometheusMetrics) *DocumentListHandler {
 	return &DocumentListHandler{
 		service:      service,
 		errorHandler: errorHandler,
+		metrics:      metrics,
 	}
 }
 
@@ -74,6 +77,9 @@ func (handler *DocumentListHandler) List(ctx *gin.Context) {
 		handler.errorHandler.HandleError(ctx, err)
 		return
 	}
+
+	// Increment metric for list operations
+	handler.metrics.ListRequestsTotal.Inc()
 
 	response := endpoints.ListResponse{
 		Success: true,

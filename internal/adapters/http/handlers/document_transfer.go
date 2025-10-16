@@ -11,22 +11,26 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/dto/response/shared"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
+	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/metrics"
 )
 
 // DocumentTransferHandler handles HTTP requests for preparing documents for transfer between operators
 type DocumentTransferHandler struct {
 	transferService usecases.DocumentTransferService
 	errorHandler    *errors.ErrorHandler
+	metrics         *metrics.PrometheusMetrics
 }
 
 // NewDocumentTransferHandler creates a new handler for document transfer operations
 func NewDocumentTransferHandler(
 	transferService usecases.DocumentTransferService,
 	errorHandler *errors.ErrorHandler,
+	metrics *metrics.PrometheusMetrics,
 ) *DocumentTransferHandler {
 	return &DocumentTransferHandler{
 		transferService: transferService,
 		errorHandler:    errorHandler,
+		metrics:         metrics,
 	}
 }
 
@@ -85,6 +89,9 @@ func (h *DocumentTransferHandler) PrepareTransfer(c *gin.Context) {
 	}
 
 	log.Printf("Successfully prepared %d documents for transfer (user ID: %d)", len(transferDocuments), idCitizen)
+
+	// Increment transfer metric
+	h.metrics.TransferRequestsTotal.Inc()
 
 	c.JSON(http.StatusOK, endpoints.TransferResponse{
 		Success: true,

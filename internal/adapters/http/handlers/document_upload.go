@@ -10,19 +10,22 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/presenter"
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
+	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/metrics"
 )
 
 // DocumentUploadHandler handles HTTP requests for document upload operations
 type DocumentUploadHandler struct {
 	service      usecases.DocumentService
 	errorHandler *errors.ErrorHandler
+	metrics      *metrics.PrometheusMetrics
 }
 
 // NewDocumentUploadHandler creates a new handler for document upload operations
-func NewDocumentUploadHandler(service usecases.DocumentService, errorHandler *errors.ErrorHandler) *DocumentUploadHandler {
+func NewDocumentUploadHandler(service usecases.DocumentService, errorHandler *errors.ErrorHandler, metricsCollector *metrics.PrometheusMetrics) *DocumentUploadHandler {
 	return &DocumentUploadHandler{
 		service:      service,
 		errorHandler: errorHandler,
+		metrics:      metricsCollector,
 	}
 }
 
@@ -71,6 +74,9 @@ func (handler *DocumentUploadHandler) Upload(ctx *gin.Context) {
 		handler.errorHandler.HandleError(ctx, err)
 		return
 	}
+
+	// Increment upload requests counter
+	handler.metrics.UploadRequestsTotal.Inc()
 
 	ctx.JSON(http.StatusCreated, endpoints.UploadResponse{
 		Success: true,

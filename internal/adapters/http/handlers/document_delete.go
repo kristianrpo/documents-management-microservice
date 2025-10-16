@@ -8,19 +8,22 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/dto/response/endpoints"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
+	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/metrics"
 )
 
 // DocumentDeleteHandler handles HTTP requests for deleting individual documents
 type DocumentDeleteHandler struct {
 	service      usecases.DocumentDeleteService
 	errorHandler *errors.ErrorHandler
+	metrics      *metrics.PrometheusMetrics
 }
 
 // NewDocumentDeleteHandler creates a new handler for document deletion operations
-func NewDocumentDeleteHandler(service usecases.DocumentDeleteService, errorHandler *errors.ErrorHandler) *DocumentDeleteHandler {
+func NewDocumentDeleteHandler(service usecases.DocumentDeleteService, errorHandler *errors.ErrorHandler, metricsCollector *metrics.PrometheusMetrics) *DocumentDeleteHandler {
 	return &DocumentDeleteHandler{
 		service:      service,
 		errorHandler: errorHandler,
+		metrics:      metricsCollector,
 	}
 }
 
@@ -62,6 +65,9 @@ func (handler *DocumentDeleteHandler) Delete(ctx *gin.Context) {
 		handler.errorHandler.HandleError(ctx, err)
 		return
 	}
+
+	// Increment documents deleted counter
+	handler.metrics.DeleteRequestsTotal.Inc()
 
 	response := endpoints.DeleteResponse{
 		Success: true,

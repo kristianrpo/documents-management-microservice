@@ -1,0 +1,57 @@
+# Prometheus configuration for Documents Microservice
+global:
+  scrape_interval: 15s # How frequently to scrape targets
+  evaluation_interval: 15s # How frequently to evaluate rules
+  
+  # Attach these labels to any time series or alerts when communicating with
+  # external systems (federation, remote storage, Alertmanager).
+  external_labels:
+    monitor: 'documents-service-monitor'
+    environment: 'development'
+
+# Alertmanager configuration (optional)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ['localhost:9093']
+
+# Load rules once and periodically evaluate them
+# rule_files:
+#   - "alert_rules.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Documents Microservice metrics
+  - job_name: 'documents-service'
+    
+    # Override the global default and scrape every 10 seconds
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    
+    # Metrics path (default is /metrics)
+    metrics_path: /metrics
+    
+    # Static targets
+    static_configs:
+      - targets: ['documents-service:8080']
+        labels:
+          service: 'documents-microservice'
+          instance: 'local-dev'
+    
+    # Optional: Add basic authentication if needed
+    # basic_auth:
+    #   username: 'prometheus'
+    #   password: 'secret'
+
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+# Optional: Remote write configuration for long-term storage
+# remote_write:
+#   - url: "http://your-remote-storage:9009/api/v1/write"
+
+# Optional: Remote read configuration
+# remote_read:
+#   - url: "http://your-remote-storage:9009/api/v1/read"

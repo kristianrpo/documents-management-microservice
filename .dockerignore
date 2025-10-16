@@ -1,0 +1,36 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+docs/PROMETHEUS.md
+docs/swagger.json
+docs/swagger.yaml
+
+# IDE
+.vscode
+.idea
+
+# Build artifacts
+server
+main
+bin/
+
+# Data
+*.db
+data/
+
+# Monitoring
+grafana/
+prometheus-data/
+
+# Logs
+*.log
+
+# Test files
+*_test.go
+report.xml
+
+# Environment
+.env.example
