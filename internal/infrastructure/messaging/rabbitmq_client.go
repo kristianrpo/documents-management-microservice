@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/rabbitmq/amqp091-go"
 
@@ -19,13 +20,31 @@ type RabbitMQClient struct {
 }
 
 // NewRabbitMQClient creates a new RabbitMQ client with a shared connection
+// Implements retry logic to handle RabbitMQ startup delays
 func NewRabbitMQClient(cfg config.RabbitMQConfig) (*RabbitMQClient, error) {
-	conn, err := amqp091.Dial(cfg.URL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to RabbitMQ: %w", err)
+	var conn *amqp091.Connection
+	var err error
+	
+	maxRetries := 5
+	retryDelay := 2 * time.Second
+	
+	for i := 0; i < maxRetries; i++ {
+		conn, err = amqp091.Dial(cfg.URL)
+		if err == nil {
+			log.Printf("Connected to RabbitMQ at %s (attempt %d/%d)", cfg.URL, i+1, maxRetries)
+			break
+		}
+		
+		if i < maxRetries-1 {
+			log.Printf("Failed to connect to RabbitMQ (attempt %d/%d): %v. Retrying in %v...", 
+				i+1, maxRetries, err, retryDelay)
+			time.Sleep(retryDelay)
+		}
 	}
-
-	log.Printf("Connected to RabbitMQ at %s", cfg.URL)
+	
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to RabbitMQ after %d attempts: %w", maxRetries, err)
+	}
 
 	return &RabbitMQClient{
 		conn:   conn,
