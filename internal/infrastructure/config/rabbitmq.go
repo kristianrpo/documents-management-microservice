@@ -2,17 +2,17 @@ package config
 
 // RabbitMQConfig holds RabbitMQ configuration
 type RabbitMQConfig struct {
-	URL           string
-	
+	URL string
+
 	// Consumer queue configuration
 	ConsumerQueue string
-	
+
 	// Publisher queue configuration
 	AuthenticationRequestQueue string
-	
+
 	// Consumer queue for authentication results
 	AuthenticationResultQueue string
-	
+
 	// Queue settings
 	Durable       bool
 	PrefetchCount int

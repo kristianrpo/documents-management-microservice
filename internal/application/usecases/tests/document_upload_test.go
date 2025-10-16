@@ -49,7 +49,7 @@ func TestDocumentUploadService_Execute_Success(t *testing.T) {
 	assert.Equal(t, "test.pdf", result.Filename)
 	assert.Equal(t, mimeType, result.MimeType)
 	assert.Equal(t, publicURL, result.URL)
-	
+
 	repo.AssertExpectations(t)
 	storage.AssertExpectations(t)
 	hasher.AssertExpectations(t)
@@ -78,7 +78,7 @@ func TestDocumentUploadService_Execute_HashError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "failed to calculate file hash")
-	
+
 	hasher.AssertExpectations(t)
 }
 
@@ -110,7 +110,7 @@ func TestDocumentUploadService_Execute_DefaultMimeTypeWhenUnknown(t *testing.T) 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.Equal(t, "application/octet-stream", result.MimeType)
-	
+
 	hasher.AssertExpectations(t)
 	mimeDetector.AssertExpectations(t)
 }
@@ -140,7 +140,7 @@ func TestDocumentUploadService_Execute_DuplicateDocument(t *testing.T) {
 	// Assert
 	assert.NoError(t, err)
 	assert.Equal(t, existingDoc, result)
-	
+
 	repo.AssertExpectations(t)
 	hasher.AssertExpectations(t)
 	mimeDetector.AssertExpectations(t)
@@ -163,7 +163,7 @@ func TestDocumentUploadService_Execute_StorageError(t *testing.T) {
 	hasher.On("CalculateHash", mock.Anything).Return(hash, nil)
 	mimeDetector.On("DetectFromFilename", "test.pdf").Return("application/pdf")
 	repo.On("FindByHashAndOwnerID", ctx, hash, ownerID).Return(nil, nil)
-	
+
 	expectedError := errors.New("storage error")
 	storage.On("Put", ctx, mock.Anything, mock.AnythingOfType("string"), "application/pdf").Return(expectedError)
 
@@ -174,7 +174,7 @@ func TestDocumentUploadService_Execute_StorageError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "failed to upload to storage")
-	
+
 	repo.AssertExpectations(t)
 	storage.AssertExpectations(t)
 	hasher.AssertExpectations(t)
@@ -201,7 +201,7 @@ func TestDocumentUploadService_Execute_RepositoryCreateError(t *testing.T) {
 	storage.On("Bucket").Return("test-bucket")
 	storage.On("Put", ctx, mock.Anything, mock.AnythingOfType("string"), "application/pdf").Return(nil)
 	storage.On("PublicURL", mock.AnythingOfType("string")).Return("https://s3.amazonaws.com/test/doc.pdf")
-	
+
 	expectedError := errors.New("database error")
 	repo.On("Create", ctx, mock.AnythingOfType("*models.Document")).Return(expectedError)
 
@@ -212,14 +212,14 @@ func TestDocumentUploadService_Execute_RepositoryCreateError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "failed to persist document")
-	
+
 	repo.AssertExpectations(t)
 	storage.AssertExpectations(t)
 	hasher.AssertExpectations(t)
 	mimeDetector.AssertExpectations(t)
 }
 
-	// helper to build a multipart.FileHeader with content
+// helper to build a multipart.FileHeader with content
 func newMultipartFileHeader(filename string, content []byte) *multipart.FileHeader {
 	b := &bytes.Buffer{}
 	w := multipart.NewWriter(b)

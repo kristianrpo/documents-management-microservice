@@ -18,22 +18,30 @@ type mockRepo struct{ mock.Mock }
 func (m *mockRepo) Create(ctx context.Context, _ *models.Document) error { return nil }
 func (m *mockRepo) FindByHashAndOwnerID(ctx context.Context, hash string, ownerID int64) (*models.Document, error) {
 	args := m.Called(ctx, hash, ownerID)
-	if args.Get(0) == nil { return nil, args.Error(1) }
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).(*models.Document), args.Error(1)
 }
 func (m *mockRepo) GetByID(ctx context.Context, id string) (*models.Document, error) {
 	args := m.Called(ctx, id)
-	if args.Get(0) == nil { return nil, args.Error(1) }
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).(*models.Document), args.Error(1)
 }
 func (m *mockRepo) List(ctx context.Context, ownerID int64, limit, offset int) ([]*models.Document, int64, error) {
 	args := m.Called(ctx, ownerID, limit, offset)
-	if args.Get(0) == nil { return nil, 0, args.Error(2) }
+	if args.Get(0) == nil {
+		return nil, 0, args.Error(2)
+	}
 	return args.Get(0).([]*models.Document), int64(args.Int(1)), args.Error(2)
 }
 func (m *mockRepo) DeleteByID(ctx context.Context, id string) (*models.Document, error) {
 	args := m.Called(ctx, id)
-	if args.Get(0) == nil { return nil, args.Error(1) }
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).(*models.Document), args.Error(1)
 }
 func (m *mockRepo) DeleteAllByOwnerID(ctx context.Context, ownerID int64) (int, error) {
@@ -51,10 +59,10 @@ func TestHandleAuthenticationCompleted_Success(t *testing.T) {
 	h := adapters.NewDocumentAuthenticationHandler(repo)
 
 	evt := events.DocumentAuthenticationCompletedEvent{
-		DocumentID: "doc-1",
-		IDCitizen:  99,
+		DocumentID:    "doc-1",
+		IDCitizen:     99,
 		Authenticated: true,
-		Message:   "ok",
+		Message:       "ok",
 	}
 	payload, _ := json.Marshal(evt)
 	repo.On("UpdateAuthenticationStatus", ctx, "doc-1", models.AuthenticationStatusAuthenticated).Return(nil)

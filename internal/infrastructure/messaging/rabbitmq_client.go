@@ -53,12 +53,12 @@ func (c *RabbitMQClient) CreateChannel() (*amqp091.Channel, error) {
 // DeclareQueue declares a queue (idempotent operation)
 func (c *RabbitMQClient) DeclareQueue(channel *amqp091.Channel, queueName string) error {
 	_, err := channel.QueueDeclare(
-		queueName,       // name
+		queueName,        // name
 		c.config.Durable, // durable
-		false,           // delete when unused
-		false,           // exclusive
-		false,           // no-wait
-		nil,             // arguments
+		false,            // delete when unused
+		false,            // exclusive
+		false,            // no-wait
+		nil,              // arguments
 	)
 	if err != nil {
 		return fmt.Errorf("failed to declare queue %s: %w", queueName, err)

@@ -22,6 +22,7 @@ func (m *mockDeleteService) Delete(ctx context.Context, id string) error {
 	return args.Error(0)
 }
 
+//nolint:dupl // Test setup boilerplate is similar across test files
 func TestDocumentDeleteHandler_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -45,6 +46,7 @@ func TestDocumentDeleteHandler_Success(t *testing.T) {
 	service.AssertExpectations(t)
 }
 
+//nolint:dupl // Test setup boilerplate is similar across test files
 func TestDocumentDeleteHandler_NotFound(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()

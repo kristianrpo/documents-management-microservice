@@ -27,9 +27,9 @@ func TestDocumentDeleteAllService_Execute_Success(t *testing.T) {
 	repo.On("List", ctx, ownerID, 1000, 0).Return(docs, int64(len(docs)), nil)
 	repo.On("DeleteAllByOwnerID", ctx, ownerID).Return(len(docs), nil)
 	// storage deletions are best-effort; even if they fail, service doesn't error, just logs
-    
+
 	// Expect Delete for each doc
-    
+
 	storage.On("Delete", ctx, "k1").Return(nil)
 	storage.On("Delete", ctx, "k2").Return(nil)
 
@@ -39,7 +39,7 @@ func TestDocumentDeleteAllService_Execute_Success(t *testing.T) {
 	// Assert
 	assert.NoError(t, err)
 	assert.Equal(t, len(docs), count)
-	
+
 	repo.AssertExpectations(t)
 }
 
@@ -60,7 +60,7 @@ func TestDocumentDeleteAllService_Execute_NoDocuments(t *testing.T) {
 	// Assert
 	assert.NoError(t, err)
 	assert.Equal(t, 0, count)
-	
+
 	repo.AssertExpectations(t)
 }
 
@@ -84,7 +84,7 @@ func TestDocumentDeleteAllService_Execute_RepositoryError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, 0, count)
 	assert.Contains(t, err.Error(), "failed to persist document")
-	
+
 	repo.AssertExpectations(t)
 }
 

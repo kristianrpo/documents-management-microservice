@@ -55,6 +55,8 @@ import (
 //
 // @tag.name health
 // @tag.description Health check endpoints
+//
+//nolint:gocyclo // Main function complexity is acceptable for initialization logic
 func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println(".env not found, using system environment variables")
@@ -99,7 +101,7 @@ func main() {
 	var rabbitMQClient *messaging.RabbitMQClient
 	var messagePublisher interfaces.MessagePublisher
 	var messageConsumer interfaces.MessageConsumer
-	
+
 	if config.RabbitMQ.URL != "" {
 		var err error
 		rabbitMQClient, err = messaging.NewRabbitMQClient(config.RabbitMQ)
@@ -112,7 +114,7 @@ func main() {
 					log.Printf("Error closing RabbitMQ client: %v", err)
 				}
 			}()
-			
+
 			// Initialize publisher with shared client
 			rabbitPublisher, err := messaging.NewRabbitMQPublisher(rabbitMQClient)
 			if err != nil {
@@ -121,7 +123,7 @@ func main() {
 				messagePublisher = rabbitPublisher
 				log.Println("RabbitMQ publisher initialized")
 			}
-			
+
 			// Initialize consumer with shared client
 			rabbitConsumer, err := messaging.NewRabbitMQConsumer(rabbitMQClient)
 			if err != nil {
@@ -146,7 +148,7 @@ func main() {
 	documentDeleteService := usecases.NewDocumentDeleteService(documentRepository, objectStorage)
 	documentDeleteAllService := usecases.NewDocumentDeleteAllService(documentRepository, objectStorage)
 	documentTransferService := usecases.NewDocumentTransferService(documentRepository, objectStorage, 15*time.Minute)
-	
+
 	var documentRequestAuthService usecases.DocumentRequestAuthenticationService
 	if messagePublisher != nil {
 		documentRequestAuthService = usecases.NewDocumentRequestAuthenticationService(
@@ -167,12 +169,12 @@ func main() {
 	deleteHandler := handlers.NewDocumentDeleteHandler(documentDeleteService, errorHandler, metricsCollector)
 	deleteAllHandler := handlers.NewDocumentDeleteAllHandler(documentDeleteAllService, errorHandler, metricsCollector)
 	transferHandler := handlers.NewDocumentTransferHandler(documentTransferService, errorHandler, metricsCollector)
-	
+
 	var requestAuthHandler *handlers.DocumentRequestAuthenticationHandler
 	if documentRequestAuthService != nil {
 		requestAuthHandler = handlers.NewDocumentRequestAuthenticationHandler(documentRequestAuthService, errorHandler, metricsCollector)
 	}
-	
+
 	healthHandler := handlers.NewHealthHandler()
 
 	router := httpadapter.NewRouter(uploadHandler, listHandler, getHandler, deleteHandler, deleteAllHandler, transferHandler, requestAuthHandler, healthHandler, metricsCollector)

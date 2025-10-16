@@ -47,7 +47,7 @@ func NewDocumentTransferHandler(
 // @Router /api/v1/documents/transfer/{id_citizen} [get]
 func (h *DocumentTransferHandler) PrepareTransfer(c *gin.Context) {
 	idCitizenStr := c.Param("id_citizen")
-	
+
 	idCitizen, err := strconv.ParseInt(idCitizenStr, 10, 64)
 	if err != nil || idCitizen <= 0 {
 		c.JSON(http.StatusBadRequest, endpoints.TransferErrorResponse{

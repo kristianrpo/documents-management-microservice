@@ -8,7 +8,7 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/metrics"
 )
 
-// createTestMetrics crea métricas con un namespace único para evitar conflictos en tests
+// createTestMetrics crea métricas con un namespace único para evitar conflicts en tests
 func createTestMetrics(t *testing.T) *metrics.PrometheusMetrics {
 	namespace := "test_documents_service_" + t.Name()
 

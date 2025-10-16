@@ -9,10 +9,10 @@ import (
 
 func TestObjectKeyFromHash(t *testing.T) {
 	tests := []struct {
-		name         string
-		hashHex      string
-		filename     string
-		expectedKey  string
+		name        string
+		hashHex     string
+		filename    string
+		expectedKey string
 	}{
 		{
 			name:        "valid hash and filename with extension",

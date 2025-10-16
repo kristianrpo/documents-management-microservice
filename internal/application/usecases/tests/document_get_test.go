@@ -18,7 +18,7 @@ func TestDocumentGetService_GetByID_Success(t *testing.T) {
 
 	ctx := context.Background()
 	documentID := "doc-123"
-	
+
 	doc := &models.Document{
 		ID:        documentID,
 		Filename:  "test.pdf",
@@ -38,7 +38,7 @@ func TestDocumentGetService_GetByID_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.Equal(t, documentID, result.ID)
-    
+
 	repo.AssertExpectations(t)
 }
 
@@ -69,7 +69,7 @@ func TestDocumentGetService_GetByID_RepositoryError(t *testing.T) {
 
 	ctx := context.Background()
 	documentID := "doc-123"
-	
+
 	expectedError := errors.New("db error")
 	repo.On("GetByID", ctx, documentID).Return(nil, expectedError)
 
@@ -80,6 +80,6 @@ func TestDocumentGetService_GetByID_RepositoryError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "failed to persist document")
-    
+
 	repo.AssertExpectations(t)
 }

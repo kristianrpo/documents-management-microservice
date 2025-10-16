@@ -32,7 +32,7 @@ func NewRabbitMQConsumer(client *RabbitMQClient) (*RabbitMQConsumer, error) {
 // SubscribeToQueue starts consuming messages from the specified queue with the provided handler
 func (r *RabbitMQConsumer) SubscribeToQueue(ctx context.Context, queueName string, handler interfaces.MessageHandler) error {
 	cfg := r.client.GetConfig()
-	
+
 	if err := r.client.DeclareQueue(r.channel, queueName); err != nil {
 		return err
 	}

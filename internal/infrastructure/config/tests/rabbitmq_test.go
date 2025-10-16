@@ -18,7 +18,7 @@ func TestDefaultRabbitMQConfig(t *testing.T) {
 
 	t.Run("allows custom values", func(t *testing.T) {
 		cfg := config.DefaultRabbitMQConfig()
-		
+
 		cfg.URL = "amqp://user:pass@localhost:5672/"
 		cfg.ConsumerQueue = "my.queue"
 		cfg.AuthenticationRequestQueue = "auth.request"

@@ -80,6 +80,7 @@ func TestDocumentTransferHandler_Success(t *testing.T) {
 	service.AssertExpectations(t)
 }
 
+//nolint:dupl // Test setup boilerplate is similar across test files
 func TestDocumentTransferHandler_ValidationError_InvalidID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -101,6 +102,7 @@ func TestDocumentTransferHandler_ValidationError_InvalidID(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "INVALID_ID_CITIZEN")
 }
 
+//nolint:dupl // Test setup boilerplate is similar across test files
 func TestDocumentTransferHandler_ValidationError_NegativeID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()

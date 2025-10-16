@@ -18,12 +18,12 @@ func TestUploadResponse(t *testing.T) {
 		ID:       "doc-123",
 		Filename: "test.pdf",
 	}
-	
+
 	response := endpoints.UploadResponse{
 		Success: true,
 		Data:    doc,
 	}
-	
+
 	assert.True(t, response.Success)
 	assert.Equal(t, "doc-123", response.Data.ID)
 	assert.Equal(t, "test.pdf", response.Data.Filename)
@@ -34,9 +34,9 @@ func TestUploadErrorResponse(t *testing.T) {
 		Code:    "VALIDATION_ERROR",
 		Message: "file is required",
 	}
-	
+
 	response := endpoints.UploadErrorResponse{Error: err}
-	
+
 	assert.Equal(t, "VALIDATION_ERROR", response.Error.Code)
 	assert.Equal(t, "file is required", response.Error.Message)
 }
@@ -46,14 +46,14 @@ func TestListResponse(t *testing.T) {
 		{ID: "doc-1", Filename: "file1.pdf"},
 		{ID: "doc-2", Filename: "file2.pdf"},
 	}
-	
+
 	pagination := shared.Pagination{
 		Page:       1,
 		Limit:      10,
 		TotalItems: 2,
 		TotalPages: 1,
 	}
-	
+
 	response := endpoints.ListResponse{
 		Success: true,
 		Data: endpoints.ListData{
@@ -61,7 +61,7 @@ func TestListResponse(t *testing.T) {
 			Pagination: pagination,
 		},
 	}
-	
+
 	assert.True(t, response.Success)
 	assert.Len(t, response.Data.Documents, 2)
 	assert.Equal(t, 1, response.Data.Pagination.Page)
@@ -72,9 +72,9 @@ func TestListErrorResponse(t *testing.T) {
 		Code:    "BAD_REQUEST",
 		Message: "invalid parameters",
 	}
-	
+
 	response := endpoints.ListErrorResponse{Error: err}
-	
+
 	assert.Equal(t, "BAD_REQUEST", response.Error.Code)
 }
 
@@ -84,12 +84,12 @@ func TestGetResponse(t *testing.T) {
 		Filename: "document.pdf",
 		MimeType: "application/pdf",
 	}
-	
+
 	response := endpoints.GetResponse{
 		Success: true,
 		Data:    doc,
 	}
-	
+
 	assert.True(t, response.Success)
 	assert.Equal(t, "doc-456", response.Data.ID)
 	assert.Equal(t, "application/pdf", response.Data.MimeType)
@@ -100,9 +100,9 @@ func TestGetErrorResponse(t *testing.T) {
 		Code:    "NOT_FOUND",
 		Message: "document not found",
 	}
-	
+
 	response := endpoints.GetErrorResponse{Error: err}
-	
+
 	assert.Equal(t, "NOT_FOUND", response.Error.Code)
 	assert.Equal(t, "document not found", response.Error.Message)
 }
@@ -112,7 +112,7 @@ func TestDeleteResponse(t *testing.T) {
 		Success: true,
 		Message: "document deleted successfully",
 	}
-	
+
 	assert.True(t, response.Success)
 	assert.Equal(t, "document deleted successfully", response.Message)
 }
@@ -122,9 +122,9 @@ func TestDeleteErrorResponse(t *testing.T) {
 		Code:    "NOT_FOUND",
 		Message: "document not found",
 	}
-	
+
 	response := endpoints.DeleteErrorResponse{Error: err}
-	
+
 	assert.Equal(t, "NOT_FOUND", response.Error.Code)
 }
 
@@ -143,20 +143,20 @@ func TestTransferResponse(t *testing.T) {
 			ExpiresAt:    "2025-10-16T10:00:00Z",
 		},
 	}
-	
+
 	data := endpoints.TransferData{
 		IDCitizen:      12345,
 		TotalDocuments: 2,
 		Documents:      transferDocs,
 		ExpiresIn:      "15m",
 	}
-	
+
 	response := endpoints.TransferResponse{
 		Success: true,
 		Message: "Documents prepared for transfer",
 		Data:    data,
 	}
-	
+
 	assert.True(t, response.Success)
 	assert.Equal(t, "Documents prepared for transfer", response.Message)
 	assert.Equal(t, int64(12345), response.Data.IDCitizen)
@@ -170,12 +170,12 @@ func TestTransferErrorResponse(t *testing.T) {
 		Code:    "NOT_FOUND",
 		Message: "no documents found",
 	}
-	
+
 	response := endpoints.TransferErrorResponse{
 		Success: false,
 		Error:   err,
 	}
-	
+
 	assert.False(t, response.Success)
 	assert.Equal(t, "NOT_FOUND", response.Error.Code)
 }

@@ -118,6 +118,7 @@ func TestPrometheusMetrics_RecordStorageOperation(t *testing.T) {
 	})
 }
 
+//nolint:dupl // Similar test structure for different metrics
 func TestPrometheusMetrics_RecordMessagePublished(t *testing.T) {
 	m := sharedMetrics
 
@@ -140,6 +141,7 @@ func TestPrometheusMetrics_RecordMessagePublished(t *testing.T) {
 	})
 }
 
+//nolint:dupl // Similar test structure for different metrics
 func TestPrometheusMetrics_RecordMessageConsumed(t *testing.T) {
 	m := sharedMetrics
 

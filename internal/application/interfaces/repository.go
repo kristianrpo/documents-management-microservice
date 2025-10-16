@@ -2,7 +2,7 @@ package interfaces
 
 import (
 	"context"
-	
+
 	"github.com/kristianrpo/document-management-microservice/internal/domain/models"
 )
 

@@ -21,14 +21,14 @@ func TestHealthHandler_Ping(t *testing.T) {
 
 	t.Run("returns healthy status", func(t *testing.T) {
 		handler := handlers.NewHealthHandler()
-		
+
 		w := httptest.NewRecorder()
 		ctx, _ := gin.CreateTestContext(w)
-		
+
 		handler.Ping(ctx)
-		
+
 		assert.Equal(t, http.StatusOK, w.Code)
-		
+
 		var response map[string]interface{}
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
@@ -37,14 +37,14 @@ func TestHealthHandler_Ping(t *testing.T) {
 
 	t.Run("always returns 200 OK", func(t *testing.T) {
 		handler := handlers.NewHealthHandler()
-		
+
 		// Call multiple times to ensure consistency
 		for i := 0; i < 5; i++ {
 			w := httptest.NewRecorder()
 			ctx, _ := gin.CreateTestContext(w)
-			
+
 			handler.Ping(ctx)
-			
+
 			assert.Equal(t, http.StatusOK, w.Code)
 		}
 	})

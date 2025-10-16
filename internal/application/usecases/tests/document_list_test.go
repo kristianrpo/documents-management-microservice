@@ -20,7 +20,7 @@ func TestDocumentListService_List_Success(t *testing.T) {
 	ownerID := int64(1)
 	page := 1
 	pageSize := 10
-	
+
 	docs := []*models.Document{
 		{
 			ID:        "doc-1",
@@ -56,7 +56,7 @@ func TestDocumentListService_List_Success(t *testing.T) {
 	assert.Equal(t, totalCount, total)
 	assert.Equal(t, "doc-1", result[0].ID)
 	assert.Equal(t, "doc-2", result[1].ID)
-	
+
 	repo.AssertExpectations(t)
 }
 
@@ -82,7 +82,7 @@ func TestDocumentListService_List_EmptyList(t *testing.T) {
 	assert.Equal(t, 1, totalPages)
 	assert.Equal(t, 1, pagination.Page)
 	assert.Equal(t, int64(0), total)
-	
+
 	repo.AssertExpectations(t)
 }
 
@@ -115,7 +115,7 @@ func TestDocumentListService_List_SecondPage(t *testing.T) {
 	assert.Equal(t, 5, pagination.Limit)
 	assert.Equal(t, 2, totalPages)
 	assert.Equal(t, totalCount, total)
-	
+
 	repo.AssertExpectations(t)
 }
 
@@ -142,7 +142,6 @@ func TestDocumentListService_List_RepositoryError(t *testing.T) {
 	assert.Equal(t, 0, pagination.Page)
 	assert.Equal(t, int64(0), total)
 	assert.Contains(t, err.Error(), "failed to persist document")
-	
+
 	repo.AssertExpectations(t)
 }
-

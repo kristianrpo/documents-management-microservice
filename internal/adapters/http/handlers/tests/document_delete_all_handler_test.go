@@ -46,6 +46,7 @@ func TestDocumentDeleteAllHandler_Success(t *testing.T) {
 	service.AssertExpectations(t)
 }
 
+//nolint:dupl // Test setup boilerplate is similar across test files
 func TestDocumentDeleteAllHandler_ValidationError_InvalidID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -67,6 +68,7 @@ func TestDocumentDeleteAllHandler_ValidationError_InvalidID(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "VALIDATION_ERROR")
 }
 
+//nolint:dupl // Test setup boilerplate is similar across test files
 func TestDocumentDeleteAllHandler_ValidationError_NegativeID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()

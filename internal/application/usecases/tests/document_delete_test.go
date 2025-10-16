@@ -20,7 +20,7 @@ func TestDocumentDeleteService_Execute_Success(t *testing.T) {
 
 	ctx := context.Background()
 	documentID := "doc-123"
-	
+
 	doc := &models.Document{
 		ID:        documentID,
 		Filename:  "test.pdf",
@@ -40,7 +40,7 @@ func TestDocumentDeleteService_Execute_Success(t *testing.T) {
 
 	// Assert
 	assert.NoError(t, err)
-	
+
 	repo.AssertExpectations(t)
 	storage.AssertExpectations(t)
 }
@@ -63,7 +63,7 @@ func TestDocumentDeleteService_Execute_DocumentNotFound(t *testing.T) {
 	// Assert
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
-    
+
 	repo.AssertExpectations(t)
 }
 
@@ -76,7 +76,7 @@ func TestDocumentDeleteService_Execute_StorageDeleteError(t *testing.T) {
 
 	ctx := context.Background()
 	documentID := "doc-123"
-	
+
 	doc := &models.Document{
 		ID:        documentID,
 		Filename:  "test.pdf",
@@ -98,7 +98,7 @@ func TestDocumentDeleteService_Execute_StorageDeleteError(t *testing.T) {
 	// Assert
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to delete object from storage")
-	
+
 	repo.AssertExpectations(t)
 	storage.AssertExpectations(t)
 }
@@ -122,6 +122,6 @@ func TestDocumentDeleteService_Execute_RepositoryError(t *testing.T) {
 	// Assert
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to persist document")
-	
+
 	repo.AssertExpectations(t)
 }

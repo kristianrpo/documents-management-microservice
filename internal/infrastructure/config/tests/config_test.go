@@ -28,16 +28,16 @@ func TestLoad(t *testing.T) {
 	})
 
 	t.Run("load with custom values", func(t *testing.T) {
-		os.Setenv("APP_PORT", "3000")
-		os.Setenv("DYNAMODB_TABLE", "custom_documents")
-		os.Setenv("DYNAMODB_ENDPOINT", "http://localhost:8000")
-		os.Setenv("AWS_ACCESS_KEY_ID", "test_key")
-		os.Setenv("AWS_SECRET_ACCESS_KEY", "test_secret")
-		os.Setenv("AWS_REGION", "eu-west-1")
-		os.Setenv("S3_BUCKET", "custom_bucket")
-		os.Setenv("S3_ENDPOINT", "http://localhost:9000")
-		os.Setenv("S3_USE_PATH_STYLE", "true")
-		os.Setenv("S3_PUBLIC_BASE_URL", "http://public.example.com")
+		_ = os.Setenv("APP_PORT", "3000")
+		_ = os.Setenv("DYNAMODB_TABLE", "custom_documents")
+		_ = os.Setenv("DYNAMODB_ENDPOINT", "http://localhost:8000")
+		_ = os.Setenv("AWS_ACCESS_KEY_ID", "test_key")
+		_ = os.Setenv("AWS_SECRET_ACCESS_KEY", "test_secret")
+		_ = os.Setenv("AWS_REGION", "eu-west-1")
+		_ = os.Setenv("S3_BUCKET", "custom_bucket")
+		_ = os.Setenv("S3_ENDPOINT", "http://localhost:9000")
+		_ = os.Setenv("S3_USE_PATH_STYLE", "true")
+		_ = os.Setenv("S3_PUBLIC_BASE_URL", "http://public.example.com")
 
 		cfg := config.Load()
 
@@ -58,10 +58,10 @@ func TestLoad(t *testing.T) {
 
 	t.Run("load with RabbitMQ config", func(t *testing.T) {
 		os.Clearenv()
-		os.Setenv("RABBITMQ_URL", "amqp://user:pass@rabbitmq:5672/")
-		os.Setenv("RABBITMQ_CONSUMER_QUEUE", "custom.queue")
-		os.Setenv("RABBITMQ_AUTH_REQUEST_QUEUE", "auth.request")
-		os.Setenv("RABBITMQ_AUTH_RESULT_QUEUE", "auth.result")
+		_ = os.Setenv("RABBITMQ_URL", "amqp://user:pass@rabbitmq:5672/")
+		_ = os.Setenv("RABBITMQ_CONSUMER_QUEUE", "custom.queue")
+		_ = os.Setenv("RABBITMQ_AUTH_REQUEST_QUEUE", "auth.request")
+		_ = os.Setenv("RABBITMQ_AUTH_RESULT_QUEUE", "auth.result")
 
 		cfg := config.Load()
 

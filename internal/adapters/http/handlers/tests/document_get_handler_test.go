@@ -21,7 +21,9 @@ type mockGetService struct{ mock.Mock }
 
 func (m *mockGetService) GetByID(ctx context.Context, id string) (*models.Document, error) {
 	args := m.Called(ctx, id)
-	if args.Get(0) == nil { return nil, args.Error(1) }
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).(*models.Document), args.Error(1)
 }
 

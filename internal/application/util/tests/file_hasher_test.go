@@ -2,7 +2,7 @@ package util_test
 
 import (
 	"bytes"
-	"crypto/md5"
+	"crypto/md5" //nolint:gosec // MD5 used only for testing purposes
 	"crypto/sha256"
 	"errors"
 	"testing"
