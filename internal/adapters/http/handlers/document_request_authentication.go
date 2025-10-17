@@ -10,22 +10,26 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/dto/response/shared"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
+	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/metrics"
 )
 
 // DocumentRequestAuthenticationHandler handles HTTP requests for requesting document authentication
 type DocumentRequestAuthenticationHandler struct {
 	authService  usecases.DocumentRequestAuthenticationService
 	errorHandler *errors.ErrorHandler
+	metrics      *metrics.PrometheusMetrics
 }
 
 // NewDocumentRequestAuthenticationHandler creates a new handler for document authentication request operations
 func NewDocumentRequestAuthenticationHandler(
 	authService usecases.DocumentRequestAuthenticationService,
 	errorHandler *errors.ErrorHandler,
+	metricsCollector *metrics.PrometheusMetrics,
 ) *DocumentRequestAuthenticationHandler {
 	return &DocumentRequestAuthenticationHandler{
 		authService:  authService,
 		errorHandler: errorHandler,
+		metrics:      metricsCollector,
 	}
 }
 
@@ -61,6 +65,9 @@ func (h *DocumentRequestAuthenticationHandler) RequestAuthentication(c *gin.Cont
 		h.errorHandler.HandleError(c, err)
 		return
 	}
+
+	// Increment authentication requests counter
+	h.metrics.AuthRequestsTotal.Inc()
 
 	c.JSON(http.StatusAccepted, endpoints.RequestAuthenticationResponse{
 		Success: true,

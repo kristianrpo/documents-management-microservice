@@ -7,6 +7,11 @@
 TABLE_NAME="Documents"
 REGION="us-west-2"
 
+# Set dummy credentials for DynamoDB Local
+# DynamoDB Local doesn't validate credentials but still requires them
+export AWS_ACCESS_KEY_ID="dummy"
+export AWS_SECRET_ACCESS_KEY="dummy"
+
 # Check if DynamoDB Local is running
 if ! nc -z localhost 8000; then
   echo "DynamoDB Local is not running. Please start it before running this script."

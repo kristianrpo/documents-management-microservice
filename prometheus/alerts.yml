@@ -1,0 +1,245 @@
+groups:
+  # HTTP/API Alerts
+  - name: http_alerts
+    interval: 30s
+    rules:
+      # High error rate (4xx/5xx)
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(documents_service_http_requests_total{status=~"4..|5.."}[5m]))
+            /
+            sum(rate(documents_service_http_requests_total[5m]))
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High HTTP error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+      # Critical error rate
+      - alert: CriticalErrorRate
+        expr: |
+          (
+            sum(rate(documents_service_http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(documents_service_http_requests_total[5m]))
+          ) > 0.10
+        for: 1m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "Critical HTTP 5xx error rate"
+          description: "Server error rate is {{ $value | humanizePercentage }} (threshold: 10%)"
+
+      # Slow requests
+      - alert: SlowRequests
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(documents_service_http_request_duration_seconds_bucket[5m])) by (le, endpoint)
+          ) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "Slow API requests detected"
+          description: "95th percentile latency is {{ $value }}s on endpoint {{ $labels.endpoint }} (threshold: 5s)"
+
+      # Service down
+      - alert: ServiceDown
+        expr: up{job="documents-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: service
+        annotations:
+          summary: "Documents service is down"
+          description: "The documents microservice has been down for more than 1 minute"
+
+  # Storage Alerts (S3/MinIO)
+  - name: storage_alerts
+    interval: 30s
+    rules:
+      # High storage error rate
+      - alert: HighStorageErrorRate
+        expr: |
+          sum(rate(documents_service_storage_errors_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: storage
+        annotations:
+          summary: "High storage error rate"
+          description: "Storage operations failing at {{ $value }} errors/second"
+
+      # Storage upload failures
+      - alert: StorageUploadFailures
+        expr: |
+          sum(rate(documents_service_storage_errors_total{operation="upload"}[5m])) > 0.05
+        for: 3m
+        labels:
+          severity: warning
+          component: storage
+        annotations:
+          summary: "Storage upload failures detected"
+          description: "Upload operations failing at {{ $value }} errors/second"
+
+      # Slow storage operations
+      - alert: SlowStorageOperations
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(documents_service_storage_upload_duration_seconds_bucket[5m])) by (le)
+          ) > 30
+        for: 5m
+        labels:
+          severity: warning
+          component: storage
+        annotations:
+          summary: "Slow storage upload operations"
+          description: "95th percentile upload time is {{ $value }}s (threshold: 30s)"
+
+  # Database Alerts (DynamoDB)
+  - name: database_alerts
+    interval: 30s
+    rules:
+      # High database error rate
+      - alert: HighDatabaseErrorRate
+        expr: |
+          sum(rate(documents_service_database_errors_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "High database error rate"
+          description: "Database operations failing at {{ $value }} errors/second"
+
+      # Slow database queries
+      - alert: SlowDatabaseQueries
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(documents_service_database_query_duration_seconds_bucket[5m])) by (le, operation)
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Slow database queries detected"
+          description: "95th percentile query time is {{ $value }}s on {{ $labels.operation }} (threshold: 1s)"
+
+  # Messaging Alerts (RabbitMQ)
+  - name: messaging_alerts
+    interval: 30s
+    rules:
+      # High message processing errors
+      - alert: HighMessageErrorRate
+        expr: |
+          sum(rate(documents_service_message_errors_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: messaging
+        annotations:
+          summary: "High message processing error rate"
+          description: "Message processing failing at {{ $value }} errors/second on queue {{ $labels.queue }}"
+
+      # Message publishing failures
+      - alert: MessagePublishingFailures
+        expr: |
+          sum(rate(documents_service_message_errors_total{type="publish"}[5m])) by (queue) > 0.05
+        for: 3m
+        labels:
+          severity: warning
+          component: messaging
+        annotations:
+          summary: "Message publishing failures"
+          description: "Failed to publish messages to queue {{ $labels.queue }} at {{ $value }} errors/second"
+
+  # Business Logic Alerts
+  - name: business_alerts
+    interval: 1m
+    rules:
+      # No uploads in the last hour (might indicate a problem)
+      - alert: NoRecentUploads
+        expr: |
+          increase(documents_service_upload_requests_total[1h]) == 0
+        for: 1h
+        labels:
+          severity: info
+          component: business
+        annotations:
+          summary: "No document uploads in the last hour"
+          description: "No documents have been uploaded in the last hour. This might be normal or indicate an issue."
+
+      # High authentication failure rate
+      - alert: HighAuthenticationFailureRate
+        expr: |
+          (
+            sum(rate(documents_service_documents_auth_completed_total{result="failed"}[10m]))
+            /
+            sum(rate(documents_service_documents_auth_completed_total[10m]))
+          ) > 0.30
+        for: 5m
+        labels:
+          severity: warning
+          component: authentication
+        annotations:
+          summary: "High authentication failure rate"
+          description: "{{ $value | humanizePercentage }} of authentication requests are failing (threshold: 30%)"
+
+      # Unusual bulk delete activity
+      - alert: UnusualBulkDeleteActivity
+        expr: |
+          rate(documents_service_delete_bulk_requests_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: info
+          component: business
+        annotations:
+          summary: "Unusual bulk delete activity"
+          description: "Bulk delete operations happening at {{ $value }} requests/second"
+
+  # Resource Alerts
+  - name: resource_alerts
+    interval: 30s
+    rules:
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: |
+          go_memstats_alloc_bytes / 1024 / 1024 > 500
+        for: 5m
+        labels:
+          severity: warning
+          component: resources
+        annotations:
+          summary: "High memory usage"
+          description: "Service is using {{ $value }}MB of memory (threshold: 500MB)"
+
+      # Too many goroutines
+      - alert: TooManyGoroutines
+        expr: |
+          go_goroutines > 500
+        for: 5m
+        labels:
+          severity: warning
+          component: resources
+        annotations:
+          summary: "Too many active goroutines"
+          description: "Service has {{ $value }} active goroutines (threshold: 500)"
+
+      # High request concurrency
+      - alert: HighRequestConcurrency
+        expr: |
+          documents_service_http_requests_in_flight > 50
+        for: 2m
+        labels:
+          severity: warning
+          component: resources
+        annotations:
+          summary: "High concurrent request load"
+          description: "Service is handling {{ $value }} concurrent requests (threshold: 50)"

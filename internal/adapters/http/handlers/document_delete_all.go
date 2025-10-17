@@ -9,19 +9,22 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/dto/response/endpoints"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
+	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/metrics"
 )
 
 // DocumentDeleteAllHandler handles HTTP requests for bulk document deletion for a specific user
 type DocumentDeleteAllHandler struct {
 	service      usecases.DocumentDeleteAllService
 	errorHandler *errors.ErrorHandler
+	metrics      *metrics.PrometheusMetrics
 }
 
 // NewDocumentDeleteAllHandler creates a new handler for bulk document deletion operations
-func NewDocumentDeleteAllHandler(service usecases.DocumentDeleteAllService, errorHandler *errors.ErrorHandler) *DocumentDeleteAllHandler {
+func NewDocumentDeleteAllHandler(service usecases.DocumentDeleteAllService, errorHandler *errors.ErrorHandler, metrics *metrics.PrometheusMetrics) *DocumentDeleteAllHandler {
 	return &DocumentDeleteAllHandler{
 		service:      service,
 		errorHandler: errorHandler,
+		metrics:      metrics,
 	}
 }
 
@@ -66,6 +69,10 @@ func (handler *DocumentDeleteAllHandler) DeleteAll(ctx *gin.Context) {
 		handler.errorHandler.HandleError(ctx, err)
 		return
 	}
+
+	// Increment bulk delete metric with the count
+	handler.metrics.DeleteBulkRequestsTotal.Inc()
+
 	response := endpoints.DeleteAllResponse{
 		Success: true,
 		Message: "all documents deleted successfully",

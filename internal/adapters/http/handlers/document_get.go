@@ -9,19 +9,22 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/presenter"
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
+	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/metrics"
 )
 
 // DocumentGetHandler handles HTTP requests for retrieving individual documents
 type DocumentGetHandler struct {
 	service      usecases.DocumentGetService
 	errorHandler *errors.ErrorHandler
+	metrics      *metrics.PrometheusMetrics
 }
 
 // NewDocumentGetHandler creates a new handler for document retrieval operations
-func NewDocumentGetHandler(service usecases.DocumentGetService, errorHandler *errors.ErrorHandler) *DocumentGetHandler {
+func NewDocumentGetHandler(service usecases.DocumentGetService, errorHandler *errors.ErrorHandler, metricsCollector *metrics.PrometheusMetrics) *DocumentGetHandler {
 	return &DocumentGetHandler{
 		service:      service,
 		errorHandler: errorHandler,
+		metrics:      metricsCollector,
 	}
 }
 
@@ -64,6 +67,9 @@ func (handler *DocumentGetHandler) GetByID(ctx *gin.Context) {
 		handler.errorHandler.HandleError(ctx, err)
 		return
 	}
+
+	// Increment documents retrieved counter
+	handler.metrics.GetRequestsTotal.Inc()
 
 	response := endpoints.GetResponse{
 		Success: true,
