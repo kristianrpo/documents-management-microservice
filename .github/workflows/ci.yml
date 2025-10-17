@@ -20,6 +20,12 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
+      - name: Install Swagger CLI
+        run: go install github.com/swaggo/swag/cmd/swag@latest
+
+      - name: Generate Swagger docs
+        run: swag init -g cmd/server/main.go -o docs
+
       - name: Install golangci-lint
         run: |
           curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
