@@ -167,7 +167,7 @@ func (repo *dynamoDBDocumentRepository) countDocumentsByOwner(ctx context.Contex
 // fetchPaginatedDocuments retrieves paginated documents for an owner
 func (repo *dynamoDBDocumentRepository) fetchPaginatedDocuments(ctx context.Context, ownerID int64, limit, offset int) ([]*models.Document, error) {
 	queryInput := repo.buildQueryInput(ownerID)
-	
+
 	var documents []*models.Document
 	pagination := &paginationState{
 		limit:  limit,
