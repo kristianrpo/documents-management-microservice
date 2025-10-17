@@ -26,12 +26,11 @@ jobs:
         with:
           images: ${{ secrets.DOCKERHUB_USERNAME }}/documents-microservice
           tags: |
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value={{branch}}-{{date 'YYYYMMDD-HHmmss'}}
+            type=sha,prefix=main-
+            type=raw,value=latest
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355 # v6.10.0
+        uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355
         with:
           context: .
           file: ./Dockerfile
