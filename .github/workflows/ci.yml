@@ -20,9 +20,9 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
-      - name: Install golangci-lint from source
+      - name: Install golangci-lint v2
         run: |
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v2
           echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
       - name: Run golangci-lint
