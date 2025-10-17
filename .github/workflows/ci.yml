@@ -52,7 +52,9 @@ jobs:
           cache: true
 
       - name: Install dependencies
-        run: go mod download
+        run: |
+          go mod download
+          go mod tidy
 
       - name: Run Unit Tests with Coverage
         run: |
