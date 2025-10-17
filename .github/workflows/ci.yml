@@ -21,10 +21,10 @@ jobs:
         run: go mod download
 
       - name: Run golangci-lint
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.62.2
-          $(go env GOPATH)/bin/golangci-lint run --out-format checkstyle > golangci-lint-report.xml || true
-          $(go env GOPATH)/bin/golangci-lint run --out-format colored-line-number
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --out-format checkstyle:golangci-lint-report.xml,colored-line-number
 
       - name: Upload Lint Artifacts
         uses: actions/upload-artifact@v4
@@ -50,15 +50,22 @@ jobs:
 
       - name: Run Unit Tests with Coverage
         run: |
-          go test ./... \
-            -v \
-            -coverprofile=coverage.out \
-            -covermode=atomic \
-            -json > test-report.json || true
+          # Run tests with verbose output
+          echo "Running unit tests..."
+          go test ./internal/.../tests/... -v 2>&1 | tee test-output.log
           
+          # Extract test summary
+          grep -E "(^=== RUN|^--- PASS|^--- FAIL|^PASS$|^FAIL$)" test-output.log | tail -40 > test-summary.txt
+          
+          # Generate coverage report
+          echo "Generating coverage report..."
+          go test -coverpkg=./internal/... ./internal/.../tests -coverprofile=coverage.out -covermode=atomic
+          
+          # Generate coverage in multiple formats
           go tool cover -html=coverage.out -o coverage.html
           go tool cover -func=coverage.out -o coverage.txt
           
+          # Display coverage summary
           echo "Coverage Summary:"
           go tool cover -func=coverage.out | tail -1
 
@@ -71,7 +78,8 @@ jobs:
             coverage.out
             coverage.html
             coverage.txt
-            test-report.json
+            test-output.log
+            test-summary.txt
 
   docker-build-validate:
     name: Docker build (validate, no push)
