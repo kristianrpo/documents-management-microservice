@@ -27,8 +27,8 @@ jobs:
 
       - name: Run golangci-lint
         run: |
-          golangci-lint run --output.checkstyle.path=golangci-lint-report.xml --skip-dirs=docs || true
-          golangci-lint run --output.text.path=stdout --output.text.colors=true --skip-dirs=docs
+          golangci-lint run --output.checkstyle.path=golangci-lint-report.xml || true
+          golangci-lint run --output.text.path=stdout --output.text.colors=true
 
       - name: Upload Lint Artifacts
         uses: actions/upload-artifact@v4
