@@ -66,7 +66,7 @@ func TestPrepareTransfer_Success(t *testing.T) {
 	assert.Equal(t, "https://s3.amazonaws.com/doc-2-url", results[1].PresignedURL)
 	assert.NotZero(t, results[0].ExpiresAt)
 	assert.NotZero(t, results[1].ExpiresAt)
-	
+
 	mockRepo.AssertExpectations(t)
 	mockStorage.AssertExpectations(t)
 }
@@ -164,13 +164,13 @@ func TestPrepareTransfer_MultipleDocumentsWithExpiration(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Len(t, results, 3)
-	
+
 	// Verify all results have the same expiration time (within 1 second tolerance)
 	for i := 1; i < len(results); i++ {
 		timeDiff := results[i].ExpiresAt.Sub(results[i-1].ExpiresAt)
 		assert.Less(t, timeDiff.Seconds(), 1.0)
 	}
-	
+
 	mockRepo.AssertExpectations(t)
 	mockStorage.AssertExpectations(t)
 }

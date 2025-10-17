@@ -23,12 +23,12 @@ func TestNewDocumentRequestAuthenticationService(t *testing.T) {
 	t.Run("creates service with custom expiration", func(t *testing.T) {
 		expiration := 12 * time.Hour
 		service := usecases.NewDocumentRequestAuthenticationService(
-		mockRepo,
-		mockStorage,
-		mockPublisher,
-		"test-queue",
-		expiration,
-	)
+			mockRepo,
+			mockStorage,
+			mockPublisher,
+			"test-queue",
+			expiration,
+		)
 		assert.NotNil(t, service)
 	})
 
@@ -60,9 +60,9 @@ func TestRequestAuthentication_Success(t *testing.T) {
 	ctx := context.Background()
 	documentID := "doc-123"
 	document := &models.Document{
-		ID:       documentID,
-		OwnerID:  12345,
-		Filename: "test-document.pdf",
+		ID:        documentID,
+		OwnerID:   12345,
+		Filename:  "test-document.pdf",
 		ObjectKey: "documents/test-document.pdf",
 	}
 	presignedURL := "https://s3.amazonaws.com/presigned-url"
@@ -71,7 +71,6 @@ func TestRequestAuthentication_Success(t *testing.T) {
 	mockRepo.On("UpdateAuthenticationStatus", ctx, documentID, models.AuthenticationStatusAuthenticating).Return(nil)
 	mockStorage.On("GeneratePresignedURL", ctx, document.ObjectKey, 24*time.Hour).Return(presignedURL, nil)
 	mockPublisher.On("Publish", ctx, "auth-queue", mock.AnythingOfType("[]uint8")).Return(nil).Run(func(args mock.Arguments) {
-		// Verify the event was marshalled correctly
 		eventJSON := args.Get(2).([]byte)
 		var event events.DocumentAuthenticationRequestedEvent
 		err := json.Unmarshal(eventJSON, &event)
