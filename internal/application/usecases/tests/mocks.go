@@ -110,3 +110,18 @@ func (m *MockMimeDetector) DetectFromFilename(filename string) string {
 	args := m.Called(filename)
 	return args.String(0)
 }
+
+// MockMessagePublisher is a mock implementation of MessagePublisher
+type MockMessagePublisher struct {
+	mock.Mock
+}
+
+func (m *MockMessagePublisher) Publish(ctx context.Context, queue string, message []byte) error {
+	args := m.Called(ctx, queue, message)
+	return args.Error(0)
+}
+
+func (m *MockMessagePublisher) Close() error {
+	args := m.Called()
+	return args.Error(0)
+}

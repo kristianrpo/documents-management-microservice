@@ -11,39 +11,42 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/metrics"
 )
 
+// RouterConfig holds all dependencies required to configure the HTTP router
+type RouterConfig struct {
+	UploadHandler      *handlers.DocumentUploadHandler
+	ListHandler        *handlers.DocumentListHandler
+	GetHandler         *handlers.DocumentGetHandler
+	DeleteHandler      *handlers.DocumentDeleteHandler
+	DeleteAllHandler   *handlers.DocumentDeleteAllHandler
+	TransferHandler    *handlers.DocumentTransferHandler
+	RequestAuthHandler *handlers.DocumentRequestAuthenticationHandler
+	HealthHandler      *handlers.HealthHandler
+	MetricsCollector   *metrics.PrometheusMetrics
+}
+
 // NewRouter creates and configures a new HTTP router with all API endpoints
-func NewRouter(
-	uploadHandler *handlers.DocumentUploadHandler,
-	listHandler *handlers.DocumentListHandler,
-	getHandler *handlers.DocumentGetHandler,
-	deleteHandler *handlers.DocumentDeleteHandler,
-	deleteAllHandler *handlers.DocumentDeleteAllHandler,
-	transferHandler *handlers.DocumentTransferHandler,
-	requestAuthHandler *handlers.DocumentRequestAuthenticationHandler,
-	healthHandler *handlers.HealthHandler,
-	metricsCollector *metrics.PrometheusMetrics,
-) *gin.Engine {
+func NewRouter(cfg *RouterConfig) *gin.Engine {
 	router := gin.Default()
 
-	if metricsCollector != nil {
-		router.Use(middleware.PrometheusMiddleware(metricsCollector))
+	if cfg.MetricsCollector != nil {
+		router.Use(middleware.PrometheusMiddleware(cfg.MetricsCollector))
 	}
 
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	router.GET("/healthz", healthHandler.Ping)
+	router.GET("/healthz", cfg.HealthHandler.Ping)
 
 	apiGroup := router.Group("/api/v1")
 	{
-		apiGroup.POST("/documents", uploadHandler.Upload)
-		apiGroup.GET("/documents", listHandler.List)
-		apiGroup.GET("/documents/:id", getHandler.GetByID)
-		apiGroup.DELETE("/documents/:id", deleteHandler.Delete)
-		apiGroup.DELETE("/documents/user/:id_citizen", deleteAllHandler.DeleteAll)
-		apiGroup.GET("/documents/transfer/:id_citizen", transferHandler.PrepareTransfer)
-		apiGroup.POST("/documents/:id/request-authentication", requestAuthHandler.RequestAuthentication)
+		apiGroup.POST("/documents", cfg.UploadHandler.Upload)
+		apiGroup.GET("/documents", cfg.ListHandler.List)
+		apiGroup.GET("/documents/:id", cfg.GetHandler.GetByID)
+		apiGroup.DELETE("/documents/:id", cfg.DeleteHandler.Delete)
+		apiGroup.DELETE("/documents/user/:id_citizen", cfg.DeleteAllHandler.DeleteAll)
+		apiGroup.GET("/documents/transfer/:id_citizen", cfg.TransferHandler.PrepareTransfer)
+		apiGroup.POST("/documents/:id/request-authentication", cfg.RequestAuthHandler.RequestAuthentication)
 	}
 
 	return router

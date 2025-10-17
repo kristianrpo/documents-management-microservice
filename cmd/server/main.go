@@ -177,7 +177,19 @@ func main() {
 
 	healthHandler := handlers.NewHealthHandler()
 
-	router := httpadapter.NewRouter(uploadHandler, listHandler, getHandler, deleteHandler, deleteAllHandler, transferHandler, requestAuthHandler, healthHandler, metricsCollector)
+	routerConfig := &httpadapter.RouterConfig{
+		UploadHandler:      uploadHandler,
+		ListHandler:        listHandler,
+		GetHandler:         getHandler,
+		DeleteHandler:      deleteHandler,
+		DeleteAllHandler:   deleteAllHandler,
+		TransferHandler:    transferHandler,
+		RequestAuthHandler: requestAuthHandler,
+		HealthHandler:      healthHandler,
+		MetricsCollector:   metricsCollector,
+	}
+
+	router := httpadapter.NewRouter(routerConfig)
 
 	// Start consuming messages if messageConsumer is initialized
 	ctx := context.Background()
