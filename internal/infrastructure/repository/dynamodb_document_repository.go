@@ -166,7 +166,61 @@ func (repo *dynamoDBDocumentRepository) countDocumentsByOwner(ctx context.Contex
 
 // fetchPaginatedDocuments retrieves paginated documents for an owner
 func (repo *dynamoDBDocumentRepository) fetchPaginatedDocuments(ctx context.Context, ownerID int64, limit, offset int) ([]*models.Document, error) {
-	queryInput := &dynamodb.QueryInput{
+	queryInput := repo.buildQueryInput(ownerID)
+	
+	var documents []*models.Document
+	pagination := &paginationState{
+		limit:  limit,
+		offset: offset,
+	}
+
+	for !pagination.isDone() {
+		result, err := repo.executeQuery(ctx, queryInput)
+		if err != nil {
+			return nil, err
+		}
+
+		documents, err = repo.processQueryResults(result.Items, documents, pagination)
+		if err != nil {
+			return nil, err
+		}
+
+		if result.LastEvaluatedKey == nil || pagination.isDone() {
+			break
+		}
+		queryInput.ExclusiveStartKey = result.LastEvaluatedKey
+	}
+
+	return documents, nil
+}
+
+// paginationState tracks pagination progress
+type paginationState struct {
+	limit          int
+	offset         int
+	itemsSkipped   int
+	itemsCollected int
+}
+
+func (p *paginationState) isDone() bool {
+	return p.itemsCollected >= p.limit
+}
+
+func (p *paginationState) shouldSkip() bool {
+	if p.itemsSkipped < p.offset {
+		p.itemsSkipped++
+		return true
+	}
+	return false
+}
+
+func (p *paginationState) collect() {
+	p.itemsCollected++
+}
+
+// buildQueryInput creates a query input for fetching documents by owner
+func (repo *dynamoDBDocumentRepository) buildQueryInput(ownerID int64) *dynamodb.QueryInput {
+	return &dynamodb.QueryInput{
 		TableName:              aws.String(repo.tableName),
 		IndexName:              aws.String(ownerIDIndexName),
 		KeyConditionExpression: aws.String("OwnerID = " + ownerIDAttr),
@@ -175,46 +229,35 @@ func (repo *dynamoDBDocumentRepository) fetchPaginatedDocuments(ctx context.Cont
 		},
 		ScanIndexForward: aws.Bool(false),
 	}
+}
 
-	var documents []*models.Document
-	var lastEvaluatedKey map[string]types.AttributeValue
-	itemsSkipped := 0
-	itemsCollected := 0
-
-	for itemsCollected < limit {
-		if lastEvaluatedKey != nil {
-			queryInput.ExclusiveStartKey = lastEvaluatedKey
-		}
-
-		result, err := repo.client.Query(ctx, queryInput)
-		if err != nil {
-			return nil, fmt.Errorf("failed to list documents: %w", err)
-		}
-
-		for _, item := range result.Items {
-			if itemsSkipped < offset {
-				itemsSkipped++
-				continue
-			}
-
-			if itemsCollected >= limit {
-				return documents, nil
-			}
-
-			var doc models.Document
-			if err := attributevalue.UnmarshalMap(item, &doc); err != nil {
-				return nil, fmt.Errorf(errUnmarshalDocument, err)
-			}
-			documents = append(documents, &doc)
-			itemsCollected++
-		}
-
-		lastEvaluatedKey = result.LastEvaluatedKey
-		if lastEvaluatedKey == nil {
-			break
-		}
+// executeQuery executes a DynamoDB query
+func (repo *dynamoDBDocumentRepository) executeQuery(ctx context.Context, input *dynamodb.QueryInput) (*dynamodb.QueryOutput, error) {
+	result, err := repo.client.Query(ctx, input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list documents: %w", err)
 	}
+	return result, nil
+}
 
+// processQueryResults processes query items and applies pagination
+func (repo *dynamoDBDocumentRepository) processQueryResults(items []map[string]types.AttributeValue, documents []*models.Document, pagination *paginationState) ([]*models.Document, error) {
+	for _, item := range items {
+		if pagination.shouldSkip() {
+			continue
+		}
+
+		if pagination.isDone() {
+			return documents, nil
+		}
+
+		var doc models.Document
+		if err := attributevalue.UnmarshalMap(item, &doc); err != nil {
+			return nil, fmt.Errorf(errUnmarshalDocument, err)
+		}
+		documents = append(documents, &doc)
+		pagination.collect()
+	}
 	return documents, nil
 }
 
