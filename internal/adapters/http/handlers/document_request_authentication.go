@@ -58,7 +58,7 @@ func (h *DocumentRequestAuthenticationHandler) RequestAuthentication(c *gin.Cont
 		return
 	}
 
-	log.Printf("Requesting authentication for document %s", documentID)
+	log.Println("Requesting authentication for document", documentID)
 
 	err := h.authService.RequestAuthentication(c.Request.Context(), documentID)
 	if err != nil {
