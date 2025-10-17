@@ -19,6 +19,6 @@ type DocumentUploadSuccessResponse struct {
 }
 
 type DocumentUploadErrorResponse struct {
-	Success bool                `json:"success" example:"false"`
+	Success bool               `json:"success" example:"false"`
 	Error   shared.ErrorDetail `json:"error"`
 }

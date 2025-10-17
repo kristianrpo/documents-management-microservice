@@ -9,18 +9,18 @@ import (
 
 // Document represents a file uploaded to the system with its metadata
 type Document struct {
-	ID                   string               `dynamodbav:"DocumentID" json:"id"`                         // Unique document identifier (UUID)
-	Filename             string               `dynamodbav:"Filename" json:"filename"`                     // Original filename
-	MimeType             string               `dynamodbav:"MimeType" json:"mime_type"`                    // MIME type (e.g., application/pdf)
-	SizeBytes            int64                `dynamodbav:"SizeBytes" json:"size_bytes"`                  // File size in bytes
-	HashSHA256           string               `dynamodbav:"HashSHA256" json:"hash_sha256"`                // SHA256 hash for deduplication
-	Bucket               string               `dynamodbav:"Bucket" json:"bucket"`                         // S3 bucket name
-	ObjectKey            string               `dynamodbav:"ObjectKey" json:"object_key"`                  // S3 object key (path)
-	URL                  string               `dynamodbav:"URL" json:"url"`                               // Public URL (if available)
-	OwnerID              int64                `dynamodbav:"OwnerID" json:"owner_id"`                      // Citizen ID who owns the document
+	ID                   string               `dynamodbav:"DocumentID" json:"id"`                              // Unique document identifier (UUID)
+	Filename             string               `dynamodbav:"Filename" json:"filename"`                          // Original filename
+	MimeType             string               `dynamodbav:"MimeType" json:"mime_type"`                         // MIME type (e.g., application/pdf)
+	SizeBytes            int64                `dynamodbav:"SizeBytes" json:"size_bytes"`                       // File size in bytes
+	HashSHA256           string               `dynamodbav:"HashSHA256" json:"hash_sha256"`                     // SHA256 hash for deduplication
+	Bucket               string               `dynamodbav:"Bucket" json:"bucket"`                              // S3 bucket name
+	ObjectKey            string               `dynamodbav:"ObjectKey" json:"object_key"`                       // S3 object key (path)
+	URL                  string               `dynamodbav:"URL" json:"url"`                                    // Public URL (if available)
+	OwnerID              int64                `dynamodbav:"OwnerID" json:"owner_id"`                           // Citizen ID who owns the document
 	AuthenticationStatus AuthenticationStatus `dynamodbav:"AuthenticationStatus" json:"authentication_status"` // Current authentication state
-	CreatedAt            time.Time            `dynamodbav:"CreatedAt" json:"created_at"`                  // Document creation timestamp
-	UpdatedAt            time.Time            `dynamodbav:"UpdatedAt" json:"updated_at"`                  // Last update timestamp
+	CreatedAt            time.Time            `dynamodbav:"CreatedAt" json:"created_at"`                       // Document creation timestamp
+	UpdatedAt            time.Time            `dynamodbav:"UpdatedAt" json:"updated_at"`                       // Last update timestamp
 }
 
 // Validate checks if the document has all required fields with valid values

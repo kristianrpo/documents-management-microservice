@@ -19,7 +19,7 @@ const (
 	// GSI index names
 	hashOwnerIndexName = "HashOwnerIndex"
 	ownerIDIndexName   = "OwnerIDIndex"
-	
+
 	// Batch operation limits
 	maxBatchDeleteSize = 25 // DynamoDB BatchWriteItem limit
 	bulkQueryLimit     = 1000
@@ -62,7 +62,7 @@ func (repo *dynamoDBDocumentRepository) Create(ctx context.Context, document *mo
 	if err != nil {
 		return fmt.Errorf("failed to create document in DynamoDB: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -132,7 +132,7 @@ func (repo *dynamoDBDocumentRepository) List(ctx context.Context, ownerID int64,
 		},
 		Select: types.SelectCount,
 	}
-	
+
 	countResult, err := repo.client.Query(ctx, countInput)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count documents: %w", err)
@@ -234,7 +234,7 @@ func (repo *dynamoDBDocumentRepository) DeleteAllByOwnerID(ctx context.Context, 
 	}
 
 	deletedCount := 0
-	
+
 	for i := 0; i < len(documents); i += maxBatchDeleteSize {
 		end := i + maxBatchDeleteSize
 		if end > len(documents) {
@@ -262,7 +262,7 @@ func (repo *dynamoDBDocumentRepository) DeleteAllByOwnerID(ctx context.Context, 
 		if err != nil {
 			return deletedCount, fmt.Errorf("failed to batch delete documents: %w", err)
 		}
-		
+
 		deletedCount += len(batch)
 	}
 
@@ -272,16 +272,16 @@ func (repo *dynamoDBDocumentRepository) DeleteAllByOwnerID(ctx context.Context, 
 // UpdateAuthenticationStatus updates the authentication status of a document and its updated timestamp
 func (repo *dynamoDBDocumentRepository) UpdateAuthenticationStatus(ctx context.Context, documentID string, status models.AuthenticationStatus) error {
 	now := time.Now()
-	
+
 	document, err := repo.GetByID(ctx, documentID)
 	if err != nil {
 		return fmt.Errorf("failed to get document: %w", err)
 	}
-	
+
 	if document == nil {
 		return fmt.Errorf("document not found")
 	}
-	
+
 	_, err = repo.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
 		TableName: aws.String(repo.tableName),
 		Key: map[string]types.AttributeValue{
@@ -297,6 +297,6 @@ func (repo *dynamoDBDocumentRepository) UpdateAuthenticationStatus(ctx context.C
 	if err != nil {
 		return fmt.Errorf("failed to update authentication status: %w", err)
 	}
-	
+
 	return nil
 }

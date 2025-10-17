@@ -32,7 +32,7 @@ services:
       minio-init:
         condition: service_completed_successfully
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
 
   # DynamoDB Local
@@ -159,7 +159,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml
       - prometheus-data:/prometheus
     command:

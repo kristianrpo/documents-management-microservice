@@ -6,8 +6,8 @@ import (
 
 	"github.com/kristianrpo/document-management-microservice/internal/application/interfaces"
 	"github.com/kristianrpo/document-management-microservice/internal/application/util"
-	"github.com/kristianrpo/document-management-microservice/internal/domain/models"
 	"github.com/kristianrpo/document-management-microservice/internal/domain/errors"
+	"github.com/kristianrpo/document-management-microservice/internal/domain/models"
 )
 
 // DocumentService defines the interface for document upload operations

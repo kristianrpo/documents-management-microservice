@@ -9,18 +9,18 @@ import (
 
 // PrometheusMetrics holds all Prometheus metric collectors for the application
 type PrometheusMetrics struct {
-	HTTPRequestsTotal   *prometheus.CounterVec
-	HTTPRequestDuration *prometheus.HistogramVec
+	HTTPRequestsTotal    *prometheus.CounterVec
+	HTTPRequestDuration  *prometheus.HistogramVec
 	HTTPRequestsInFlight prometheus.Gauge
 
-	UploadRequestsTotal         prometheus.Counter
-	GetRequestsTotal            prometheus.Counter
-	ListRequestsTotal           prometheus.Counter
-	DeleteRequestsTotal         prometheus.Counter
-	DeleteBulkRequestsTotal     prometheus.Counter
-	TransferRequestsTotal       prometheus.Counter
-	AuthRequestsTotal           prometheus.Counter
-	AuthCompletedTotal          *prometheus.CounterVec
+	UploadRequestsTotal     prometheus.Counter
+	GetRequestsTotal        prometheus.Counter
+	ListRequestsTotal       prometheus.Counter
+	DeleteRequestsTotal     prometheus.Counter
+	DeleteBulkRequestsTotal prometheus.Counter
+	TransferRequestsTotal   prometheus.Counter
+	AuthRequestsTotal       prometheus.Counter
+	AuthCompletedTotal      *prometheus.CounterVec
 
 	StorageUploadDuration   prometheus.Histogram
 	StorageDownloadDuration prometheus.Histogram
@@ -210,12 +210,13 @@ func (m *PrometheusMetrics) RecordDatabaseQuery(operation string, duration time.
 
 // RecordStorageOperation records a storage operation metric
 func (m *PrometheusMetrics) RecordStorageOperation(operation string, duration time.Duration, err error) {
-	if operation == "upload" {
+	switch operation {
+	case "upload":
 		m.StorageUploadDuration.Observe(duration.Seconds())
-	} else if operation == "download" {
+	case "download":
 		m.StorageDownloadDuration.Observe(duration.Seconds())
 	}
-	
+
 	if err != nil {
 		m.StorageErrorsTotal.WithLabelValues(operation).Inc()
 	}
