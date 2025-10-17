@@ -23,6 +23,12 @@ const (
 	// Batch operation limits
 	maxBatchDeleteSize = 25 // DynamoDB BatchWriteItem limit
 	bulkQueryLimit     = 1000
+
+	// DynamoDB expression attribute names
+	ownerIDAttr = ":ownerid"
+
+	// Error messages
+	errUnmarshalDocument = "failed to unmarshal document: %w"
 )
 
 // dynamoDBDocumentRepository implements the DocumentRepository interface using AWS DynamoDB
@@ -72,10 +78,10 @@ func (repo *dynamoDBDocumentRepository) FindByHashAndOwnerID(ctx context.Context
 	result, err := repo.client.Query(ctx, &dynamodb.QueryInput{
 		TableName:              aws.String(repo.tableName),
 		IndexName:              aws.String(hashOwnerIndexName),
-		KeyConditionExpression: aws.String("HashSHA256 = :hash AND OwnerID = :ownerid"),
+		KeyConditionExpression: aws.String("HashSHA256 = :hash AND OwnerID = " + ownerIDAttr),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":hash":    &types.AttributeValueMemberS{Value: hashSHA256},
-			":ownerid": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", ownerID)},
+			":hash":     &types.AttributeValueMemberS{Value: hashSHA256},
+			ownerIDAttr: &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", ownerID)},
 		},
 		Limit: aws.Int32(1),
 	})
@@ -89,7 +95,7 @@ func (repo *dynamoDBDocumentRepository) FindByHashAndOwnerID(ctx context.Context
 
 	var document models.Document
 	if err := attributevalue.UnmarshalMap(result.Items[0], &document); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal document: %w", err)
+		return nil, fmt.Errorf(errUnmarshalDocument, err)
 	}
 	return &document, nil
 }
@@ -114,7 +120,7 @@ func (repo *dynamoDBDocumentRepository) GetByID(ctx context.Context, id string) 
 
 	var document models.Document
 	if err := attributevalue.UnmarshalMap(result.Items[0], &document); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal document: %w", err)
+		return nil, fmt.Errorf(errUnmarshalDocument, err)
 	}
 	return &document, nil
 }
@@ -122,33 +128,50 @@ func (repo *dynamoDBDocumentRepository) GetByID(ctx context.Context, id string) 
 // List retrieves a paginated list of documents for a specific owner using the OwnerIDIndex GSI
 // Returns documents sorted by creation date (most recent first)
 func (repo *dynamoDBDocumentRepository) List(ctx context.Context, ownerID int64, limit, offset int) ([]*models.Document, int64, error) {
-	// First, get total count
+	totalCount, err := repo.countDocumentsByOwner(ctx, ownerID)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if offset >= int(totalCount) {
+		return []*models.Document{}, totalCount, nil
+	}
+
+	documents, err := repo.fetchPaginatedDocuments(ctx, ownerID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return documents, totalCount, nil
+}
+
+// countDocumentsByOwner returns the total count of documents for a specific owner
+func (repo *dynamoDBDocumentRepository) countDocumentsByOwner(ctx context.Context, ownerID int64) (int64, error) {
 	countInput := &dynamodb.QueryInput{
 		TableName:              aws.String(repo.tableName),
 		IndexName:              aws.String(ownerIDIndexName),
-		KeyConditionExpression: aws.String("OwnerID = :ownerid"),
+		KeyConditionExpression: aws.String("OwnerID = " + ownerIDAttr),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":ownerid": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", ownerID)},
+			ownerIDAttr: &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", ownerID)},
 		},
 		Select: types.SelectCount,
 	}
 
 	countResult, err := repo.client.Query(ctx, countInput)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to count documents: %w", err)
+		return 0, fmt.Errorf("failed to count documents: %w", err)
 	}
-	totalCount := int64(countResult.Count)
+	return int64(countResult.Count), nil
+}
 
-	if offset >= int(totalCount) {
-		return []*models.Document{}, totalCount, nil
-	}
-
+// fetchPaginatedDocuments retrieves paginated documents for an owner
+func (repo *dynamoDBDocumentRepository) fetchPaginatedDocuments(ctx context.Context, ownerID int64, limit, offset int) ([]*models.Document, error) {
 	queryInput := &dynamodb.QueryInput{
 		TableName:              aws.String(repo.tableName),
 		IndexName:              aws.String(ownerIDIndexName),
-		KeyConditionExpression: aws.String("OwnerID = :ownerid"),
+		KeyConditionExpression: aws.String("OwnerID = " + ownerIDAttr),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":ownerid": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", ownerID)},
+			ownerIDAttr: &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", ownerID)},
 		},
 		ScanIndexForward: aws.Bool(false),
 	}
@@ -158,14 +181,14 @@ func (repo *dynamoDBDocumentRepository) List(ctx context.Context, ownerID int64,
 	itemsSkipped := 0
 	itemsCollected := 0
 
-	for {
+	for itemsCollected < limit {
 		if lastEvaluatedKey != nil {
 			queryInput.ExclusiveStartKey = lastEvaluatedKey
 		}
 
 		result, err := repo.client.Query(ctx, queryInput)
 		if err != nil {
-			return nil, 0, fmt.Errorf("failed to list documents: %w", err)
+			return nil, fmt.Errorf("failed to list documents: %w", err)
 		}
 
 		for _, item := range result.Items {
@@ -175,24 +198,24 @@ func (repo *dynamoDBDocumentRepository) List(ctx context.Context, ownerID int64,
 			}
 
 			if itemsCollected >= limit {
-				return documents, totalCount, nil
+				return documents, nil
 			}
 
 			var doc models.Document
 			if err := attributevalue.UnmarshalMap(item, &doc); err != nil {
-				return nil, 0, fmt.Errorf("failed to unmarshal document: %w", err)
+				return nil, fmt.Errorf(errUnmarshalDocument, err)
 			}
 			documents = append(documents, &doc)
 			itemsCollected++
 		}
 
 		lastEvaluatedKey = result.LastEvaluatedKey
-		if lastEvaluatedKey == nil || itemsCollected >= limit {
+		if lastEvaluatedKey == nil {
 			break
 		}
 	}
 
-	return documents, totalCount, nil
+	return documents, nil
 }
 
 // DeleteByID removes a document by its ID and returns the deleted document

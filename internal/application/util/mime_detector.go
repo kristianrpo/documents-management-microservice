@@ -5,6 +5,11 @@ import (
 	"strings"
 )
 
+const (
+	// DefaultMimeType is the fallback MIME type for unknown file types
+	DefaultMimeType = "application/octet-stream"
+)
+
 // MimeTypeDetector defines the interface for detecting MIME types from filenames
 type MimeTypeDetector interface {
 	DetectFromFilename(filename string) string
@@ -35,7 +40,7 @@ func NewExtensionBasedDetector() MimeTypeDetector {
 			".xls":  "application/vnd.ms-excel",
 			".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 		},
-		defaultType: "application/octet-stream",
+		defaultType: DefaultMimeType,
 	}
 }
 
@@ -68,9 +73,9 @@ func NewHybridDetector(detectors ...MimeTypeDetector) MimeTypeDetector {
 // DetectFromFilename tries each detector in sequence until a specific MIME type is found
 func (h *HybridDetector) DetectFromFilename(filename string) string {
 	for _, detector := range h.detectors {
-		if mimeType := detector.DetectFromFilename(filename); mimeType != "" && mimeType != "application/octet-stream" {
+		if mimeType := detector.DetectFromFilename(filename); mimeType != "" && mimeType != DefaultMimeType {
 			return mimeType
 		}
 	}
-	return "application/octet-stream"
+	return DefaultMimeType
 }
