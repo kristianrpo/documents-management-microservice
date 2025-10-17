@@ -24,24 +24,24 @@ type RabbitMQClient struct {
 func NewRabbitMQClient(cfg config.RabbitMQConfig) (*RabbitMQClient, error) {
 	var conn *amqp091.Connection
 	var err error
-	
+
 	maxRetries := 5
 	retryDelay := 2 * time.Second
-	
+
 	for i := 0; i < maxRetries; i++ {
 		conn, err = amqp091.Dial(cfg.URL)
 		if err == nil {
 			log.Printf("Connected to RabbitMQ at %s (attempt %d/%d)", cfg.URL, i+1, maxRetries)
 			break
 		}
-		
+
 		if i < maxRetries-1 {
-			log.Printf("Failed to connect to RabbitMQ (attempt %d/%d): %v. Retrying in %v...", 
+			log.Printf("Failed to connect to RabbitMQ (attempt %d/%d): %v. Retrying in %v...",
 				i+1, maxRetries, err, retryDelay)
 			time.Sleep(retryDelay)
 		}
 	}
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to RabbitMQ after %d attempts: %w", maxRetries, err)
 	}
