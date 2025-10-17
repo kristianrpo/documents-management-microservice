@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 	"strconv"
 
@@ -60,8 +59,6 @@ func (h *DocumentTransferHandler) PrepareTransfer(c *gin.Context) {
 		return
 	}
 
-	log.Println("Preparing transfer for user ID:", idCitizen)
-
 	results, err := h.transferService.PrepareTransfer(c.Request.Context(), idCitizen)
 	if err != nil {
 		h.errorHandler.HandleError(c, err)
@@ -87,8 +84,6 @@ func (h *DocumentTransferHandler) PrepareTransfer(c *gin.Context) {
 			ExpiresAt:    expiresAt,
 		})
 	}
-
-	log.Println("Successfully prepared", len(transferDocuments), "documents for transfer (user ID:", idCitizen, ")")
 
 	// Increment transfer metric
 	h.metrics.TransferRequestsTotal.Inc()
