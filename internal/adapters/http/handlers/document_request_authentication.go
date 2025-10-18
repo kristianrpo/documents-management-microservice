@@ -45,6 +45,18 @@ func NewDocumentRequestAuthenticationHandler(
 // @Failure 500 {object} endpoints.RequestAuthenticationErrorResponse "Internal server error"
 // @Router /api/v1/documents/{id}/request-authentication [post]
 func (h *DocumentRequestAuthenticationHandler) RequestAuthentication(c *gin.Context) {
+	// If the authentication service is not available (e.g., RabbitMQ disabled or failed to initialize),
+	// return a clear 503 error instead of panicking on nil pointer dereference.
+	if h.authService == nil {
+		c.JSON(http.StatusServiceUnavailable, endpoints.RequestAuthenticationErrorResponse{
+			Success: false,
+			Error: shared.ErrorDetail{
+				Code:    "SERVICE_UNAVAILABLE",
+				Message: "Authentication service is not available. Please try again later.",
+			},
+		})
+		return
+	}
 	documentID := c.Param("id")
 	if documentID == "" {
 		c.JSON(http.StatusBadRequest, endpoints.RequestAuthenticationErrorResponse{
@@ -63,8 +75,10 @@ func (h *DocumentRequestAuthenticationHandler) RequestAuthentication(c *gin.Cont
 		return
 	}
 
-	// Increment authentication requests counter
-	h.metrics.AuthRequestsTotal.Inc()
+	// Increment authentication requests counter (guard against nil metrics in tests or misconfig)
+	if h.metrics != nil && h.metrics.AuthRequestsTotal != nil {
+		h.metrics.AuthRequestsTotal.Inc()
+	}
 
 	c.JSON(http.StatusAccepted, endpoints.RequestAuthenticationResponse{
 		Success: true,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/rabbitmq/amqp091-go"
 )
@@ -16,43 +17,71 @@ type RabbitMQPublisher struct {
 
 // NewRabbitMQPublisher creates a new RabbitMQ message publisher
 func NewRabbitMQPublisher(client *RabbitMQClient) (*RabbitMQPublisher, error) {
-	channel, err := client.CreateChannel()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create publisher channel: %w", err)
-	}
-
+	// Lazy initialization: do not require a channel at startup.
+	// The channel will be created on-demand in Publish(), allowing the app
+	// to start even if RabbitMQ is unavailable initially.
 	return &RabbitMQPublisher{
 		client:  client,
-		channel: channel,
+		channel: nil,
 	}, nil
 }
 
 // Publish sends a message to the specified RabbitMQ queue
 func (p *RabbitMQPublisher) Publish(ctx context.Context, queue string, message []byte) error {
-	// Declare the queue (idempotent operation)
-	if err := p.client.DeclareQueue(p.channel, queue); err != nil {
-		return err
-	}
+	// Retry a few times in case the connection/channel is being re-established
+	const maxRetries = 3
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		if attempt > 0 {
+			time.Sleep(1 * time.Second)
+		}
 
-	// Publish the message
-	err := p.channel.PublishWithContext(
-		ctx,
-		"",    // exchange (empty = default exchange)
-		queue, // routing key (queue name)
-		false, // mandatory
-		false, // immediate
-		amqp091.Publishing{
-			DeliveryMode: amqp091.Persistent, // Make message persistent
-			ContentType:  "application/json",
-			Body:         message,
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("failed to publish message: %w", err)
-	}
+		ch := p.channel
+		if ch == nil || ch.IsClosed() {
+			// Try to create a fresh channel
+			newCh, err := p.client.CreateChannel()
+			if err != nil {
+				lastErr = fmt.Errorf("publisher channel unavailable: %w", err)
+				continue
+			}
+			p.channel = newCh
+			ch = newCh
+		}
 
-	log.Printf("Published message to queue: %s", queue)
-	return nil
+		// Declare the queue (idempotent)
+		if err := p.client.DeclareQueue(ch, queue); err != nil {
+			lastErr = err
+			// Force channel refresh on next attempt
+			_ = ch.Close()
+			p.channel = nil
+			continue
+		}
+
+		// Publish the message
+		err := ch.PublishWithContext(
+			ctx,
+			"",
+			queue,
+			false,
+			false,
+			amqp091.Publishing{
+				DeliveryMode: amqp091.Persistent,
+				ContentType:  "application/json",
+				Body:         message,
+			},
+		)
+		if err != nil {
+			lastErr = fmt.Errorf("failed to publish message: %w", err)
+			// Force channel refresh on next attempt
+			_ = ch.Close()
+			p.channel = nil
+			continue
+		}
+
+		log.Printf("Published message to queue: %s", queue)
+		return nil
+	}
+	return fmt.Errorf("publish failed after retries: %w", lastErr)
 }
 
 // Close closes the publisher channel (connection is managed by RabbitMQClient)

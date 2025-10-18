@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: documents
+resources:
+  - namespace.yaml
+  - service-account.yaml
+  - service.yaml
+  - deployment.yaml
+  - hpa.yaml
+  - rabbitmq.yaml
+  - dynamodb.yaml
+  - minio.yaml
+  - ingress.yaml
+images:
+  - name: REPOSITORY/documents-service
+    newName: kristianrpo30/documents-microservice
+    newTag: latest
