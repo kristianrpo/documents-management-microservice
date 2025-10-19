@@ -5,9 +5,9 @@ resources:
   - namespace.yaml
   - service-account.yaml
   - service.yaml
+  - externalsecrets.yaml
   - deployment.yaml
   - hpa.yaml
-  - externalsecrets.yaml
   - ingress.yaml
   - servicemonitor.yaml
 images:
