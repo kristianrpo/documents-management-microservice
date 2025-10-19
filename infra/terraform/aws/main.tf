@@ -288,7 +288,7 @@ module "irsa_aws_load_balancer_controller" {
 output "s3_bucket"                 { value = aws_s3_bucket.documents.bucket }
 output "dynamodb_table"            { value = aws_dynamodb_table.documents.name }
 output "rabbitmq_amqp_url"         {
-  value     = "amqps://appuser:${random_password.rabbitmq_password.result}@${aws_mq_broker.rabbitmq.instances[0].endpoints[0]}/"
+  value     = "amqps://appuser:${random_password.rabbitmq_password.result}@${replace(replace(aws_mq_broker.rabbitmq.instances[0].endpoints[0], "amqps://", ""), "amqp://", "")}/"
   sensitive = true
 }
 output "irsa_role_arn"             { value = module.irsa.iam_role_arn }
