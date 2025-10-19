@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: documents-service
+  namespace: documents
+  labels:
+    app: documents-service
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "80"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  selector:
+    app: documents-service
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http

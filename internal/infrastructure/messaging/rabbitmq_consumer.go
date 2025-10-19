@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/rabbitmq/amqp091-go"
 
@@ -12,25 +13,35 @@ import (
 
 // RabbitMQConsumer implements the MessageConsumer interface for RabbitMQ
 type RabbitMQConsumer struct {
-	client  *RabbitMQClient
-	channel *amqp091.Channel
+	client        *RabbitMQClient
+	channel       *amqp091.Channel
+	subscriptions map[string]interfaces.MessageHandler // queueName -> handler
 }
 
 // NewRabbitMQConsumer creates a new RabbitMQ message consumer
 func NewRabbitMQConsumer(client *RabbitMQClient) (*RabbitMQConsumer, error) {
-	channel, err := client.CreateChannel()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create consumer channel: %w", err)
+	// Attempt to create a channel, but do not fail if RabbitMQ is down.
+	channel, _ := client.CreateChannel()
+
+	r := &RabbitMQConsumer{
+		client:        client,
+		channel:       channel, // may be nil
+		subscriptions: make(map[string]interfaces.MessageHandler),
 	}
 
-	return &RabbitMQConsumer{
-		client:  client,
-		channel: channel,
-	}, nil
+	// Start monitor for channel close and initial creation/re-subscription
+	go r.monitorChannel()
+
+	return r, nil
 }
 
 // SubscribeToQueue starts consuming messages from the specified queue with the provided handler
 func (r *RabbitMQConsumer) SubscribeToQueue(ctx context.Context, queueName string, handler interfaces.MessageHandler) error {
+	// Keep subscription for re-subscribe after reconnect
+	if r.subscriptions == nil {
+		r.subscriptions = make(map[string]interfaces.MessageHandler)
+	}
+	r.subscriptions[queueName] = handler
 	if err := r.setupConsumer(queueName); err != nil {
 		return err
 	}
@@ -49,6 +60,15 @@ func (r *RabbitMQConsumer) SubscribeToQueue(ctx context.Context, queueName strin
 // setupConsumer declares the queue and sets QoS parameters
 func (r *RabbitMQConsumer) setupConsumer(queueName string) error {
 	cfg := r.client.GetConfig()
+
+	if r.channel == nil || r.channel.IsClosed() {
+		// Attempt to get a channel lazily
+		ch, err := r.client.CreateChannel()
+		if err != nil {
+			return fmt.Errorf("consumer channel unavailable: %w", err)
+		}
+		r.channel = ch
+	}
 
 	if err := r.client.DeclareQueue(r.channel, queueName); err != nil {
 		return err
@@ -91,10 +111,57 @@ func (r *RabbitMQConsumer) consumeMessages(ctx context.Context, queueName string
 			return
 		case msg, ok := <-msgs:
 			if !ok {
-				log.Printf("Message channel closed for queue: %s", queueName)
+				log.Printf("Message channel closed for queue: %s (will attempt to resubscribe)", queueName)
 				return
 			}
 			r.processMessage(ctx, queueName, msg, handler)
+		}
+	}
+}
+
+// monitorChannel watches the consumer channel and re-creates it on close, then re-subscribes
+func (r *RabbitMQConsumer) monitorChannel() {
+	for {
+		ch := r.channel
+		if ch == nil {
+			time.Sleep(1 * time.Second)
+			continue
+		}
+
+		closeCh := ch.NotifyClose(make(chan *amqp091.Error))
+		if err := <-closeCh; err != nil {
+			log.Printf("Consumer channel closed: %v. Reconnecting...", err)
+		} else {
+			log.Printf("Consumer channel closed cleanly")
+			return
+		}
+
+		// Try to recreate channel until success
+		for {
+			time.Sleep(2 * time.Second)
+			newCh, err := r.client.CreateChannel()
+			if err != nil {
+				log.Printf("Failed to recreate consumer channel: %v", err)
+				continue
+			}
+			r.channel = newCh
+			log.Printf("Consumer channel recreated successfully")
+			break
+		}
+
+		// Resubscribe to all queues
+		for q, h := range r.subscriptions {
+			if err := r.setupConsumer(q); err != nil {
+				log.Printf("Failed to setup consumer for queue %s after reconnect: %v", q, err)
+				continue
+			}
+			msgs, err := r.startConsuming(q)
+			if err != nil {
+				log.Printf("Failed to restart consuming for queue %s: %v", q, err)
+				continue
+			}
+			go r.consumeMessages(context.Background(), q, msgs, h)
+			log.Printf("Resubscribed to queue: %s", q)
 		}
 	}
 }

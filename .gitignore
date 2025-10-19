@@ -35,3 +35,10 @@ profile.out
 Thumbs.db
 .DS_Store
 report.xml
+
+# Kubernetes secrets - NEVER commit real secrets!
+k8s/**/secrets.yaml
+k8s/**/secret-*.yaml
+k8s/**/*-secrets.yaml
+!k8s/**/secrets.template.yaml
+!k8s/**/external-secrets*.yaml
