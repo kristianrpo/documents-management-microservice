@@ -54,16 +54,16 @@ module "eks" {
 
 # S3 bucket for documents
 resource "aws_s3_bucket" "documents" {
-  bucket = "${local.name}-bucket"
+  bucket        = "${local.name}-bucket"
   force_destroy = true
 }
 
 resource "aws_s3_bucket_public_access_block" "this" {
   bucket = aws_s3_bucket.documents.id
 
-  block_public_acls   = true
-  block_public_policy = true
-  ignore_public_acls  = true
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
   restrict_public_buckets = true
 }
 
@@ -103,19 +103,19 @@ resource "aws_dynamodb_table" "documents" {
 
 # Amazon MQ for RabbitMQ (managed) - small dev instance
 resource "aws_mq_broker" "rabbitmq" {
-  broker_name = "${local.name}-rabbitmq"
-  engine_type = "RabbitMQ"
-  engine_version = "3.13.1"
-  host_instance_type = "mq.t3.micro"
+  broker_name         = "${local.name}-rabbitmq"
+  engine_type         = "RabbitMQ"
+  engine_version      = "3.13.1"
+  host_instance_type  = "mq.t3.micro"
   publicly_accessible = false
-  deployment_mode = "SINGLE_INSTANCE"
+  deployment_mode     = "SINGLE_INSTANCE"
 
   user {
     username = "appuser"
     password = random_password.rabbitmq_password.result
   }
 
-  subnet_ids = [module.vpc.private_subnets[0]]
+  subnet_ids      = [module.vpc.private_subnets[0]]
   security_groups = [module.vpc.default_security_group_id]
 
   logs {
@@ -495,7 +495,7 @@ resource "kubernetes_service_account" "aws_load_balancer_controller" {
       "eks.amazonaws.com/role-arn" = module.irsa_aws_load_balancer_controller.iam_role_arn
     }
   }
-  
+
   depends_on = [module.eks]
 }
 
@@ -506,20 +506,20 @@ resource "helm_release" "aws_load_balancer_controller" {
   namespace  = "kube-system"
   version    = "1.7.1"
 
-  set {
-    name  = "clusterName"
-    value = module.eks.cluster_name
-  }
-
-  set {
-    name  = "serviceAccount.create"
-    value = "false"
-  }
-
-  set {
-    name  = "serviceAccount.name"
-    value = kubernetes_service_account.aws_load_balancer_controller.metadata[0].name
-  }
+  set = [
+    {
+      name  = "clusterName"
+      value = module.eks.cluster_name
+    },
+    {
+      name  = "serviceAccount.create"
+      value = "false"
+    },
+    {
+      name  = "serviceAccount.name"
+      value = kubernetes_service_account.aws_load_balancer_controller.metadata[0].name
+    }
+  ]
 
   depends_on = [
     kubernetes_service_account.aws_load_balancer_controller,
@@ -529,12 +529,12 @@ resource "helm_release" "aws_load_balancer_controller" {
 
 # External Secrets Operator (Helm)
 resource "helm_release" "external_secrets" {
-  name       = "external-secrets"
-  repository = "https://charts.external-secrets.io"
-  chart      = "external-secrets"
-  namespace  = "external-secrets"
+  name             = "external-secrets"
+  repository       = "https://charts.external-secrets.io"
+  chart            = "external-secrets"
+  namespace        = "external-secrets"
   create_namespace = true
-  version    = "0.9.11"
+  version          = "0.9.11"
 
   depends_on = [module.eks]
 }
@@ -547,7 +547,7 @@ resource "kubernetes_service_account" "external_secrets" {
       "eks.amazonaws.com/role-arn" = module.irsa_external_secrets.iam_role_arn
     }
   }
-  
+
   depends_on = [helm_release.external_secrets]
 }
 
@@ -589,57 +589,82 @@ resource "kubernetes_manifest" "prometheus_rules" {
 
 # Prometheus + Grafana Stack (Helm)
 resource "helm_release" "kube_prometheus_stack" {
-  name       = "kube-prometheus-stack"
-  repository = "https://prometheus-community.github.io/helm-charts"
-  chart      = "kube-prometheus-stack"
-  namespace  = "monitoring"
+  name             = "kube-prometheus-stack"
+  repository       = "https://prometheus-community.github.io/helm-charts"
+  chart            = "kube-prometheus-stack"
+  namespace        = "monitoring"
   create_namespace = true
-  version    = "56.6.2"
+  version          = "56.6.2"
 
-  set {
-    name  = "prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues"
-    value = "false"
-  }
-
-  set {
-    name  = "grafana.adminPassword"
-    value = "admin"
-  }
-
-  set {
-    name  = "grafana.service.type"
-    value = "LoadBalancer"
-  }
-
-  # Enable dashboard auto-discovery from ConfigMaps
-  set {
-    name  = "grafana.sidecar.dashboards.enabled"
-    value = "true"
-  }
-
-  set {
-    name  = "grafana.sidecar.dashboards.label"
-    value = "grafana_dashboard"
-  }
+  set = [
+    {
+      name  = "prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues"
+      value = "false"
+    },
+    {
+      name  = "grafana.adminPassword"
+      value = "admin"
+    },
+    {
+      name  = "grafana.service.type"
+      value = "LoadBalancer"
+    },
+    {
+      # Enable dashboard auto-discovery from ConfigMaps
+      name  = "grafana.sidecar.dashboards.enabled"
+      value = "true"
+    },
+    {
+      name  = "grafana.sidecar.dashboards.label"
+      value = "grafana_dashboard"
+    }
+  ]
 
   depends_on = [module.eks, kubernetes_config_map.grafana_dashboard]
 }
 
 # Outputs
-output "cluster_name" { value = module.eks.cluster_name }
-output "cluster_endpoint" { value = module.eks.cluster_endpoint }
-output "cluster_ca_certificate" { value = module.eks.cluster_certificate_authority_data }
+output "cluster_name" {
+  value = module.eks.cluster_name
+}
 
-output "s3_bucket" { value = aws_s3_bucket.documents.bucket }
-output "dynamodb_table" { value = aws_dynamodb_table.documents.name }
+output "cluster_endpoint" {
+  value = module.eks.cluster_endpoint
+}
+
+output "cluster_ca_certificate" {
+  value = module.eks.cluster_certificate_authority_data
+}
+
+output "s3_bucket" {
+  value = aws_s3_bucket.documents.bucket
+}
+
+output "dynamodb_table" {
+  value = aws_dynamodb_table.documents.name
+}
 
 output "rabbitmq_amqp_url" {
-  value = "amqps://appuser:${random_password.rabbitmq_password.result}@${aws_mq_broker.rabbitmq.instances[0].endpoints[0]}/"
+  value     = "amqps://appuser:${random_password.rabbitmq_password.result}@${aws_mq_broker.rabbitmq.instances[0].endpoints[0]}/"
   sensitive = true
 }
 
-output "irsa_role_arn" { value = module.irsa.iam_role_arn }
-output "secretsmanager_secret_name" { value = aws_secretsmanager_secret.app.name }
-output "secretsmanager_secret_arn" { value = aws_secretsmanager_secret.app.arn }
-output "eso_irsa_role_arn" { value = module.irsa_external_secrets.iam_role_arn }
-output "aws_lb_controller_role_arn" { value = module.irsa_aws_load_balancer_controller.iam_role_arn }
+output "irsa_role_arn" {
+  value = module.irsa.iam_role_arn
+}
+
+output "secretsmanager_secret_name" {
+  value = aws_secretsmanager_secret.app.name
+}
+
+output "secretsmanager_secret_arn" {
+  value = aws_secretsmanager_secret.app.arn
+}
+
+output "eso_irsa_role_arn" {
+  value = module.irsa_external_secrets.iam_role_arn
+}
+
+output "aws_lb_controller_role_arn" {
+  value = module.irsa_aws_load_balancer_controller.iam_role_arn
+}
