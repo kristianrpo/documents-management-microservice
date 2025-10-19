@@ -41,7 +41,7 @@ module "eks" {
 }
 
 resource "aws_s3_bucket" "documents" {
-  bucket        = "${local.name}-bucket"
+  bucket_prefix = "${local.name}-"
   force_destroy = true
 }
 
@@ -107,8 +107,9 @@ resource "aws_mq_broker" "rabbitmq" {
 }
 
 resource "random_password" "rabbitmq_password" {
-  length  = 20
-  special = true
+  length           = 20
+  special          = true
+  override_special = "!@#$%^&*()-_+." # sin [, ], :, =
 }
 
 resource "aws_secretsmanager_secret" "app" {
@@ -132,7 +133,7 @@ data "aws_iam_policy_document" "documents_policy" {
 }
 
 resource "aws_iam_policy" "documents" {
-  name   = "${local.name}-policy"
+  name_prefix = "${local.name}-policy-"
   policy = data.aws_iam_policy_document.documents_policy.json
 }
 
@@ -158,7 +159,7 @@ data "aws_iam_policy_document" "external_secrets" {
 }
 
 resource "aws_iam_policy" "external_secrets" {
-  name   = "${local.name}-external-secrets-policy"
+  name_prefix = "${local.name}-external-secrets-policy-"
   policy = data.aws_iam_policy_document.external_secrets.json
 }
 
@@ -177,7 +178,7 @@ module "irsa_external_secrets" {
 }
 
 resource "aws_iam_policy" "aws_load_balancer_controller" {
-  name        = "${local.name}-aws-load-balancer-controller"
+  name_prefix = "${local.name}-aws-load-balancer-controller-"
   description = "IAM policy for AWS Load Balancer Controller"
 
   policy = jsonencode({
