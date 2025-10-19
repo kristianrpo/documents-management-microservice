@@ -21,9 +21,9 @@ resource "helm_release" "aws_load_balancer_controller" {
   atomic     = true
   timeout    = 900
 
-  # NUEVA SINTAXIS: listas de objetos
+  # Sintaxis moderna: set = [ {name="", value=""}, ... ]
   set = [
-    { name = "clusterName",          value = coalesce(var.cluster_name, kubernetes_service_account.aws_load_balancer_controller.metadata[0].namespace) != "" ? local.effective_cluster_name : local.effective_cluster_name },
+    { name = "clusterName",           value = var.cluster_name },
     { name = "serviceAccount.create", value = "false" },
     { name = "serviceAccount.name",   value = kubernetes_service_account.aws_load_balancer_controller.metadata[0].name }
   ]
@@ -66,7 +66,7 @@ resource "kubernetes_config_map" "grafana_dashboard" {
     labels    = { grafana_dashboard = "1" }
   }
 
-  # Corrijo ruta relativa desde k8s/terraform/aws
+  # Ruta relativa desde k8s/terraform/aws
   data = {
     "documents-service-dashboard.json" = file("${path.module}/../../../grafana/provisioning/dashboards/documents-service-dashboard.json")
   }
@@ -85,7 +85,6 @@ resource "helm_release" "kube_prometheus_stack" {
   atomic           = true
   timeout          = 1200
 
-  # NUEVA SINTAXIS: set / set_sensitive como listas
   set = [
     { name = "prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues", value = "false" },
     { name = "grafana.service.type",                                             value = "LoadBalancer" },
@@ -111,11 +110,11 @@ resource "kubernetes_manifest" "prometheus_rules" {
       namespace = "monitoring"
       labels    = { prometheus = "kube-prometheus", role = "alert-rules" }
     }
-    # Corrijo ruta relativa
+    # Ruta relativa desde k8s/terraform/aws
     spec = yamldecode(file("${path.module}/../../../prometheus/alerts.yml"))
   }
 
-  # Asegura que la CRD exista antes
+  # La CRD viene con kube-prometheus-stack, así que esperamos a ese chart
   depends_on = [helm_release.kube_prometheus_stack]
 }
 

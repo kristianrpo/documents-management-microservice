@@ -1,0 +1,149 @@
+name: Destroy AWS (EKS + Infra)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Escribe EXACTAMENTE: I UNDERSTAND (para confirmar el destroy)'
+        required: true
+        default: ''
+      delete_backend:
+        description: 'Eliminar también el S3 backend y la tabla DynamoDB de locks? (true/false)'
+        required: true
+        default: 'false'
+
+permissions:
+  contents: read
+
+env:
+  TF_BACKEND_BUCKET: ${{ secrets.TF_BACKEND_BUCKET }}
+  TF_BACKEND_KEY: infra/terraform/aws/terraform.tfstate
+  TF_BACKEND_REGION: ${{ secrets.AWS_REGION }}
+  TF_BACKEND_DDB_TABLE: ${{ secrets.TF_BACKEND_DDB_TABLE }}
+
+jobs:
+  destroy:
+    name: Destroy EVERYTHING in AWS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Guard rail confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "I UNDERSTAND" ]; then
+            echo "Falta confirmación exacta: I UNDERSTAND"
+            exit 1
+          fi
+          echo "Confirmación OK"
+
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ secrets.AWS_REGION }}
+
+      - name: Install kubectl + jq
+        run: |
+          set -e
+          KUBECTL_VERSION=$(curl -sL https://dl.k8s.io/release/stable.txt)
+          curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+          chmod +x kubectl && sudo mv kubectl /usr/local/bin/kubectl
+          sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      # ---------------------------
+      # 1) Conectarnos al cluster con outputs del remote state
+      # ---------------------------
+      - name: Init Terraform (infra dir) para leer outputs del remote backend
+        working-directory: infra/terraform/aws
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=$TF_BACKEND_BUCKET" \
+            -backend-config="key=$TF_BACKEND_KEY" \
+            -backend-config="region=$TF_BACKEND_REGION" \
+            -backend-config="dynamodb_table=$TF_BACKEND_DDB_TABLE" \
+            -backend-config="encrypt=true"
+
+      - name: Update kubeconfig (EKS) si el cluster aún existe
+        id: kubeconfig
+        continue-on-error: true
+        run: |
+          set -e
+          CLUSTER_NAME=$(terraform -chdir=infra/terraform/aws output -raw cluster_name)
+          echo "cluster_name=$CLUSTER_NAME" >> $GITHUB_OUTPUT
+          aws eks update-kubeconfig --name "$CLUSTER_NAME" --region "${{ secrets.AWS_REGION }}"
+          kubectl version --client
+          kubectl get nodes || true
+
+      # ---------------------------
+      # 2) Limpiar K8s (Helm/Kubectl) — fase 2 sin state local
+      #    Esto evita que queden CRDs/recursos bloqueando el destroy
+      # ---------------------------
+      - name: Uninstall Helm releases (best effort)
+        if: steps.kubeconfig.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -e
+          echo "Eliminando charts via Helm (si existen)"
+          helm uninstall aws-load-balancer-controller -n kube-system || true
+          helm uninstall external-secrets -n external-secrets   || true
+          helm uninstall kube-prometheus-stack -n monitoring    || true
+
+      - name: Delete K8s objects creados por archivos sueltos (best effort)
+        if: steps.kubeconfig.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -e
+          echo "Eliminando recursos sueltos (ConfigMaps/CRDs) si quedaron"
+          # ConfigMap del dashboard
+          kubectl delete configmap documents-service-dashboard -n monitoring --ignore-not-found
+          # PrometheusRule (si quedó)
+          kubectl delete prometheusrule documents-service-alerts -n monitoring --ignore-not-found
+          # Namespaces (si quieres limpiar)
+          kubectl delete ns external-secrets --ignore-not-found
+          kubectl delete ns monitoring --ignore-not-found
+
+      # ---------------------------
+      # 3) Destroy Terraform - Infra (Fase 1) con remote state
+      # ---------------------------
+      - name: Terraform Destroy (infra)
+        working-directory: infra/terraform/aws
+        env:
+          TF_LOG: INFO
+        run: |
+          set -e
+          terraform destroy -auto-approve -input=false
+
+      # ---------------------------
+      # 4) (Opcional) Borrar el backend remoto (S3+DynDB)
+      #    SOLO si el usuario marcó delete_backend=true
+      # ---------------------------
+      - name: Delete remote backend (S3 + DynamoDB)
+        if: ${{ github.event.inputs.delete_backend == 'true' }}
+        run: |
+          set -e
+          echo "Eliminando backend remoto (S3 + DynamoDB)."
+          echo "   Bucket: $TF_BACKEND_BUCKET"
+          echo "   Key:    $TF_BACKEND_KEY"
+          echo "   DDB:    $TF_BACKEND_DDB_TABLE"
+
+          # Eliminar el objeto de state
+          aws s3api delete-object --bucket "$TF_BACKEND_BUCKET" --key "$TF_BACKEND_KEY" || true
+
+          # (Por si hay versiones/locks) limpiar prefijo del proyecto
+          aws s3 rm "s3://$TF_BACKEND_BUCKET/$(dirname "$TF_BACKEND_KEY")" --recursive || true
+
+          # Intentar borrar el bucket (si SOLO lo usabas para Terraform; si no, comenta esto)
+          aws s3 rb "s3://$TF_BACKEND_BUCKET" --force || true
+
+          # Eliminar tabla de locks
+          aws dynamodb delete-table --table-name "$TF_BACKEND_DDB_TABLE" || true
+
+      - name: Done
+        run: echo "Destroy terminado."
