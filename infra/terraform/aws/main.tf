@@ -110,6 +110,27 @@ resource "random_password" "rabbitmq_password" {
   override_special = "!@#$%^&*()-_+."
 }
 
+resource "aws_security_group" "rabbitmq" {
+  name        = "rabbitmq-sg"
+  description = "Security group for RabbitMQ broker"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    description = "Allow RabbitMQ AMQPS access"
+    from_port   = 5671
+    to_port     = 5671
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
 resource "aws_mq_broker" "rabbitmq" {
   broker_name                 = "${local.name}-rabbitmq-${random_id.suffix.hex}"
   engine_type                 = "RabbitMQ"
@@ -125,7 +146,7 @@ resource "aws_mq_broker" "rabbitmq" {
   }
 
   subnet_ids      = [module.vpc.private_subnets[0]]
-  security_groups = [module.vpc.default_security_group_id]
+  security_groups = [aws_security_group.rabbitmq.id]
 
   logs { general = true }
 }
