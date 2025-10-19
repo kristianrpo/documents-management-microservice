@@ -14,11 +14,11 @@ import (
 // RabbitMQClient manages a shared RabbitMQ connection with auto-reconnection
 // Following RabbitMQ best practices: one connection, multiple channels
 type RabbitMQClient struct {
-	conn          *amqp091.Connection
-	config        config.RabbitMQConfig
-	mu            sync.RWMutex
-	reconnecting  bool
-	stopMonitor   chan struct{}
+	conn         *amqp091.Connection
+	config       config.RabbitMQConfig
+	mu           sync.RWMutex
+	reconnecting bool
+	stopMonitor  chan struct{}
 }
 
 // NewRabbitMQClient creates a new RabbitMQ client with a shared connection

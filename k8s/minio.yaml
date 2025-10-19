@@ -69,7 +69,20 @@ spec:
               memory: 1Gi
       volumes:
         - name: data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: minio-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-data
+  namespace: documents
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
 ---
 apiVersion: batch/v1
 kind: Job
