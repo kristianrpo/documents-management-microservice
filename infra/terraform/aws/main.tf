@@ -74,9 +74,18 @@ resource "aws_dynamodb_table" "documents" {
   hash_key     = "DocumentID"
   range_key    = "OwnerID"
 
-  attribute { name = "DocumentID" type = "S" }
-  attribute { name = "OwnerID"    type = "N" }
-  attribute { name = "HashSHA256" type = "S" }
+  attribute {
+    name = "DocumentID"
+    type = "S"
+  }
+  attribute {
+    name = "OwnerID"
+    type = "N"
+  }
+  attribute {
+    name = "HashSHA256"
+    type = "S"
+  }
 
   global_secondary_index {
     name            = "OwnerIDIndex"
@@ -101,15 +110,23 @@ resource "aws_mq_broker" "rabbitmq" {
   publicly_accessible = false
   deployment_mode = "SINGLE_INSTANCE"
 
-  user { username = "appuser" password = random_password.rabbitmq_password.result }
+  user {
+    username = "appuser"
+    password = random_password.rabbitmq_password.result
+  }
 
   subnet_ids = [module.vpc.private_subnets[0]]
   security_groups = [module.vpc.default_security_group_id]
 
-  logs { general = true }
+  logs {
+    general = true
+  }
 }
 
-resource "random_password" "rabbitmq_password" { length = 20 special = true }
+resource "random_password" "rabbitmq_password" {
+  length  = 20
+  special = true
+}
 
 # Secrets Manager secret for application configuration
 resource "aws_secretsmanager_secret" "app" {
