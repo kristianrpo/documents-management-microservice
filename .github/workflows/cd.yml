@@ -228,6 +228,17 @@ jobs:
                 RABBITMQ_AUTH_RESULT_QUEUE: $auth_result_queue
               }')" || true
 
+      - name: Render K8s templates with infra outputs
+        env:
+          TF_DIR: infra/terraform/aws
+        run: |
+          set -euo pipefail
+          SECRET_NAME=$(terraform -chdir=$TF_DIR output -raw secretsmanager_secret_name)
+          REGION='${{ secrets.AWS_REGION }}'
+          # Sustituir placeholders en External Secrets
+          sed -i "s|__AWS_REGION__|$REGION|g" k8s/externalsecrets.yaml
+          sed -i "s|__AWS_SECRET_NAME__|$SECRET_NAME|g" k8s/externalsecrets.yaml
+
       - name: Deploy application
         run: |
           kubectl apply -k k8s/
