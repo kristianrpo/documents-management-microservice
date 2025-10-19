@@ -7,10 +7,9 @@ resources:
   - service.yaml
   - deployment.yaml
   - hpa.yaml
-  - rabbitmq.yaml
-  - dynamodb.yaml
-  - minio.yaml
+  - externalsecrets.yaml
   - ingress.yaml
+  - servicemonitor.yaml
 images:
   - name: REPOSITORY/documents-service
     newName: kristianrpo30/documents-microservice
