@@ -104,6 +104,25 @@ jobs:
         with:
           terraform_wrapper: false
 
+      - name: Terraform Init (infra dir to read outputs)
+        working-directory: infra/terraform/aws
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=$TF_BACKEND_BUCKET" \
+            -backend-config="key=$TF_BACKEND_KEY" \
+            -backend-config="region=$TF_BACKEND_REGION" \
+            -backend-config="dynamodb_table=$TF_BACKEND_DDB_TABLE" \
+            -backend-config="encrypt=true"
+
+      - name: Read infra outputs (EKS + IRSA)
+        id: infra_outputs
+        run: |
+          echo "CLUSTER_NAME=$(terraform -chdir=infra/terraform/aws output -raw cluster_name)" >> $GITHUB_OUTPUT
+          echo "CLUSTER_ENDPOINT=$(terraform -chdir=infra/terraform/aws output -raw cluster_endpoint)" >> $GITHUB_OUTPUT
+          echo "CLUSTER_CA=$(terraform -chdir=infra/terraform/aws output -raw cluster_ca_certificate)" >> $GITHUB_OUTPUT
+          echo "AWS_LB_ROLE_ARN=$(terraform -chdir=infra/terraform/aws output -raw aws_lb_controller_role_arn)" >> $GITHUB_OUTPUT
+          echo "ESO_IRSA_ROLE_ARN=$(terraform -chdir=infra/terraform/aws output -raw eso_irsa_role_arn)" >> $GITHUB_OUTPUT
+
       - name: Terraform Init (k8s)
         working-directory: k8s/terraform/aws
         run: terraform init -input=false -upgrade
@@ -116,7 +135,14 @@ jobs:
         working-directory: k8s/terraform/aws
         env:
           TF_LOG: INFO
-        run: terraform apply -auto-approve -input=false
+        run: |
+          terraform apply -auto-approve -input=false \
+            -var "aws_region=${{ secrets.AWS_REGION }}" \
+            -var "cluster_name=${{ steps.infra_outputs.outputs.CLUSTER_NAME }}" \
+            -var "cluster_endpoint=${{ steps.infra_outputs.outputs.CLUSTER_ENDPOINT }}" \
+            -var "cluster_ca_certificate=${{ steps.infra_outputs.outputs.CLUSTER_CA }}" \
+            -var "aws_lb_controller_role_arn=${{ steps.infra_outputs.outputs.AWS_LB_ROLE_ARN }}" \
+            -var "eso_irsa_role_arn=${{ steps.infra_outputs.outputs.ESO_IRSA_ROLE_ARN }}"
 
   app-deploy:
     name: Deploy Application to EKS (kubectl/kustomize) - Phase 3
