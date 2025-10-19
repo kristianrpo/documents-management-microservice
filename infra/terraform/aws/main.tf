@@ -1,4 +1,10 @@
-locals { name = "${var.project}-${var.environment}" }
+locals {
+  name = "${var.project}-${var.environment}"
+}
+
+resource "random_id" "suffix" {
+  byte_length = 2
+}
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
@@ -22,12 +28,12 @@ module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 20.8"
 
-  cluster_name                    = local.name
-  cluster_version                 = "1.30"
-  cluster_endpoint_public_access  = true
-  vpc_id                          = module.vpc.vpc_id
-  subnet_ids                      = module.vpc.private_subnets
-  enable_irsa                     = true
+  cluster_name                   = local.name
+  cluster_version                = "1.30"
+  cluster_endpoint_public_access = true
+  vpc_id                         = module.vpc.vpc_id
+  subnet_ids                     = module.vpc.private_subnets
+  enable_irsa                    = true
 
   eks_managed_node_groups = {
     default = {
@@ -54,7 +60,7 @@ resource "aws_s3_bucket_public_access_block" "this" {
 }
 
 resource "aws_dynamodb_table" "documents" {
-  name         = "Documents"
+  name         = "${local.name}-documents-${random_id.suffix.hex}"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "DocumentID"
   range_key    = "OwnerID"
@@ -86,11 +92,16 @@ resource "aws_dynamodb_table" "documents" {
   }
 }
 
+resource "random_password" "rabbitmq_password" {
+  length           = 20
+  special          = true
+  override_special = "!@#$%^&*()-_+." # sin [, ], :, =
+}
 
 resource "aws_mq_broker" "rabbitmq" {
-  broker_name         = "${local.name}-rabbitmq"
+  broker_name         = "${local.name}-rabbitmq-${random_id.suffix.hex}"
   engine_type         = "RabbitMQ"
-  engine_version      = "3.13.1"
+  engine_version      = "3.13"
   host_instance_type  = "mq.t3.micro"
   publicly_accessible = false
   deployment_mode     = "SINGLE_INSTANCE"
@@ -106,17 +117,15 @@ resource "aws_mq_broker" "rabbitmq" {
   logs { general = true }
 }
 
-resource "random_password" "rabbitmq_password" {
-  length           = 20
-  special          = true
-  override_special = "!@#$%^&*()-_+." # sin [, ], :, =
-}
-
+# ──────────────────────────────────────────────────────────────────────────────
+# Secret Manager (nombre único para evitar ResourceExists)
 resource "aws_secretsmanager_secret" "app" {
-  name        = "${local.name}/application"
+  name        = "${local.name}/application-${random_id.suffix.hex}"
   description = "Documents service application configuration"
 }
 
+# ──────────────────────────────────────────────────────────────────────────────
+# IAM policies (name_prefix ⇒ no colisiona si no hay state)
 data "aws_iam_policy_document" "documents_policy" {
   statement {
     actions   = ["s3:PutObject","s3:GetObject","s3:DeleteObject","s3:ListBucket"]
@@ -261,15 +270,16 @@ module "irsa_aws_load_balancer_controller" {
   role_policy_arns = { aws_load_balancer_controller = aws_iam_policy.aws_load_balancer_controller.arn }
 }
 
-# Otros outputs útiles
-output "s3_bucket" { value = aws_s3_bucket.documents.bucket }
-output "dynamodb_table" { value = aws_dynamodb_table.documents.name }
-output "rabbitmq_amqp_url" {
+# ──────────────────────────────────────────────────────────────────────────────
+# Outputs (tu pipeline leerá estos; no asumas nombres fijos)
+output "s3_bucket"                 { value = aws_s3_bucket.documents.bucket }
+output "dynamodb_table"            { value = aws_dynamodb_table.documents.name }
+output "rabbitmq_amqp_url"         {
   value     = "amqps://appuser:${random_password.rabbitmq_password.result}@${aws_mq_broker.rabbitmq.instances[0].endpoints[0]}/"
   sensitive = true
 }
-output "irsa_role_arn"               { value = module.irsa.iam_role_arn }
-output "secretsmanager_secret_name"  { value = aws_secretsmanager_secret.app.name }
-output "secretsmanager_secret_arn"   { value = aws_secretsmanager_secret.app.arn }
-output "eso_irsa_role_arn"           { value = module.irsa_external_secrets.iam_role_arn }
-output "aws_lb_controller_role_arn"  { value = module.irsa_aws_load_balancer_controller.iam_role_arn }
+output "irsa_role_arn"             { value = module.irsa.iam_role_arn }
+output "secretsmanager_secret_name"{ value = aws_secretsmanager_secret.app.name }
+output "secretsmanager_secret_arn" { value = aws_secretsmanager_secret.app.arn }
+output "eso_irsa_role_arn"         { value = module.irsa_external_secrets.iam_role_arn }
+output "aws_lb_controller_role_arn"{ value = module.irsa_aws_load_balancer_controller.iam_role_arn }
