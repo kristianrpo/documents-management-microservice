@@ -84,6 +84,7 @@ resource "helm_release" "kube_prometheus_stack" {
   wait             = true
   atomic           = true
   timeout          = 1200
+  skip_crds        = false
 
   set = [
     { name = "prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues", value = "false" },
@@ -96,30 +97,18 @@ resource "helm_release" "kube_prometheus_stack" {
     { name = "grafana.adminPassword", value = "admin" }
   ]
 
+  # Inyectamos las reglas como parte del chart para evitar la carrera con la CRD
+  values = [
+    yamlencode({
+      prometheus = {
+        additionalPrometheusRulesMap = {
+          "documents-service-alerts" = yamldecode(file("${path.module}/../../../prometheus/alerts.yml"))
+        }
+      }
+    })
+  ]
+
   depends_on = [kubernetes_config_map.grafana_dashboard]
-}
-
-# Espera para que se registren CRDs de monitoring.coreos.com
-resource "time_sleep" "wait_for_crds" {
-  depends_on      = [helm_release.kube_prometheus_stack]
-  create_duration = "60s"
-}
-
-# -------- PrometheusRule (CRD) --------
-resource "kubernetes_manifest" "prometheus_rules" {
-  provider = kubernetes.eks
-  depends_on = [time_sleep.wait_for_crds]
-  manifest = {
-    apiVersion = "monitoring.coreos.com/v1"
-    kind       = "PrometheusRule"
-    metadata = {
-      name      = "documents-service-alerts"
-      namespace = "monitoring"
-      labels    = { prometheus = "kube-prometheus", role = "alert-rules" }
-    }
-    # Ruta relativa desde k8s/terraform/aws
-    spec = yamldecode(file("${path.module}/../../../prometheus/alerts.yml"))
-  }
 }
 
 # -------- Outputs útiles --------
