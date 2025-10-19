@@ -133,6 +133,26 @@ jobs:
             -backend-config="dynamodb_table=$TF_BACKEND_DDB_TABLE" \
             -backend-config="encrypt=true"
 
+      - name: Import existing K8s/Helm resources into state (idempotency)
+        working-directory: k8s/terraform/aws
+        env:
+          TF_VAR_aws_region: ${{ secrets.AWS_REGION }}
+          TF_VAR_cluster_name: ${{ steps.infra_outputs.outputs.CLUSTER_NAME }}
+          TF_VAR_cluster_endpoint: ${{ steps.infra_outputs.outputs.CLUSTER_ENDPOINT }}
+          TF_VAR_cluster_ca_certificate: ${{ steps.infra_outputs.outputs.CLUSTER_CA }}
+          TF_VAR_aws_lb_controller_role_arn: ${{ steps.infra_outputs.outputs.AWS_LB_ROLE_ARN }}
+          TF_VAR_eso_irsa_role_arn: ${{ steps.infra_outputs.outputs.ESO_IRSA_ROLE_ARN }}
+        run: |
+          set -euo pipefail
+          # Importar namespace 'monitoring' si ya existe
+          terraform import -input=false -no-color kubernetes_namespace.monitoring monitoring || true
+          # Importar ConfigMap del dashboard si ya existe
+          terraform import -input=false -no-color kubernetes_config_map.grafana_dashboard monitoring/documents-service-dashboard || true
+          # Importar releases Helm si ya existen
+          terraform import -input=false -no-color helm_release.aws_load_balancer_controller kube-system/aws-load-balancer-controller || true
+          terraform import -input=false -no-color helm_release.external_secrets external-secrets/external-secrets || true
+          terraform import -input=false -no-color helm_release.kube_prometheus_stack monitoring/kube-prometheus-stack || true
+
       - name: Terraform Validate (k8s)
         working-directory: k8s/terraform/aws
         run: terraform validate
