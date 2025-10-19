@@ -58,8 +58,14 @@ resource "kubernetes_service_account" "external_secrets" {
 }
 
 # -------- Grafana Dashboard (ConfigMap) --------
+resource "kubernetes_namespace" "monitoring" {
+  provider = kubernetes.eks
+  metadata { name = "monitoring" }
+}
+
 resource "kubernetes_config_map" "grafana_dashboard" {
   provider = kubernetes.eks
+  depends_on = [kubernetes_namespace.monitoring]
   metadata {
     name      = "documents-service-dashboard"
     namespace = "monitoring"
@@ -108,7 +114,13 @@ resource "helm_release" "kube_prometheus_stack" {
     })
   ]
 
-  depends_on = [kubernetes_config_map.grafana_dashboard]
+  depends_on = [kubernetes_namespace.monitoring]
+}
+
+# Espera breve para que el webhook/endpoints del ALB Controller estén disponibles
+resource "time_sleep" "wait_for_alb_webhook" {
+  depends_on      = [helm_release.aws_load_balancer_controller]
+  create_duration = "45s"
 }
 
 # -------- Outputs útiles --------
