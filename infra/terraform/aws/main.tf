@@ -179,7 +179,9 @@ module "irsa" {
     }
   }
 
-  role_policy_arns = [aws_iam_policy.documents.arn]
+  role_policy_arns = {
+    documents = aws_iam_policy.documents.arn
+  }
 }
 
 # Separate minimal policy and IRSA for External Secrets Controller
@@ -208,7 +210,9 @@ module "irsa_external_secrets" {
     }
   }
 
-  role_policy_arns = [aws_iam_policy.external_secrets.arn]
+  role_policy_arns = {
+    external_secrets = aws_iam_policy.external_secrets.arn
+  }
 }
 
 # AWS Load Balancer Controller IAM Policy
@@ -473,7 +477,9 @@ module "irsa_aws_load_balancer_controller" {
     }
   }
 
-  role_policy_arns = [aws_iam_policy.aws_load_balancer_controller.arn]
+  role_policy_arns = {
+    aws_load_balancer_controller = aws_iam_policy.aws_load_balancer_controller.arn
+  }
 }
 
 # ========================================
