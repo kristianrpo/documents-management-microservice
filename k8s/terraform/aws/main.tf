@@ -69,9 +69,9 @@ resource "helm_release" "kube_prometheus_stack" {
   namespace        = "monitoring"
   create_namespace = true
   version          = "56.6.2"
-  wait             = true
-  atomic           = true
-  timeout          = 1200
+  wait             = false
+  atomic           = false
+  timeout          = 600
   skip_crds        = false
 
   set = [
@@ -97,6 +97,12 @@ resource "helm_release" "kube_prometheus_stack" {
   ]
 
   depends_on = [kubernetes_namespace.monitoring]
+}
+
+# Espera no bloqueante del release pero con pausa para que CRDs y pods arranquen
+resource "time_sleep" "wait_after_kps_install" {
+  depends_on      = [helm_release.kube_prometheus_stack]
+  create_duration = "60s"
 }
 
 # Espera breve para que el webhook/endpoints del ALB Controller estén disponibles
