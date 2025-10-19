@@ -123,9 +123,15 @@ jobs:
           echo "AWS_LB_ROLE_ARN=$(terraform -chdir=infra/terraform/aws output -raw aws_lb_controller_role_arn)" >> $GITHUB_OUTPUT
           echo "ESO_IRSA_ROLE_ARN=$(terraform -chdir=infra/terraform/aws output -raw eso_irsa_role_arn)" >> $GITHUB_OUTPUT
 
-      - name: Terraform Init (k8s)
+      - name: Terraform Init (k8s - remote state)
         working-directory: k8s/terraform/aws
-        run: terraform init -input=false -upgrade
+        run: |
+          terraform init -input=false -upgrade \
+            -backend-config="bucket=$TF_BACKEND_BUCKET" \
+            -backend-config="key=k8s/terraform/aws/terraform.tfstate" \
+            -backend-config="region=$TF_BACKEND_REGION" \
+            -backend-config="dynamodb_table=$TF_BACKEND_DDB_TABLE" \
+            -backend-config="encrypt=true"
 
       - name: Terraform Validate (k8s)
         working-directory: k8s/terraform/aws
