@@ -488,6 +488,7 @@ module "irsa_aws_load_balancer_controller" {
 
 # AWS Load Balancer Controller (Helm)
 resource "kubernetes_service_account" "aws_load_balancer_controller" {
+  provider = kubernetes.eks
   metadata {
     name      = "aws-load-balancer-controller"
     namespace = "kube-system"
@@ -500,6 +501,7 @@ resource "kubernetes_service_account" "aws_load_balancer_controller" {
 }
 
 resource "helm_release" "aws_load_balancer_controller" {
+  provider   = helm.eks
   name       = "aws-load-balancer-controller"
   repository = "https://aws.github.io/eks-charts"
   chart      = "aws-load-balancer-controller"
@@ -529,6 +531,7 @@ resource "helm_release" "aws_load_balancer_controller" {
 
 # External Secrets Operator (Helm)
 resource "helm_release" "external_secrets" {
+  provider   = helm.eks
   name             = "external-secrets"
   repository       = "https://charts.external-secrets.io"
   chart            = "external-secrets"
@@ -540,6 +543,7 @@ resource "helm_release" "external_secrets" {
 }
 
 resource "kubernetes_service_account" "external_secrets" {
+  provider = kubernetes.eks
   metadata {
     name      = "external-secrets"
     namespace = "external-secrets"
@@ -553,6 +557,7 @@ resource "kubernetes_service_account" "external_secrets" {
 
 # Grafana Dashboard ConfigMap
 resource "kubernetes_config_map" "grafana_dashboard" {
+  provider = kubernetes.eks
   metadata {
     name      = "documents-service-dashboard"
     namespace = "monitoring"
@@ -570,6 +575,7 @@ resource "kubernetes_config_map" "grafana_dashboard" {
 
 # Prometheus Alert Rules (PrometheusRule CRD)
 resource "kubernetes_manifest" "prometheus_rules" {
+  provider = kubernetes.eks
   manifest = {
     apiVersion = "monitoring.coreos.com/v1"
     kind       = "PrometheusRule"
@@ -589,6 +595,7 @@ resource "kubernetes_manifest" "prometheus_rules" {
 
 # Prometheus + Grafana Stack (Helm)
 resource "helm_release" "kube_prometheus_stack" {
+  provider   = helm.eks
   name             = "kube-prometheus-stack"
   repository       = "https://prometheus-community.github.io/helm-charts"
   chart            = "kube-prometheus-stack"
