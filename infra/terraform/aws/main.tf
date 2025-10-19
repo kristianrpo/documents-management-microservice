@@ -34,7 +34,7 @@ module "eks" {
   vpc_id                         = module.vpc.vpc_id
   subnet_ids                     = module.vpc.private_subnets
   enable_irsa                    = true
-
+  create_cloudwatch_log_group    = false
   eks_managed_node_groups = {
     default = {
       min_size       = 2
@@ -95,16 +95,17 @@ resource "aws_dynamodb_table" "documents" {
 resource "random_password" "rabbitmq_password" {
   length           = 20
   special          = true
-  override_special = "!@#$%^&*()-_+." # sin [, ], :, =
+  override_special = "!@#$%^&*()-_+."
 }
 
 resource "aws_mq_broker" "rabbitmq" {
-  broker_name         = "${local.name}-rabbitmq-${random_id.suffix.hex}"
-  engine_type         = "RabbitMQ"
-  engine_version      = "3.13"
-  host_instance_type  = "mq.t3.micro"
-  publicly_accessible = false
-  deployment_mode     = "SINGLE_INSTANCE"
+  broker_name                 = "${local.name}-rabbitmq-${random_id.suffix.hex}"
+  engine_type                 = "RabbitMQ"
+  engine_version              = "3.13"
+  auto_minor_version_upgrade  = true
+  host_instance_type          = "mq.t3.micro"
+  publicly_accessible         = false
+  deployment_mode             = "SINGLE_INSTANCE"
 
   user {
     username = "appuser"
