@@ -110,16 +110,35 @@ resource "random_password" "rabbitmq_password" {
   override_special = "!@#$%^&*()-_+."
 }
 
+resource "aws_security_group" "rabbitmq" {
+  name        = "rabbitmq-sg"
+  description = "Security group for RabbitMQ broker"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    description = "Allow RabbitMQ AMQPS access"
+    from_port   = 5671
+    to_port     = 5671
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
 resource "aws_security_group_rule" "mq_from_nodes_5671" {
   type                     = "ingress"
   from_port                = 5671
   to_port                  = 5671
   protocol                 = "tcp"
-  security_group_id        = element(aws_mq_broker.rabbitmq.security_groups, 0)
+  security_group_id        = aws_security_group.rabbitmq.id  # Usar el SG explícito
   source_security_group_id = module.eks.node_security_group_id
-  # Si tu módulo EKS no expone node_security_group_id, usa cluster_security_group_id
-  # o saca el SG id de tu node group administrado.
-  depends_on               = [aws_mq_broker.rabbitmq]
+  depends_on               = [aws_security_group.rabbitmq]
 }
 
 resource "aws_mq_broker" "rabbitmq" {
@@ -137,6 +156,7 @@ resource "aws_mq_broker" "rabbitmq" {
   }
 
   subnet_ids      = [module.vpc.private_subnets[0]]
+  security_groups = [aws_security_group.rabbitmq.id]
 
   logs { general = true }
 }
