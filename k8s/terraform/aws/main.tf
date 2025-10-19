@@ -1,15 +1,4 @@
-# -------- AWS Load Balancer Controller: SA + chart --------
-resource "kubernetes_service_account" "aws_load_balancer_controller" {
-  provider = kubernetes.eks
-  metadata {
-    name      = "aws-load-balancer-controller"
-    namespace = "kube-system"
-    annotations = {
-      "eks.amazonaws.com/role-arn" = var.aws_lb_controller_role_arn
-    }
-  }
-}
-
+# -------- AWS Load Balancer Controller --------
 resource "helm_release" "aws_load_balancer_controller" {
   provider   = helm.eks
   name       = "aws-load-balancer-controller"
@@ -24,11 +13,9 @@ resource "helm_release" "aws_load_balancer_controller" {
   # Sintaxis moderna: set = [ {name="", value=""}, ... ]
   set = [
     { name = "clusterName",           value = var.cluster_name },
-    { name = "serviceAccount.create", value = "false" },
-    { name = "serviceAccount.name",   value = kubernetes_service_account.aws_load_balancer_controller.metadata[0].name }
+    { name = "serviceAccount.create", value = "true" },
+    { name = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn", value = var.aws_lb_controller_role_arn }
   ]
-
-  depends_on = [kubernetes_service_account.aws_load_balancer_controller]
 }
 
 # -------- External Secrets Operator --------
@@ -43,19 +30,14 @@ resource "helm_release" "external_secrets" {
   wait             = true
   atomic           = true
   timeout          = 900
+  set = [
+    { name = "installCRDs", value = "true" },
+    { name = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn", value = var.eso_irsa_role_arn }
+  ]
+  depends_on = [time_sleep.wait_for_alb_webhook]
 }
 
-resource "kubernetes_service_account" "external_secrets" {
-  provider = kubernetes.eks
-  metadata {
-    name      = "external-secrets"
-    namespace = "external-secrets"
-    annotations = {
-      "eks.amazonaws.com/role-arn" = var.eso_irsa_role_arn
-    }
-  }
-  depends_on = [helm_release.external_secrets]
-}
+// Removed standalone ServiceAccount to avoid conflicts; Helm creates it with IRSA annotation
 
 # -------- Grafana Dashboard (ConfigMap) --------
 resource "kubernetes_namespace" "monitoring" {

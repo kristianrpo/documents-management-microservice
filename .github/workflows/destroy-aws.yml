@@ -108,6 +108,40 @@ jobs:
           # Namespaces (si quieres limpiar)
           kubectl delete ns external-secrets --ignore-not-found
           kubectl delete ns monitoring --ignore-not-found
+        
+      - name: Delete application (kustomize)
+        if: steps.kubeconfig.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -e
+          kubectl delete -k k8s/ --ignore-not-found
+
+      - name: Terraform Init (k8s)
+        working-directory: k8s/terraform/aws
+        run: terraform init -input=false -upgrade
+
+      - name: Read infra outputs (para variables del provider k8s/helm)
+        id: infra_outputs_destroy
+        run: |
+          echo "CLUSTER_NAME=$(terraform -chdir=infra/terraform/aws output -raw cluster_name)" >> $GITHUB_OUTPUT
+          echo "CLUSTER_ENDPOINT=$(terraform -chdir=infra/terraform/aws output -raw cluster_endpoint)" >> $GITHUB_OUTPUT
+          echo "CLUSTER_CA=$(terraform -chdir=infra/terraform/aws output -raw cluster_ca_certificate)" >> $GITHUB_OUTPUT
+          echo "AWS_LB_ROLE_ARN=$(terraform -chdir=infra/terraform/aws output -raw aws_lb_controller_role_arn)" >> $GITHUB_OUTPUT
+          echo "ESO_IRSA_ROLE_ARN=$(terraform -chdir=infra/terraform/aws output -raw eso_irsa_role_arn)" >> $GITHUB_OUTPUT
+
+      - name: Terraform Destroy (k8s)
+        working-directory: k8s/terraform/aws
+        env:
+          TF_LOG: INFO
+        run: |
+          set -e
+          terraform destroy -auto-approve -input=false \
+            -var "aws_region=${{ secrets.AWS_REGION }}" \
+            -var "cluster_name=${{ steps.infra_outputs_destroy.outputs.CLUSTER_NAME }}" \
+            -var "cluster_endpoint=${{ steps.infra_outputs_destroy.outputs.CLUSTER_ENDPOINT }}" \
+            -var "cluster_ca_certificate=${{ steps.infra_outputs_destroy.outputs.CLUSTER_CA }}" \
+            -var "aws_lb_controller_role_arn=${{ steps.infra_outputs_destroy.outputs.AWS_LB_ROLE_ARN }}" \
+            -var "eso_irsa_role_arn=${{ steps.infra_outputs_destroy.outputs.ESO_IRSA_ROLE_ARN }}"
 
       # ---------------------------
       # 3) Destroy Terraform - Infra (Fase 1) con remote state
