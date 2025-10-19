@@ -99,9 +99,16 @@ resource "helm_release" "kube_prometheus_stack" {
   depends_on = [kubernetes_config_map.grafana_dashboard]
 }
 
+# Espera para que se registren CRDs de monitoring.coreos.com
+resource "time_sleep" "wait_for_crds" {
+  depends_on      = [helm_release.kube_prometheus_stack]
+  create_duration = "60s"
+}
+
 # -------- PrometheusRule (CRD) --------
 resource "kubernetes_manifest" "prometheus_rules" {
   provider = kubernetes.eks
+  depends_on = [time_sleep.wait_for_crds]
   manifest = {
     apiVersion = "monitoring.coreos.com/v1"
     kind       = "PrometheusRule"
@@ -113,9 +120,6 @@ resource "kubernetes_manifest" "prometheus_rules" {
     # Ruta relativa desde k8s/terraform/aws
     spec = yamldecode(file("${path.module}/../../../prometheus/alerts.yml"))
   }
-
-  # La CRD viene con kube-prometheus-stack, así que esperamos a ese chart
-  depends_on = [helm_release.kube_prometheus_stack]
 }
 
 # -------- Outputs útiles --------

@@ -14,5 +14,9 @@ terraform {
       # Mantén esto actualizado; las versiones nuevas usan listas de objetos para set/*
       version = ">= 2.13.0"
     }
+    time = {
+      source  = "hashicorp/time"
+      version = ">= 0.9.1"
+    }
   }
 }
