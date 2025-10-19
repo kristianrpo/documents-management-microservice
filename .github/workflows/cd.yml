@@ -41,7 +41,7 @@ jobs:
   deploy:
     name: Deploy to EKS
     runs-on: ubuntu-latest
-    needs: [build-and-push, infra-apply]
+    needs: [infra-apply]
     steps:
       - uses: actions/checkout@v4
 
