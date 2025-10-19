@@ -44,7 +44,19 @@ module "eks" {
       capacity_type  = "ON_DEMAND"
     }
   }
+  access_entries = {
+    pipeline_admin = {
+      principal_arn = data.aws_caller_identity.current.arn
+      policy_associations = [{
+        policy_arn  = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+        access_scope = { type = "cluster" }
+      }]
+    }
+  }
 }
+
+# Identidad del caller (usada para dar acceso admin al clúster EKS)
+data "aws_caller_identity" "current" {}
 
 resource "aws_s3_bucket" "documents" {
   bucket_prefix = "${local.name}-"

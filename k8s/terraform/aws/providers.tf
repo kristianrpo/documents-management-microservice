@@ -1,42 +1,38 @@
-# Locals para reutilizar valores
-locals {
-  effective_cluster_name = var.cluster_name
-  cluster_endpoint       = var.cluster_endpoint
-  cluster_ca_data        = var.cluster_ca_certificate
+# Provider AWS para datasources (token/endpoint/CA)
+provider "aws" {
+  region = var.aws_region
 }
 
-# Provider Kubernetes (exec es BLOQUE)
+# Datasources EKS (permiten obtener endpoint/CA y token)
+data "aws_eks_cluster" "this" {
+  count = var.cluster_name == null ? 0 : 1
+  name  = var.cluster_name
+}
+
+data "aws_eks_cluster_auth" "this" {
+  count = var.cluster_name == null ? 0 : 1
+  name  = var.cluster_name
+}
+
+locals {
+  effective_cluster_name     = var.cluster_name
+  effective_cluster_endpoint = coalesce(var.cluster_endpoint, try(data.aws_eks_cluster.this[0].endpoint, null))
+  effective_cluster_ca_data  = coalesce(var.cluster_ca_certificate, try(data.aws_eks_cluster.this[0].certificate_authority[0].data, null))
+}
+
 provider "kubernetes" {
   alias                  = "eks"
-  host                   = local.cluster_endpoint
-  cluster_ca_certificate = base64decode(local.cluster_ca_data)
-
-  exec {
-    api_version = "client.authentication.k8s.io/v1beta1"
-    command     = "aws"
-    args        = [
-      "eks", "get-token",
-      "--cluster-name", local.effective_cluster_name,
-      "--region", var.aws_region
-    ]
-  }
+  host                   = local.effective_cluster_endpoint
+  cluster_ca_certificate = base64decode(local.effective_cluster_ca_data)
+  token                  = try(data.aws_eks_cluster_auth.this[0].token, null)
 }
 
-# Provider Helm (kubernetes = { ... } es un MAPA; exec también es MAPA)
 provider "helm" {
   alias = "eks"
 
   kubernetes = {
-    host                   = local.cluster_endpoint
-    cluster_ca_certificate = base64decode(local.cluster_ca_data)
-    exec = {
-      api_version = "client.authentication.k8s.io/v1beta1"
-      command     = "aws"
-      args        = [
-        "eks", "get-token",
-        "--cluster-name", local.effective_cluster_name,
-        "--region", var.aws_region
-      ]
-    }
+    host                   = local.effective_cluster_endpoint
+    cluster_ca_certificate = base64decode(local.effective_cluster_ca_data)
+    token                  = try(data.aws_eks_cluster_auth.this[0].token, null)
   }
 }
