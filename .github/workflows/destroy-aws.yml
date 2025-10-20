@@ -23,7 +23,7 @@ env:
 
 jobs:
   destroy:
-    name: Destroy EVERYTHING in AWS
+    name: Destroy Microservice Resources (NOT Shared Infrastructure)
     runs-on: ubuntu-latest
 
     steps:
@@ -33,7 +33,8 @@ jobs:
             echo "Falta confirmación exacta: I UNDERSTAND"
             exit 1
           fi
-          echo "Confirmación OK"
+          echo "Confirmación OK - Destruyendo SOLO recursos del microservicio"
+          echo "La infraestructura compartida (VPC, EKS, RabbitMQ) NO será destruida"
 
       - uses: actions/checkout@v4
 
@@ -44,13 +45,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region:            ${{ secrets.AWS_REGION }}
 
-      - name: Install kubectl + jq
+      - name: Install kubectl
         run: |
           set -e
           KUBECTL_VERSION=$(curl -sL https://dl.k8s.io/release/stable.txt)
           curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
           chmod +x kubectl && sudo mv kubectl /usr/local/bin/kubectl
-          sudo apt-get update && sudo apt-get install -y jq
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -58,9 +58,9 @@ jobs:
           terraform_wrapper: false
 
       # ---------------------------
-      # 1) Conectarnos al cluster con outputs del remote state
+      # 1) Conectarnos al cluster (que existe en infraestructura compartida)
       # ---------------------------
-      - name: Init Terraform (infra dir) para leer outputs del remote backend
+      - name: Init Terraform (infra dir) para leer outputs
         working-directory: infra/terraform/aws
         run: |
           terraform init -input=false \
@@ -70,7 +70,7 @@ jobs:
             -backend-config="dynamodb_table=$TF_BACKEND_DDB_TABLE" \
             -backend-config="encrypt=true"
 
-      - name: Update kubeconfig (EKS) si el cluster aún existe
+      - name: Update kubeconfig (EKS desde shared infrastructure)
         id: kubeconfig
         continue-on-error: true
         run: |
@@ -82,102 +82,102 @@ jobs:
           kubectl get nodes || true
 
       # ---------------------------
-      # 2) Limpiar K8s (Helm/Kubectl) — fase 2 sin state local
-      #    Esto evita que queden CRDs/recursos bloqueando el destroy
+      # 2) Limpiar recursos K8s del microservicio
       # ---------------------------
-      - name: Uninstall Helm releases (best effort)
+      - name: Delete microservice-specific K8s resources
         if: steps.kubeconfig.outcome == 'success'
         continue-on-error: true
         run: |
           set -e
-          echo "Eliminando charts via Helm (si existen)"
-          helm uninstall aws-load-balancer-controller -n kube-system || true
-          helm uninstall external-secrets -n external-secrets   || true
-          helm uninstall kube-prometheus-stack -n monitoring    || true
-
-      - name: Delete K8s objects creados por archivos sueltos (best effort)
-        if: steps.kubeconfig.outcome == 'success'
-        continue-on-error: true
-        run: |
-          set -e
-          echo "Eliminando recursos sueltos (ConfigMaps/CRDs) si quedaron"
-          # ConfigMap del dashboard
-          kubectl delete configmap documents-service-dashboard -n monitoring --ignore-not-found
-          # PrometheusRule (si quedó)
-          kubectl delete prometheusrule documents-service-alerts -n monitoring --ignore-not-found
-          # Namespaces (si quieres limpiar)
-          kubectl delete ns external-secrets --ignore-not-found
-          kubectl delete ns monitoring --ignore-not-found
-        
-      - name: Delete application (kustomize)
-        if: steps.kubeconfig.outcome == 'success'
-        continue-on-error: true
-        run: |
-          set -e
+          echo "Eliminando recursos K8s del microservicio documents"
+          # Eliminar aplicación
           kubectl delete -k k8s/ --ignore-not-found
+          # ConfigMap del dashboard específico
+          kubectl delete configmap documents-service-dashboard -n monitoring --ignore-not-found
+          # PrometheusRule específico
+          kubectl delete prometheusrule documents-service-alerts -n monitoring --ignore-not-found
 
       - name: Terraform Init (k8s)
         working-directory: k8s/terraform/aws
-        run: terraform init -input=false -upgrade
+        run: |
+          terraform init -input=false -upgrade \
+            -backend-config="bucket=$TF_BACKEND_BUCKET" \
+            -backend-config="key=k8s/terraform/aws/terraform.tfstate" \
+            -backend-config="region=$TF_BACKEND_REGION" \
+            -backend-config="dynamodb_table=$TF_BACKEND_DDB_TABLE" \
+            -backend-config="encrypt=true"
 
       - name: Read infra outputs (para variables del provider k8s/helm)
         id: infra_outputs_destroy
+        continue-on-error: true
         run: |
           echo "CLUSTER_NAME=$(terraform -chdir=infra/terraform/aws output -raw cluster_name)" >> $GITHUB_OUTPUT
           echo "CLUSTER_ENDPOINT=$(terraform -chdir=infra/terraform/aws output -raw cluster_endpoint)" >> $GITHUB_OUTPUT
           echo "CLUSTER_CA=$(terraform -chdir=infra/terraform/aws output -raw cluster_ca_certificate)" >> $GITHUB_OUTPUT
-          echo "AWS_LB_ROLE_ARN=$(terraform -chdir=infra/terraform/aws output -raw aws_lb_controller_role_arn)" >> $GITHUB_OUTPUT
-          echo "ESO_IRSA_ROLE_ARN=$(terraform -chdir=infra/terraform/aws output -raw eso_irsa_role_arn)" >> $GITHUB_OUTPUT
 
-      - name: Terraform Destroy (k8s)
+      - name: Terraform Destroy (k8s monitoring stack)
+        if: steps.infra_outputs_destroy.outcome == 'success'
         working-directory: k8s/terraform/aws
         env:
           TF_LOG: INFO
+        continue-on-error: true
         run: |
           set -e
           terraform destroy -auto-approve -input=false \
             -var "aws_region=${{ secrets.AWS_REGION }}" \
             -var "cluster_name=${{ steps.infra_outputs_destroy.outputs.CLUSTER_NAME }}" \
             -var "cluster_endpoint=${{ steps.infra_outputs_destroy.outputs.CLUSTER_ENDPOINT }}" \
-            -var "cluster_ca_certificate=${{ steps.infra_outputs_destroy.outputs.CLUSTER_CA }}" \
-            -var "aws_lb_controller_role_arn=${{ steps.infra_outputs_destroy.outputs.AWS_LB_ROLE_ARN }}" \
-            -var "eso_irsa_role_arn=${{ steps.infra_outputs_destroy.outputs.ESO_IRSA_ROLE_ARN }}"
+            -var "cluster_ca_certificate=${{ steps.infra_outputs_destroy.outputs.CLUSTER_CA }}"
 
       # ---------------------------
-      # 3) Destroy Terraform - Infra (Fase 1) con remote state
+      # 3) Destroy microservice-specific AWS resources (S3, DynamoDB, IAM)
       # ---------------------------
-      - name: Terraform Destroy (infra)
+      - name: Terraform Destroy (microservice resources)
         working-directory: infra/terraform/aws
         env:
           TF_LOG: INFO
         run: |
           set -e
-          terraform destroy -auto-approve -input=false
+          terraform destroy -auto-approve -input=false \
+            -var "tf_backend_bucket=$TF_BACKEND_BUCKET"
 
       # ---------------------------
-      # 4) (Opcional) Borrar el backend remoto (S3+DynDB)
-      #    SOLO si el usuario marcó delete_backend=true
+      # 4) (Opcional) Borrar SOLO el state del microservicio
+      #    NO toca el bucket compartido ni la tabla DynamoDB de locks
       # ---------------------------
-      - name: Delete remote backend (S3 + DynamoDB)
+      - name: Delete microservice terraform state files
         if: ${{ github.event.inputs.delete_backend == 'true' }}
         run: |
           set -e
-          echo "Eliminando backend remoto (S3 + DynamoDB)."
-          echo "   Bucket: $TF_BACKEND_BUCKET"
-          echo "   Key:    $TF_BACKEND_KEY"
-          echo "   DDB:    $TF_BACKEND_DDB_TABLE"
+          echo "Eliminando SOLO los archivos de state del microservicio"
+          echo "   Bucket: $TF_BACKEND_BUCKET (NO será eliminado)"
+          echo "   Keys a eliminar:"
+          echo "     - $TF_BACKEND_KEY"
+          echo "     - k8s/terraform/aws/terraform.tfstate"
 
-          # Eliminar el objeto de state
+          # Eliminar state files del microservicio
           aws s3api delete-object --bucket "$TF_BACKEND_BUCKET" --key "$TF_BACKEND_KEY" || true
-
-          # (Por si hay versiones/locks) limpiar prefijo del proyecto
-          aws s3 rm "s3://$TF_BACKEND_BUCKET/$(dirname "$TF_BACKEND_KEY")" --recursive || true
-
-          # Intentar borrar el bucket (si SOLO lo usabas para Terraform; si no, comenta esto)
-          aws s3 rb "s3://$TF_BACKEND_BUCKET" --force || true
-
-          # Eliminar tabla de locks
-          aws dynamodb delete-table --table-name "$TF_BACKEND_DDB_TABLE" || true
+          aws s3api delete-object --bucket "$TF_BACKEND_BUCKET" --key "k8s/terraform/aws/terraform.tfstate" || true
+          
+          echo "State files del microservicio eliminados"
+          echo "Backend compartido (S3 + DynamoDB) conservado para otros servicios"
 
       - name: Done
-        run: echo "Destroy terminado."
+        run: |
+          echo "Destroy del microservicio completado."
+          echo ""
+          echo "Recursos eliminados:"
+          echo "  - S3 Bucket (documents)"
+          echo "  - DynamoDB Table (documents)"
+          echo "  - IAM Role/Policy (documents-irsa)"
+          echo "  - Secrets Manager (application config)"
+          echo "  - Monitoring stack (kube-prometheus)"
+          echo ""
+          echo "Recursos compartidos conservados:"
+          echo "  - VPC"
+          echo "  - EKS Cluster"
+          echo "  - RabbitMQ"
+          echo "  - AWS Load Balancer Controller"
+          echo "  - External Secrets Operator"
+          echo ""
+          echo "Para destruir la infraestructura compartida, ejecuta el workflow de destroy en el repo infrastructure-shared"

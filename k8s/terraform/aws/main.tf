@@ -1,43 +1,8 @@
-# -------- AWS Load Balancer Controller --------
-resource "helm_release" "aws_load_balancer_controller" {
-  provider   = helm.eks
-  name       = "aws-load-balancer-controller"
-  repository = "https://aws.github.io/eks-charts"
-  chart      = "aws-load-balancer-controller"
-  namespace  = "kube-system"
-  version    = "1.7.1"
-  wait       = true
-  atomic     = true
-  timeout    = 900
-
-  # Sintaxis moderna: set = [ {name="", value=""}, ... ]
-  set = [
-    { name = "clusterName",           value = var.cluster_name },
-    { name = "serviceAccount.create", value = "true" },
-    { name = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn", value = var.aws_lb_controller_role_arn }
-  ]
-}
-
-# -------- External Secrets Operator --------
-resource "helm_release" "external_secrets" {
-  provider         = helm.eks
-  name             = "external-secrets"
-  repository       = "https://charts.external-secrets.io"
-  chart            = "external-secrets"
-  namespace        = "external-secrets"
-  create_namespace = true
-  version          = "0.9.11"
-  wait             = true
-  atomic           = true
-  timeout          = 900
-  set = [
-    { name = "installCRDs", value = "true" },
-    { name = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn", value = var.eso_irsa_role_arn }
-  ]
-  depends_on = [time_sleep.wait_for_alb_webhook]
-}
-
-// Removed standalone ServiceAccount to avoid conflicts; Helm creates it with IRSA annotation
+# ============================================================================
+# Microservice-specific K8s resources
+# Note: AWS Load Balancer Controller and External Secrets Operator are now
+# deployed by the shared infrastructure repository
+# ============================================================================
 
 # -------- Grafana Dashboard (ConfigMap) --------
 resource "kubernetes_namespace" "monitoring" {
@@ -103,12 +68,6 @@ resource "helm_release" "kube_prometheus_stack" {
 resource "time_sleep" "wait_after_kps_install" {
   depends_on      = [helm_release.kube_prometheus_stack]
   create_duration = "60s"
-}
-
-# Espera breve para que el webhook/endpoints del ALB Controller estén disponibles
-resource "time_sleep" "wait_for_alb_webhook" {
-  depends_on      = [helm_release.aws_load_balancer_controller]
-  create_duration = "45s"
 }
 
 # -------- Outputs útiles --------
