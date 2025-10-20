@@ -15,7 +15,7 @@ locals {
   
   # Recursos compartidos desde el remote state
   cluster_name       = data.terraform_remote_state.shared.outputs.cluster_name
-  cluster_oidc_arn   = data.terraform_remote_state.shared.outputs.cluster_oidc_provider_arn
+  # cluster_oidc_arn   = data.terraform_remote_state.shared.outputs.oidc_provider_arn  # Temporalmente comentado
   rabbitmq_url       = data.terraform_remote_state.shared.outputs.rabbitmq_amqp_url
 }
 
@@ -111,7 +111,7 @@ module "irsa" {
   role_name = "${local.name}-documents-irsa"
   oidc_providers = {
     main = {
-      provider_arn               = local.cluster_oidc_arn
+      provider_arn               = data.terraform_remote_state.shared.outputs.oidc_provider_arn
       namespace_service_accounts = ["documents:documents-sa"]
     }
   }
@@ -135,10 +135,10 @@ resource "aws_iam_policy" "external_secrets" {
 }
 
 # Attach this policy to the shared ESO role
-resource "aws_iam_role_policy_attachment" "eso_documents_secret" {
-  role       = data.terraform_remote_state.shared.outputs.eso_role_name
-  policy_arn = aws_iam_policy.external_secrets.arn
-}
+# resource "aws_iam_role_policy_attachment" "eso_documents_secret" {
+#   role       = data.terraform_remote_state.shared.outputs.external_secrets_role_name
+#   policy_arn = aws_iam_policy.external_secrets.arn
+# }
 
 # ============================================================================
 # Outputs - Only microservice-specific resources
@@ -157,5 +157,5 @@ output "secretsmanager_secret_arn" { value = aws_secretsmanager_secret.app.arn }
 output "cluster_name"              { value = local.cluster_name }
 output "cluster_endpoint"          { value = data.terraform_remote_state.shared.outputs.cluster_endpoint }
 output "cluster_ca_certificate"    { value = data.terraform_remote_state.shared.outputs.cluster_ca_certificate }
-output "eso_irsa_role_arn"         { value = data.terraform_remote_state.shared.outputs.eso_irsa_role_arn }
-output "aws_lb_controller_role_arn"{ value = data.terraform_remote_state.shared.outputs.aws_lb_controller_role_arn }
+output "eso_irsa_role_arn"         { value = data.terraform_remote_state.shared.outputs.external_secrets_irsa_role_arn }
+output "aws_lb_controller_role_arn"{ value = data.terraform_remote_state.shared.outputs.aws_load_balancer_controller_irsa_role_arn }
