@@ -1,0 +1,118 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dynamodb-local
+  namespace: documents
+  labels: { app: dynamodb-local }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: dynamodb-local }
+  template:
+    metadata:
+      labels: { app: dynamodb-local }
+    spec:
+      containers:
+        - name: dynamodb
+          image: amazon/dynamodb-local:latest
+          args: ["-jar", "DynamoDBLocal.jar", "-inMemory", "-sharedDb"]
+          ports:
+            - containerPort: 8000
+          readinessProbe:
+            tcpSocket: { port: 8000 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket: { port: 8000 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dynamodb-local
+  namespace: documents
+  labels: { app: dynamodb-local }
+spec:
+  type: ClusterIP
+  selector: { app: dynamodb-local }
+  ports:
+    - name: dynamodb
+      port: 8000
+      targetPort: 8000
+
+---
+# Job para crear la tabla Documents
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dynamodb-create-table
+  namespace: documents
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: aws-cli
+          image: amazon/aws-cli:latest
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              value: "admin"
+            - name: AWS_SECRET_ACCESS_KEY
+              value: "admin123"
+            - name: AWS_DEFAULT_REGION
+              value: "us-east-1"
+          command: ["sh", "-c"]
+          args:
+            - |
+              set -e
+              echo "Esperando DynamoDB..."
+              sleep 5
+              echo "Creando tabla Documents..."
+              aws dynamodb create-table \
+                --table-name Documents \
+                --attribute-definitions \
+                  AttributeName=DocumentID,AttributeType=S \
+                  AttributeName=OwnerID,AttributeType=N \
+                  AttributeName=HashSHA256,AttributeType=S \
+                --key-schema \
+                  AttributeName=DocumentID,KeyType=HASH \
+                  AttributeName=OwnerID,KeyType=RANGE \
+                --provisioned-throughput \
+                  ReadCapacityUnits=5,WriteCapacityUnits=5 \
+                --global-secondary-indexes \
+                  '[
+                    {
+                      "IndexName": "OwnerIDIndex",
+                      "KeySchema": [
+                        {"AttributeName": "OwnerID", "KeyType": "HASH"}
+                      ],
+                      "Projection": {"ProjectionType": "ALL"},
+                      "ProvisionedThroughput": {
+                        "ReadCapacityUnits": 5,
+                        "WriteCapacityUnits": 5
+                      }
+                    },
+                    {
+                      "IndexName": "HashOwnerIndex",
+                      "KeySchema": [
+                        {"AttributeName": "HashSHA256", "KeyType": "HASH"},
+                        {"AttributeName": "OwnerID", "KeyType": "RANGE"}
+                      ],
+                      "Projection": {"ProjectionType": "ALL"},
+                      "ProvisionedThroughput": {
+                        "ReadCapacityUnits": 5,
+                        "WriteCapacityUnits": 5
+                      }
+                    }
+                  ]' \
+                --endpoint-url http://dynamodb-local.documents.svc.cluster.local:8000 \
+                --region us-east-1 || echo "Tabla ya existe"
+              
+              echo "✓ Tabla Documents creada exitosamente"
+              echo "  - Key: DocumentID (HASH) + OwnerID (RANGE)"
+              echo "  - GSI: OwnerIDIndex (buscar por OwnerID)"
+              echo "  - GSI: HashOwnerIndex (buscar por HashSHA256 + OwnerID)"
+

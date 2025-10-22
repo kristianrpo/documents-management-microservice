@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: documents-service
+  namespace: documents
+spec:
+  type: ClusterIP

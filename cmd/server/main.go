@@ -17,12 +17,14 @@ import (
 	httpadapter "github.com/kristianrpo/document-management-microservice/internal/adapters/http"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/handlers"
+	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/middleware"
 	"github.com/kristianrpo/document-management-microservice/internal/application/interfaces"
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
 	"github.com/kristianrpo/document-management-microservice/internal/application/util"
 	cfgpkg "github.com/kristianrpo/document-management-microservice/internal/infrastructure/config"
 	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/messaging"
 	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/metrics"
+
 	infrapkg "github.com/kristianrpo/document-management-microservice/internal/infrastructure/repository"
 )
 
@@ -49,6 +51,10 @@ import (
 // @host localhost:8080
 // @BasePath /
 // @schemes http https
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer <token>" (include the word Bearer followed by a space)
 //
 // @tag.name documents
 // @tag.description Document upload, retrieval, deletion, transfer, and authentication operations
@@ -177,6 +183,14 @@ func main() {
 
 	healthHandler := handlers.NewHealthHandler()
 
+	var jwtMiddleware *middleware.JWTAuthMiddleware
+	if config.JWTSecret != "" {
+		jwtMiddleware = middleware.NewJWTAuthMiddleware(config.JWTSecret)
+		log.Println("JWT middleware initialized")
+	} else {
+		log.Println("JWT secret not configured; authentication middleware disabled")
+	}
+
 	routerConfig := &httpadapter.RouterConfig{
 		UploadHandler:      uploadHandler,
 		ListHandler:        listHandler,
@@ -187,6 +201,7 @@ func main() {
 		RequestAuthHandler: requestAuthHandler,
 		HealthHandler:      healthHandler,
 		MetricsCollector:   metricsCollector,
+		JWTMiddleware:      jwtMiddleware,
 	}
 
 	router := httpadapter.NewRouter(routerConfig)

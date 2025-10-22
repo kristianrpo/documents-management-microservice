@@ -24,7 +24,7 @@ spec:
       containers:
         - name: documents-service
           image: REPOSITORY/documents-service:TAG
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
               name: http

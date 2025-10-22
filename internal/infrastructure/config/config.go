@@ -24,6 +24,8 @@ type Config struct {
 	RabbitMQ RabbitMQConfig
 
 	ReadHeaderTimeout time.Duration
+
+	JWTSecret string
 }
 
 func getenv(k, def string) string {
@@ -37,6 +39,8 @@ func getbool(k string) bool { return os.Getenv(k) == "true" }
 // Load reads configuration from environment variables with sensible defaults
 func Load() *Config {
 	port := ":" + getenv("APP_PORT", "8080")
+
+	jwtSecret := getenv("JWT_SECRET", "default_secret")
 
 	// Load RabbitMQ config with defaults
 	rabbitMQConfig := DefaultRabbitMQConfig()
@@ -58,6 +62,7 @@ func Load() *Config {
 		S3PublicBase:      getenv("S3_PUBLIC_BASE_URL", ""),
 		RabbitMQ:          rabbitMQConfig,
 		ReadHeaderTimeout: 5 * time.Second,
+		JWTSecret:         jwtSecret,
 	}
 }
 

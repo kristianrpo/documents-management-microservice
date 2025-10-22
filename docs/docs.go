@@ -86,7 +86,12 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Uploads a document to S3 storage and saves its metadata in DynamoDB.\n\n## Features\n- Automatic file deduplication based on SHA256 hash\n- If a file with the same hash exists for the same user, returns the existing document\n- Supports any file type\n- Automatically detects MIME type from file extension\n- Generates unique object keys using hash prefix for optimal S3 performance\n\n## Process\n1. Calculates SHA256 hash of the uploaded file\n2. Checks if document already exists (hash + citizen ID)\n3. If exists, returns existing document (no duplicate upload)\n4. If new, uploads to S3 and saves metadata to DynamoDB\n\n## Error Codes\n- ` + "`" + `VALIDATION_ERROR` + "`" + `: Invalid request format or missing required fields\n- ` + "`" + `FILE_READ_ERROR` + "`" + `: Failed to read the uploaded file\n- ` + "`" + `HASH_CALCULATE_ERROR` + "`" + `: Failed to calculate file hash\n- ` + "`" + `STORAGE_UPLOAD_ERROR` + "`" + `: Failed to upload file to S3\n- ` + "`" + `PERSISTENCE_ERROR` + "`" + `: Failed to save metadata to DynamoDB",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Uploads a document to S3 storage and saves its metadata. The owner is determined from JWT token.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -100,16 +105,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "file",
-                        "description": "File to upload (supports any file type: PDF, images, documents, etc.)",
+                        "description": "File to upload",
                         "name": "file",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "example": 123456789,
-                        "description": "Owner's citizen ID",
-                        "name": "id_citizen",
                         "in": "formData",
                         "required": true
                     }
@@ -122,13 +119,19 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Validation error - invalid id_citizen or missing required fields",
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/endpoints.UploadErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - invalid or missing token",
                         "schema": {
                             "$ref": "#/definitions/endpoints.UploadErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal server error - file processing, storage upload, or database error",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/endpoints.UploadErrorResponse"
                         }
@@ -695,16 +698,14 @@ const docTemplate = `{
             }
         }
     },
-    "tags": [
-        {
-            "description": "Document upload, retrieval, deletion, transfer, and authentication operations",
-            "name": "documents"
-        },
-        {
-            "description": "Health check endpoints",
-            "name": "health"
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Type \"Bearer \u003ctoken\u003e\" (include the word Bearer followed by a space)",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
-    ]
+    }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it

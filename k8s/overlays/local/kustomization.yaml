@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: documents
+
+resources:
+  - ../../base
+  - ingress-local.yaml
+  - minio.yaml
+  - dynamodb.yaml
+
+images:
+  - name: REPOSITORY/documents-service
+    newName: kristianrpo30/documents-microservice
+    newTag: latest
+
+patches:
+  - path: patch-deployment.yaml
+  - path: patch-service.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+secretGenerator:
+  - name: documents-secrets
+    envs:
+      - .env.documents

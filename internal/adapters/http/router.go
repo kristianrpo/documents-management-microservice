@@ -22,6 +22,9 @@ type RouterConfig struct {
 	RequestAuthHandler *handlers.DocumentRequestAuthenticationHandler
 	HealthHandler      *handlers.HealthHandler
 	MetricsCollector   *metrics.PrometheusMetrics
+	// JWT middleware instance (optional). If provided, it will be applied to
+	// routes that require authentication (e.g. document upload).
+	JWTMiddleware *middleware.JWTAuthMiddleware
 }
 
 // NewRouter creates and configures a new HTTP router with all API endpoints
@@ -40,7 +43,7 @@ func NewRouter(cfg *RouterConfig) *gin.Engine {
 
 	apiGroup := router.Group("/api/v1")
 	{
-		apiGroup.POST("/documents", cfg.UploadHandler.Upload)
+		apiGroup.POST("/documents", cfg.JWTMiddleware.Authenticate(), cfg.UploadHandler.Upload)
 		apiGroup.GET("/documents", cfg.ListHandler.List)
 		apiGroup.GET("/documents/:id", cfg.GetHandler.GetByID)
 		apiGroup.DELETE("/documents/:id", cfg.DeleteHandler.Delete)
