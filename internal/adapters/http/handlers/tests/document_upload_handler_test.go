@@ -31,7 +31,6 @@ func (errUploadService) Upload(ctx context.Context, fileHeader *multipart.FileHe
 	return nil, errors.NewPersistenceError(assert.AnError)
 }
 
-//nolint:dupl // Test setup boilerplate is similar across test files
 func TestDocumentUploadHandler_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()

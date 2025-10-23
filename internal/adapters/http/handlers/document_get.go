@@ -70,7 +70,7 @@ func (handler *DocumentGetHandler) GetByID(ctx *gin.Context) {
 		return
 	}
 
-	idCitizen, err := middleware.GetUserIDCitizen(ctx)
+	idCitizen, _ := middleware.GetUserIDCitizen(ctx)
 	if document.OwnerID != idCitizen {
 		handler.errorHandler.HandleError(ctx, errors.NewValidationError("forbidden: user is not the owner of the document"))
 		return

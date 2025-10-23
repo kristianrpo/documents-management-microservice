@@ -79,7 +79,7 @@ func (h *DocumentRequestAuthenticationHandler) RequestAuthentication(c *gin.Cont
 		h.errorHandler.HandleError(c, err)
 		return
 	}
-	idCitizen, err := middleware.GetUserIDCitizen(c)
+	idCitizen, _ := middleware.GetUserIDCitizen(c)
 	if document.OwnerID != idCitizen {
 		h.errorHandler.HandleError(c, errors.NewValidationError("forbidden: user is not the owner of the document"))
 		return

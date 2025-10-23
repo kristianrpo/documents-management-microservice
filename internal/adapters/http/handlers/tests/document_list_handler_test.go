@@ -30,7 +30,6 @@ func (errListService) List(ctx context.Context, ownerID int64, page, limit int) 
 	return nil, util.PaginationParams{}, 0, 0, domainerrors.NewPersistenceError(assert.AnError)
 }
 
-//nolint:dupl // Test setup boilerplate is similar across test files
 func TestDocumentListHandler_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()

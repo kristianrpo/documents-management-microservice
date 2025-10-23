@@ -69,10 +69,10 @@ func (handler *DocumentListHandler) List(ctx *gin.Context) {
 	page := 1
 	limit := 10
 	if p := ctx.Query("page"); p != "" {
-		fmt.Sscanf(p, "%d", &page)
+		_, _ = fmt.Sscanf(p, "%d", &page)
 	}
 	if l := ctx.Query("limit"); l != "" {
-		fmt.Sscanf(l, "%d", &limit)
+		_, _ = fmt.Sscanf(l, "%d", &limit)
 	}
 
 	documents, pagination, totalPages, totalCount, err := handler.service.List(

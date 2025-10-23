@@ -34,7 +34,6 @@ func (m *mockRequestAuthService) RequestAuthentication(ctx context.Context, docu
 	return args.Error(0)
 }
 
-//nolint:dupl // Test setup boilerplate is similar across test files
 func TestDocumentRequestAuthenticationHandler_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -121,6 +120,7 @@ func TestDocumentRequestAuthenticationHandler_NotFound(t *testing.T) {
 	service.AssertExpectations(t)
 }
 
+//nolint:dupl // similar setup across handler tests
 func TestDocumentRequestAuthenticationHandler_PersistenceError(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()

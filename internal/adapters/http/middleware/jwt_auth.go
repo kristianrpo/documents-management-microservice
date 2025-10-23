@@ -86,7 +86,8 @@ func (m *JWTAuthMiddleware) Authenticate() gin.HandlerFunc {
 		}
 
 		// Log useful claim fields for debugging (user id, citizen id, email, role)
-		log.Printf("JWT validated - user_id=%s id_citizen=%d email=%s role=%s", claims.IDCitizen, claims.IDCitizen, claims.Email, claims.Role)
+		// IDCitizen is int64; use %d. There is no separate user_id string, so log id_citizen once.
+		log.Printf("JWT validated - id_citizen=%d email=%s role=%s", claims.IDCitizen, claims.Email, claims.Role)
 
 		// Store claims in context for handlers to use
 		c.Set(string(UserContextKey), claims)

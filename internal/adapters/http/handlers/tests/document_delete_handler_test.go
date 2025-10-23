@@ -34,7 +34,6 @@ func (m *mockDeleteGetService) GetByID(ctx context.Context, id string) (*models.
 	return args.Get(0).(*models.Document), args.Error(1)
 }
 
-//nolint:dupl // Test setup boilerplate is similar across test files
 func TestDocumentDeleteHandler_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -98,6 +97,7 @@ func TestDocumentDeleteHandler_NotFound(t *testing.T) {
 	service.AssertExpectations(t)
 }
 
+//nolint:dupl // similar setup across handler tests
 func TestDocumentDeleteHandler_PersistenceError(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()

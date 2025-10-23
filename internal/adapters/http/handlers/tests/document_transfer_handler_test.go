@@ -127,7 +127,6 @@ func TestDocumentTransferHandler_ValidationError_NegativeID(t *testing.T) {
 func TestDocumentTransferHandler_PersistenceError(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-
 	service := new(mockTransferService)
 	errMapper := apierrors.NewErrorMapper()
 	errHandler := apierrors.NewErrorHandler(errMapper)
