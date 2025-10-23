@@ -150,7 +150,7 @@ func main() {
 		mimeDetector,
 	)
 	documentListService := usecases.NewDocumentListService(documentRepository)
-	documentGetService := usecases.NewDocumentGetService(documentRepository)
+	documentGetService := usecases.NewDocumentGetService(documentRepository, objectStorage)
 	documentDeleteService := usecases.NewDocumentDeleteService(documentRepository, objectStorage)
 	documentDeleteAllService := usecases.NewDocumentDeleteAllService(documentRepository, objectStorage)
 	documentTransferService := usecases.NewDocumentTransferService(documentRepository, objectStorage, 15*time.Minute)

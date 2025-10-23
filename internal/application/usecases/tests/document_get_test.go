@@ -9,12 +9,14 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
 	"github.com/kristianrpo/document-management-microservice/internal/domain/models"
 	"github.com/stretchr/testify/assert"
+    "github.com/stretchr/testify/mock"
 )
 
 func TestDocumentGetService_GetByID_Success(t *testing.T) {
 	// Arrange
 	repo := new(MockDocumentRepository)
-	service := usecases.NewDocumentGetService(repo)
+	mockStorage := new(MockObjectStorage)
+	service := usecases.NewDocumentGetService(repo, mockStorage)
 
 	ctx := context.Background()
 	documentID := "doc-123"
@@ -30,6 +32,8 @@ func TestDocumentGetService_GetByID_Success(t *testing.T) {
 	}
 
 	repo.On("GetByID", ctx, documentID).Return(doc, nil)
+	// Expect a presigned URL to be generated for the object's key
+	mockStorage.On("GeneratePresignedURL", ctx, doc.ObjectKey, mock.Anything).Return("https://presigned.example.com/doc.pdf", nil)
 
 	// Act
 	result, err := service.GetByID(ctx, documentID)
@@ -45,7 +49,8 @@ func TestDocumentGetService_GetByID_Success(t *testing.T) {
 func TestDocumentGetService_GetByID_DocumentNotFound(t *testing.T) {
 	// Arrange
 	repo := new(MockDocumentRepository)
-	service := usecases.NewDocumentGetService(repo)
+	mockStorage := new(MockObjectStorage)
+	service := usecases.NewDocumentGetService(repo, mockStorage)
 
 	ctx := context.Background()
 	documentID := "non-existent"
@@ -65,7 +70,8 @@ func TestDocumentGetService_GetByID_DocumentNotFound(t *testing.T) {
 func TestDocumentGetService_GetByID_RepositoryError(t *testing.T) {
 	// Arrange
 	repo := new(MockDocumentRepository)
-	service := usecases.NewDocumentGetService(repo)
+	mockStorage := new(MockObjectStorage)
+	service := usecases.NewDocumentGetService(repo, mockStorage)
 
 	ctx := context.Background()
 	documentID := "doc-123"
