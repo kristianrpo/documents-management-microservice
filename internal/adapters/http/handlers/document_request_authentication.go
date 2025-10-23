@@ -8,6 +8,7 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/dto/response/endpoints"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/dto/response/shared"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
+	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/middleware"
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
 	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/metrics"
 )
@@ -15,6 +16,7 @@ import (
 // DocumentRequestAuthenticationHandler handles HTTP requests for requesting document authentication
 type DocumentRequestAuthenticationHandler struct {
 	authService  usecases.DocumentRequestAuthenticationService
+	getService   usecases.DocumentGetService
 	errorHandler *errors.ErrorHandler
 	metrics      *metrics.PrometheusMetrics
 }
@@ -22,11 +24,13 @@ type DocumentRequestAuthenticationHandler struct {
 // NewDocumentRequestAuthenticationHandler creates a new handler for document authentication request operations
 func NewDocumentRequestAuthenticationHandler(
 	authService usecases.DocumentRequestAuthenticationService,
+	getService usecases.DocumentGetService,
 	errorHandler *errors.ErrorHandler,
 	metricsCollector *metrics.PrometheusMetrics,
 ) *DocumentRequestAuthenticationHandler {
 	return &DocumentRequestAuthenticationHandler{
 		authService:  authService,
+		getService:   getService,
 		errorHandler: errorHandler,
 		metrics:      metricsCollector,
 	}
@@ -38,6 +42,7 @@ func NewDocumentRequestAuthenticationHandler(
 // @Tags documents
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path string true "Document ID"
 // @Success 202 {object} endpoints.RequestAuthenticationResponse "Authentication request accepted"
 // @Failure 400 {object} endpoints.RequestAuthenticationErrorResponse "Invalid request"
@@ -69,13 +74,23 @@ func (h *DocumentRequestAuthenticationHandler) RequestAuthentication(c *gin.Cont
 		return
 	}
 
-	err := h.authService.RequestAuthentication(c.Request.Context(), documentID)
+	document, err := h.getService.GetByID(c.Request.Context(), documentID)
+	if err != nil {
+		h.errorHandler.HandleError(c, err)
+		return
+	}
+	idCitizen, err := middleware.GetUserIDCitizen(c)
+	if document.OwnerID != idCitizen {
+		h.errorHandler.HandleError(c, errors.NewValidationError("forbidden: user is not the owner of the document"))
+		return
+	}
+
+	err = h.authService.RequestAuthentication(c.Request.Context(), documentID)
 	if err != nil {
 		h.errorHandler.HandleError(c, err)
 		return
 	}
 
-	// Increment authentication requests counter (guard against nil metrics in tests or misconfig)
 	if h.metrics != nil && h.metrics.AuthRequestsTotal != nil {
 		h.metrics.AuthRequestsTotal.Inc()
 	}

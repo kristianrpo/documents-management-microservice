@@ -171,14 +171,15 @@ func main() {
 
 	uploadHandler := handlers.NewDocumentUploadHandler(documentService, errorHandler, metricsCollector)
 	listHandler := handlers.NewDocumentListHandler(documentListService, errorHandler, metricsCollector)
+
 	getHandler := handlers.NewDocumentGetHandler(documentGetService, errorHandler, metricsCollector)
-	deleteHandler := handlers.NewDocumentDeleteHandler(documentDeleteService, errorHandler, metricsCollector)
+	deleteHandler := handlers.NewDocumentDeleteHandler(documentDeleteService, documentGetService, errorHandler, metricsCollector)
 	deleteAllHandler := handlers.NewDocumentDeleteAllHandler(documentDeleteAllService, errorHandler, metricsCollector)
 	transferHandler := handlers.NewDocumentTransferHandler(documentTransferService, errorHandler, metricsCollector)
 
 	var requestAuthHandler *handlers.DocumentRequestAuthenticationHandler
 	if documentRequestAuthService != nil {
-		requestAuthHandler = handlers.NewDocumentRequestAuthenticationHandler(documentRequestAuthService, errorHandler, metricsCollector)
+		requestAuthHandler = handlers.NewDocumentRequestAuthenticationHandler(documentRequestAuthService, documentGetService, errorHandler, metricsCollector)
 	}
 
 	healthHandler := handlers.NewHealthHandler()

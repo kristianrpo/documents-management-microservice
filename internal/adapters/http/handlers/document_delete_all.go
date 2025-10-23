@@ -2,12 +2,12 @@ package handlers
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/dto/response/endpoints"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
+	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/middleware"
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
 	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/metrics"
 )
@@ -29,11 +29,11 @@ func NewDocumentDeleteAllHandler(service usecases.DocumentDeleteAllService, erro
 }
 
 // DeleteAll godoc
-// @Summary Delete all documents for a user
-// @Description Deletes all documents belonging to a specific user (identified by citizen ID) and their associated files from S3 storage.
+// @Summary Delete all documents for the authenticated user
+// @Description Deletes all documents belonging to the authenticated user (citizen ID from JWT) and their associated files from S3 storage.
 // @Description
 // @Description ## Features
-// @Description - Deletes all document metadata from DynamoDB for the specified user
+// @Description - Deletes all document metadata from DynamoDB for the authenticated user
 // @Description - Removes all physical files from S3 storage
 // @Description - Returns the count of deleted documents
 // @Description - Useful for account closure or data migration scenarios
@@ -50,17 +50,15 @@ func NewDocumentDeleteAllHandler(service usecases.DocumentDeleteAllService, erro
 // @Tags documents
 // @Accept json
 // @Produce json
-// @Param id_citizen path int true "Citizen ID" example(123456789)
+// @Security BearerAuth
 // @Success 200 {object} endpoints.DeleteAllResponse "All documents deleted successfully"
 // @Failure 400 {object} endpoints.DeleteAllErrorResponse "Validation error - invalid citizen ID"
 // @Failure 500 {object} endpoints.DeleteAllErrorResponse "Internal server error - database or storage error"
-// @Router /api/v1/documents/user/{id_citizen} [delete]
+// @Router /api/v1/documents/user/delete-all [delete]
 func (handler *DocumentDeleteAllHandler) DeleteAll(ctx *gin.Context) {
-	idCitizenStr := ctx.Param("id_citizen")
-
-	idCitizen, err := strconv.ParseInt(idCitizenStr, 10, 64)
-	if err != nil || idCitizen <= 0 {
-		handler.errorHandler.HandleError(ctx, errors.NewValidationError("id_citizen must be a valid positive integer"))
+	idCitizen, err := middleware.GetUserIDCitizen(ctx)
+	if err != nil {
+		handler.errorHandler.HandleError(ctx, errors.NewValidationError("user not authenticated"))
 		return
 	}
 
@@ -70,7 +68,6 @@ func (handler *DocumentDeleteAllHandler) DeleteAll(ctx *gin.Context) {
 		return
 	}
 
-	// Increment bulk delete metric with the count
 	handler.metrics.DeleteBulkRequestsTotal.Inc()
 
 	response := endpoints.DeleteAllResponse{

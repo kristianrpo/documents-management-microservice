@@ -44,12 +44,12 @@ func NewRouter(cfg *RouterConfig) *gin.Engine {
 	apiGroup := router.Group("/api/v1")
 	{
 		apiGroup.POST("/documents", cfg.JWTMiddleware.Authenticate(), cfg.UploadHandler.Upload)
-		apiGroup.GET("/documents", cfg.ListHandler.List)
-		apiGroup.GET("/documents/:id", cfg.GetHandler.GetByID)
-		apiGroup.DELETE("/documents/:id", cfg.DeleteHandler.Delete)
-		apiGroup.DELETE("/documents/user/:id_citizen", cfg.DeleteAllHandler.DeleteAll)
+		apiGroup.GET("/documents", cfg.JWTMiddleware.Authenticate(), cfg.ListHandler.List)
+		apiGroup.GET("/documents/:id", cfg.JWTMiddleware.Authenticate(), cfg.GetHandler.GetByID)
+		apiGroup.DELETE("/documents/:id", cfg.JWTMiddleware.Authenticate(), cfg.DeleteHandler.Delete)
+		apiGroup.DELETE("/documents/user/delete-all", cfg.JWTMiddleware.Authenticate(), cfg.DeleteAllHandler.DeleteAll)
 		apiGroup.GET("/documents/transfer/:id_citizen", cfg.TransferHandler.PrepareTransfer)
-		apiGroup.POST("/documents/:id/request-authentication", cfg.RequestAuthHandler.RequestAuthentication)
+		apiGroup.POST("/documents/:id/request-authentication", cfg.JWTMiddleware.Authenticate(), cfg.RequestAuthHandler.RequestAuthentication)
 	}
 
 	return router

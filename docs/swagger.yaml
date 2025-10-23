@@ -1,20 +1,20 @@
 basePath: /
 definitions:
-  endpoints.DeleteAllData:
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteAllData:
     properties:
       deleted_count:
         example: 5
         type: integer
     type: object
-  endpoints.DeleteAllErrorResponse:
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteAllErrorResponse:
     properties:
       error:
-        $ref: '#/definitions/shared.ErrorDetail'
+        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail'
     type: object
-  endpoints.DeleteAllResponse:
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteAllResponse:
     properties:
       data:
-        $ref: '#/definitions/endpoints.DeleteAllData'
+        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteAllData'
       message:
         example: all documents deleted successfully
         type: string
@@ -22,12 +22,12 @@ definitions:
         example: true
         type: boolean
     type: object
-  endpoints.DeleteErrorResponse:
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteErrorResponse:
     properties:
       error:
-        $ref: '#/definitions/shared.ErrorDetail'
+        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail'
     type: object
-  endpoints.DeleteResponse:
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteResponse:
     properties:
       message:
         example: document deleted successfully
@@ -36,57 +36,57 @@ definitions:
         example: true
         type: boolean
     type: object
-  endpoints.GetErrorResponse:
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.GetErrorResponse:
     properties:
       error:
-        $ref: '#/definitions/shared.ErrorDetail'
+        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail'
     type: object
-  endpoints.GetResponse:
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.GetResponse:
     properties:
       data:
-        $ref: '#/definitions/shared.DocumentResponse'
+        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.DocumentResponse'
       success:
         example: true
         type: boolean
     type: object
-  endpoints.HealthCheckResponse:
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.HealthCheckResponse:
     properties:
       ok:
         example: true
         type: boolean
     type: object
-  endpoints.ListData:
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListData:
     properties:
       documents:
         items:
-          $ref: '#/definitions/shared.DocumentResponse'
+          $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.DocumentResponse'
         type: array
       pagination:
-        $ref: '#/definitions/shared.Pagination'
+        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.Pagination'
     type: object
-  endpoints.ListErrorResponse:
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListErrorResponse:
     properties:
       error:
-        $ref: '#/definitions/shared.ErrorDetail'
+        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail'
     type: object
-  endpoints.ListResponse:
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListResponse:
     properties:
       data:
-        $ref: '#/definitions/endpoints.ListData'
+        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListData'
       success:
         example: true
         type: boolean
     type: object
-  endpoints.RequestAuthenticationErrorResponse:
-    properties:
+  ? github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.RequestAuthenticationErrorResponse
+  : properties:
       error:
-        $ref: '#/definitions/shared.ErrorDetail'
+        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail'
       success:
         example: false
         type: boolean
     type: object
-  endpoints.RequestAuthenticationResponse:
-    properties:
+  ? github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.RequestAuthenticationResponse
+  : properties:
       message:
         example: Authentication request submitted successfully
         type: string
@@ -94,11 +94,11 @@ definitions:
         example: true
         type: boolean
     type: object
-  endpoints.TransferData:
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.TransferData:
     properties:
       documents:
         items:
-          $ref: '#/definitions/shared.TransferDocument'
+          $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.TransferDocument'
         type: array
       expires_in:
         example: 15m
@@ -110,18 +110,18 @@ definitions:
         example: 5
         type: integer
     type: object
-  endpoints.TransferErrorResponse:
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.TransferErrorResponse:
     properties:
       error:
-        $ref: '#/definitions/shared.ErrorDetail'
+        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail'
       success:
         example: false
         type: boolean
     type: object
-  endpoints.TransferResponse:
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.TransferResponse:
     properties:
       data:
-        $ref: '#/definitions/endpoints.TransferData'
+        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.TransferData'
       message:
         example: Documents prepared for transfer
         type: string
@@ -129,20 +129,20 @@ definitions:
         example: true
         type: boolean
     type: object
-  endpoints.UploadErrorResponse:
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadErrorResponse:
     properties:
       error:
-        $ref: '#/definitions/shared.ErrorDetail'
+        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail'
     type: object
-  endpoints.UploadResponse:
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadResponse:
     properties:
       data:
-        $ref: '#/definitions/shared.DocumentResponse'
+        $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.DocumentResponse'
       success:
         example: true
         type: boolean
     type: object
-  shared.DocumentResponse:
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.DocumentResponse:
     properties:
       authentication_status:
         type: string
@@ -161,7 +161,7 @@ definitions:
       url:
         type: string
     type: object
-  shared.ErrorDetail:
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail:
     properties:
       code:
         example: VALIDATION_ERROR
@@ -170,7 +170,7 @@ definitions:
         example: invalid request format or validation failed
         type: string
     type: object
-  shared.Pagination:
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.Pagination:
     properties:
       limit:
         example: 10
@@ -185,7 +185,7 @@ definitions:
         example: 5
         type: integer
     type: object
-  shared.TransferDocument:
+  github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.TransferDocument:
     properties:
       expires_at:
         example: "2025-10-14T15:30:00Z"
@@ -255,12 +255,6 @@ paths:
         - `VALIDATION_ERROR`: Invalid id_citizen or pagination parameters
         - `PERSISTENCE_ERROR`: Failed to retrieve documents from database
       parameters:
-      - description: Owner's citizen ID
-        example: 123456789
-        in: query
-        name: id_citizen
-        required: true
-        type: integer
       - default: 1
         description: Page number (starts at 1)
         example: 1
@@ -282,15 +276,17 @@ paths:
         "200":
           description: List of documents retrieved successfully
           schema:
-            $ref: '#/definitions/endpoints.ListResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListResponse'
         "400":
           description: Validation error - invalid id_citizen or pagination parameters
           schema:
-            $ref: '#/definitions/endpoints.ListErrorResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListErrorResponse'
         "500":
           description: Internal server error - database error
           schema:
-            $ref: '#/definitions/endpoints.ListErrorResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListErrorResponse'
+      security:
+      - BearerAuth: []
       summary: List documents
       tags:
       - documents
@@ -311,19 +307,19 @@ paths:
         "201":
           description: Document uploaded successfully
           schema:
-            $ref: '#/definitions/endpoints.UploadResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadResponse'
         "400":
           description: Validation error
           schema:
-            $ref: '#/definitions/endpoints.UploadErrorResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadErrorResponse'
         "401":
           description: Unauthorized - invalid or missing token
           schema:
-            $ref: '#/definitions/endpoints.UploadErrorResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/endpoints.UploadErrorResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadErrorResponse'
       security:
       - BearerAuth: []
       summary: Upload a document
@@ -362,15 +358,17 @@ paths:
         "200":
           description: Document deleted successfully
           schema:
-            $ref: '#/definitions/endpoints.DeleteResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteResponse'
         "404":
           description: Document not found
           schema:
-            $ref: '#/definitions/endpoints.DeleteErrorResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteErrorResponse'
         "500":
           description: Internal server error - database or storage error
           schema:
-            $ref: '#/definitions/endpoints.DeleteErrorResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Delete a document by ID
       tags:
       - documents
@@ -407,15 +405,17 @@ paths:
         "200":
           description: Document retrieved successfully
           schema:
-            $ref: '#/definitions/endpoints.GetResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.GetResponse'
         "404":
           description: Document not found
           schema:
-            $ref: '#/definitions/endpoints.GetErrorResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.GetErrorResponse'
         "500":
           description: Internal server error - database error
           schema:
-            $ref: '#/definitions/endpoints.GetErrorResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.GetErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Get document by ID
       tags:
       - documents
@@ -438,19 +438,21 @@ paths:
         "202":
           description: Authentication request accepted
           schema:
-            $ref: '#/definitions/endpoints.RequestAuthenticationResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.RequestAuthenticationResponse'
         "400":
           description: Invalid request
           schema:
-            $ref: '#/definitions/endpoints.RequestAuthenticationErrorResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.RequestAuthenticationErrorResponse'
         "404":
           description: Document not found
           schema:
-            $ref: '#/definitions/endpoints.RequestAuthenticationErrorResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.RequestAuthenticationErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/endpoints.RequestAuthenticationErrorResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.RequestAuthenticationErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Request document authentication
       tags:
       - documents
@@ -472,27 +474,27 @@ paths:
         "200":
           description: Documents prepared successfully
           schema:
-            $ref: '#/definitions/endpoints.TransferResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.TransferResponse'
         "400":
           description: Invalid request
           schema:
-            $ref: '#/definitions/endpoints.TransferErrorResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.TransferErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/endpoints.TransferErrorResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.TransferErrorResponse'
       summary: Prepare documents for transfer
       tags:
       - documents
-  /api/v1/documents/user/{id_citizen}:
+  /api/v1/documents/user/delete-all:
     delete:
       consumes:
       - application/json
       description: |-
-        Deletes all documents belonging to a specific user (identified by citizen ID) and their associated files from S3 storage.
+        Deletes all documents belonging to the authenticated user (citizen ID from JWT) and their associated files from S3 storage.
 
         ## Features
-        - Deletes all document metadata from DynamoDB for the specified user
+        - Deletes all document metadata from DynamoDB for the authenticated user
         - Removes all physical files from S3 storage
         - Returns the count of deleted documents
         - Useful for account closure or data migration scenarios
@@ -506,29 +508,24 @@ paths:
         ## Error Codes
         - `VALIDATION_ERROR`: Invalid citizen ID
         - `PERSISTENCE_ERROR`: Failed to delete documents from database
-      parameters:
-      - description: Citizen ID
-        example: 123456789
-        in: path
-        name: id_citizen
-        required: true
-        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: All documents deleted successfully
           schema:
-            $ref: '#/definitions/endpoints.DeleteAllResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteAllResponse'
         "400":
           description: Validation error - invalid citizen ID
           schema:
-            $ref: '#/definitions/endpoints.DeleteAllErrorResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteAllErrorResponse'
         "500":
           description: Internal server error - database or storage error
           schema:
-            $ref: '#/definitions/endpoints.DeleteAllErrorResponse'
-      summary: Delete all documents for a user
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteAllErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete all documents for the authenticated user
       tags:
       - documents
   /healthz:
@@ -545,7 +542,7 @@ paths:
         "200":
           description: Service is healthy and operational
           schema:
-            $ref: '#/definitions/endpoints.HealthCheckResponse'
+            $ref: '#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.HealthCheckResponse'
       summary: Health check endpoint
       tags:
       - health

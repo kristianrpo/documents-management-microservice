@@ -7,6 +7,7 @@ import (
 
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/dto/response/endpoints"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
+	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/middleware"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/presenter"
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
 	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/metrics"
@@ -49,6 +50,7 @@ func NewDocumentGetHandler(service usecases.DocumentGetService, errorHandler *er
 // @Tags documents
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path string true "Document ID" example(123e4567-e89b-12d3-a456-426614174000)
 // @Success 200 {object} endpoints.GetResponse "Document retrieved successfully"
 // @Failure 404 {object} endpoints.GetErrorResponse "Document not found"
@@ -68,7 +70,12 @@ func (handler *DocumentGetHandler) GetByID(ctx *gin.Context) {
 		return
 	}
 
-	// Increment documents retrieved counter
+	idCitizen, err := middleware.GetUserIDCitizen(ctx)
+	if document.OwnerID != idCitizen {
+		handler.errorHandler.HandleError(ctx, errors.NewValidationError("forbidden: user is not the owner of the document"))
+		return
+	}
+
 	handler.metrics.GetRequestsTotal.Inc()
 
 	response := endpoints.GetResponse{

@@ -16,11 +16,11 @@ import (
 
 // UserClaims representa las claims del JWT del microservicio de auth
 type UserClaims struct {
-    IDCitizen int64  `json:"id_citizen"`
-    Email     string `json:"email"`
-    Role      string `json:"role"`
-    Type      string `json:"type"`
-    jwt.RegisteredClaims
+	IDCitizen int64  `json:"id_citizen"`
+	Email     string `json:"email"`
+	Role      string `json:"role"`
+	Type      string `json:"type"`
+	jwt.RegisteredClaims
 }
 
 type contextKey string

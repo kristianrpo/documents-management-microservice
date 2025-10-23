@@ -1,14 +1,14 @@
 package handlers
 
 import (
+	"fmt"
+	"github.com/gin-gonic/gin"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-
-	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/dto/request"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/dto/response/endpoints"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/dto/response/shared"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
+	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/middleware"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/presenter"
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
 	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/metrics"
@@ -52,7 +52,7 @@ func NewDocumentListHandler(service usecases.DocumentListService, errorHandler *
 // @Tags documents
 // @Accept json
 // @Produce json
-// @Param id_citizen query int true "Owner's citizen ID" example(123456789)
+// @Security BearerAuth
 // @Param page query int false "Page number (starts at 1)" minimum(1) default(1) example(1)
 // @Param limit query int false "Number of items per page (max 100)" minimum(1) maximum(100) default(10) example(10)
 // @Success 200 {object} endpoints.ListResponse "List of documents retrieved successfully"
@@ -60,25 +60,32 @@ func NewDocumentListHandler(service usecases.DocumentListService, errorHandler *
 // @Failure 500 {object} endpoints.ListErrorResponse "Internal server error - database error"
 // @Router /api/v1/documents [get]
 func (handler *DocumentListHandler) List(ctx *gin.Context) {
-	var listRequest request.ListDocumentsRequest
-
-	if err := ctx.ShouldBindQuery(&listRequest); err != nil {
-		handler.errorHandler.HandleError(ctx, errors.NewValidationError("invalid query parameters"))
+	idCitizen, err := middleware.GetUserIDCitizen(ctx)
+	if err != nil {
+		handler.errorHandler.HandleError(ctx, errors.NewValidationError("user not authenticated"))
 		return
+	}
+
+	page := 1
+	limit := 10
+	if p := ctx.Query("page"); p != "" {
+		fmt.Sscanf(p, "%d", &page)
+	}
+	if l := ctx.Query("limit"); l != "" {
+		fmt.Sscanf(l, "%d", &limit)
 	}
 
 	documents, pagination, totalPages, totalCount, err := handler.service.List(
 		ctx.Request.Context(),
-		listRequest.IDCitizen,
-		listRequest.Page,
-		listRequest.Limit,
+		idCitizen,
+		page,
+		limit,
 	)
 	if err != nil {
 		handler.errorHandler.HandleError(ctx, err)
 		return
 	}
 
-	// Increment metric for list operations
 	handler.metrics.ListRequestsTotal.Inc()
 
 	response := endpoints.ListResponse{

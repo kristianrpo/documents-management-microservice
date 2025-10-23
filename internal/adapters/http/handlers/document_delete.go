@@ -7,23 +7,26 @@ import (
 
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/dto/response/endpoints"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
+	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/middleware"
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
 	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/metrics"
 )
 
 // DocumentDeleteHandler handles HTTP requests for deleting individual documents
 type DocumentDeleteHandler struct {
-	service      usecases.DocumentDeleteService
-	errorHandler *errors.ErrorHandler
-	metrics      *metrics.PrometheusMetrics
+	service             usecases.DocumentDeleteService
+	serviceGetDocuments usecases.DocumentGetService
+	errorHandler        *errors.ErrorHandler
+	metrics             *metrics.PrometheusMetrics
 }
 
 // NewDocumentDeleteHandler creates a new handler for document deletion operations
-func NewDocumentDeleteHandler(service usecases.DocumentDeleteService, errorHandler *errors.ErrorHandler, metricsCollector *metrics.PrometheusMetrics) *DocumentDeleteHandler {
+func NewDocumentDeleteHandler(service usecases.DocumentDeleteService, serviceGetDocuments usecases.DocumentGetService, errorHandler *errors.ErrorHandler, metricsCollector *metrics.PrometheusMetrics) *DocumentDeleteHandler {
 	return &DocumentDeleteHandler{
-		service:      service,
-		errorHandler: errorHandler,
-		metrics:      metricsCollector,
+		service:             service,
+		serviceGetDocuments: serviceGetDocuments,
+		errorHandler:        errorHandler,
+		metrics:             metricsCollector,
 	}
 }
 
@@ -47,6 +50,7 @@ func NewDocumentDeleteHandler(service usecases.DocumentDeleteService, errorHandl
 // @Tags documents
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path string true "Document ID" example(123e4567-e89b-12d3-a456-426614174000)
 // @Success 200 {object} endpoints.DeleteResponse "Document deleted successfully"
 // @Failure 404 {object} endpoints.DeleteErrorResponse "Document not found"
@@ -60,13 +64,28 @@ func (handler *DocumentDeleteHandler) Delete(ctx *gin.Context) {
 		return
 	}
 
-	err := handler.service.Delete(ctx.Request.Context(), id)
+	document, err := handler.serviceGetDocuments.GetByID(ctx.Request.Context(), id)
 	if err != nil {
 		handler.errorHandler.HandleError(ctx, err)
 		return
 	}
 
-	// Increment documents deleted counter
+	idCitizen, err := middleware.GetUserIDCitizen(ctx)
+	if err != nil {
+		handler.errorHandler.HandleError(ctx, errors.NewValidationError("user not authenticated"))
+		return
+	}
+	if document.OwnerID != idCitizen {
+		handler.errorHandler.HandleError(ctx, errors.NewValidationError("forbidden: user is not the owner of the document"))
+		return
+	}
+
+	err = handler.service.Delete(ctx.Request.Context(), id)
+	if err != nil {
+		handler.errorHandler.HandleError(ctx, err)
+		return
+	}
+
 	handler.metrics.DeleteRequestsTotal.Inc()
 
 	response := endpoints.DeleteResponse{
