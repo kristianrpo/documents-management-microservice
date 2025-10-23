@@ -43,14 +43,14 @@ func NewRouter(cfg *RouterConfig) *gin.Engine {
 
 	apiGroup := router.Group("/api/v1")
 	{
-	// User-protected endpoints (require authenticated user with role USER)
-	apiGroup.POST("/documents", cfg.JWTMiddleware.Authenticate(), cfg.JWTMiddleware.RequireRole("USER"), cfg.UploadHandler.Upload)
-	apiGroup.GET("/documents", cfg.JWTMiddleware.Authenticate(), cfg.JWTMiddleware.RequireRole("USER"), cfg.ListHandler.List)
-	apiGroup.GET("/documents/:id", cfg.JWTMiddleware.Authenticate(), cfg.JWTMiddleware.RequireRole("USER"), cfg.GetHandler.GetByID)
-	apiGroup.DELETE("/documents/:id", cfg.JWTMiddleware.Authenticate(), cfg.JWTMiddleware.RequireRole("USER"), cfg.DeleteHandler.Delete)
-	apiGroup.DELETE("/documents/user/delete-all", cfg.JWTMiddleware.Authenticate(), cfg.JWTMiddleware.RequireRole("USER"), cfg.DeleteAllHandler.DeleteAll)
-	apiGroup.POST("/documents/:id/request-authentication", cfg.JWTMiddleware.Authenticate(), cfg.JWTMiddleware.RequireRole("USER"), cfg.RequestAuthHandler.RequestAuthentication)
-	apiGroup.GET("/documents/transfer/:id_citizen", cfg.JWTMiddleware.AuthenticateClient(), cfg.JWTMiddleware.RequireClientCredentials(), cfg.TransferHandler.PrepareTransfer)
+		// User-protected endpoints (require authenticated user with role USER)
+		apiGroup.POST("/documents", cfg.JWTMiddleware.Authenticate(), cfg.JWTMiddleware.RequireRole("USER"), cfg.UploadHandler.Upload)
+		apiGroup.GET("/documents", cfg.JWTMiddleware.Authenticate(), cfg.JWTMiddleware.RequireRole("USER"), cfg.ListHandler.List)
+		apiGroup.GET("/documents/:id", cfg.JWTMiddleware.Authenticate(), cfg.JWTMiddleware.RequireRole("USER"), cfg.GetHandler.GetByID)
+		apiGroup.DELETE("/documents/:id", cfg.JWTMiddleware.Authenticate(), cfg.JWTMiddleware.RequireRole("USER"), cfg.DeleteHandler.Delete)
+		apiGroup.DELETE("/documents/user/delete-all", cfg.JWTMiddleware.Authenticate(), cfg.JWTMiddleware.RequireRole("USER"), cfg.DeleteAllHandler.DeleteAll)
+		apiGroup.POST("/documents/:id/request-authentication", cfg.JWTMiddleware.Authenticate(), cfg.JWTMiddleware.RequireRole("USER"), cfg.RequestAuthHandler.RequestAuthentication)
+		apiGroup.GET("/documents/transfer/:id_citizen", cfg.JWTMiddleware.AuthenticateClient(), cfg.JWTMiddleware.RequireClientCredentials(), cfg.TransferHandler.PrepareTransfer)
 	}
 
 	return router
