@@ -6,11 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
-
-	apierrors "github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
 	handlers "github.com/kristianrpo/document-management-microservice/internal/adapters/http/handlers"
-	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/middleware"
 	"github.com/kristianrpo/document-management-microservice/internal/domain/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -24,20 +20,8 @@ func (m *mockDeleteAllService) DeleteAll(ctx context.Context, ownerID int64) (in
 }
 
 func TestDocumentDeleteAllHandler_Success(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-
+	r, errHandler, metricsCollector := newTestRouter(t, true, 123456)
 	service := new(mockDeleteAllService)
-	errMapper := apierrors.NewErrorMapper()
-	errHandler := apierrors.NewErrorHandler(errMapper)
-	metricsCollector := createTestMetrics(t)
-
-	// inject authenticated user (owner id 123456)
-	r.Use(func(c *gin.Context) {
-		c.Set(string(middleware.UserContextKey), &middleware.UserClaims{IDCitizen: 123456})
-		c.Next()
-	})
-
 	h := handlers.NewDocumentDeleteAllHandler(service, errHandler, metricsCollector)
 	r.DELETE("/api/v1/documents/user/delete-all", h.DeleteAll)
 
@@ -53,17 +37,9 @@ func TestDocumentDeleteAllHandler_Success(t *testing.T) {
 	service.AssertExpectations(t)
 }
 
-//nolint:dupl // Test setup boilerplate is similar across test files
 func TestDocumentDeleteAllHandler_ValidationError_InvalidID(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-
+	r, errHandler, metricsCollector := newTestRouter(t, false, 0)
 	service := new(mockDeleteAllService)
-	errMapper := apierrors.NewErrorMapper()
-	errHandler := apierrors.NewErrorHandler(errMapper)
-	metricsCollector := createTestMetrics(t)
-
-	// No token -> should return validation error (user not authenticated)
 	h := handlers.NewDocumentDeleteAllHandler(service, errHandler, metricsCollector)
 	r.DELETE("/api/v1/documents/user/delete-all", h.DeleteAll)
 
@@ -75,17 +51,9 @@ func TestDocumentDeleteAllHandler_ValidationError_InvalidID(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "VALIDATION_ERROR")
 }
 
-//nolint:dupl // Test setup boilerplate is similar across test files
 func TestDocumentDeleteAllHandler_ValidationError_NegativeID(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-
+	r, errHandler, metricsCollector := newTestRouter(t, false, 0)
 	service := new(mockDeleteAllService)
-	errMapper := apierrors.NewErrorMapper()
-	errHandler := apierrors.NewErrorHandler(errMapper)
-	metricsCollector := createTestMetrics(t)
-
-	// No token -> should return validation error (user not authenticated)
 	h := handlers.NewDocumentDeleteAllHandler(service, errHandler, metricsCollector)
 	r.DELETE("/api/v1/documents/user/delete-all", h.DeleteAll)
 
@@ -98,20 +66,8 @@ func TestDocumentDeleteAllHandler_ValidationError_NegativeID(t *testing.T) {
 }
 
 func TestDocumentDeleteAllHandler_PersistenceError(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-
+	r, errHandler, metricsCollector := newTestRouter(t, true, 123456)
 	service := new(mockDeleteAllService)
-	errMapper := apierrors.NewErrorMapper()
-	errHandler := apierrors.NewErrorHandler(errMapper)
-	metricsCollector := createTestMetrics(t)
-
-	// inject authenticated user (owner id 123456)
-	r.Use(func(c *gin.Context) {
-		c.Set(string(middleware.UserContextKey), &middleware.UserClaims{IDCitizen: 123456})
-		c.Next()
-	})
-
 	h := handlers.NewDocumentDeleteAllHandler(service, errHandler, metricsCollector)
 	r.DELETE("/api/v1/documents/user/delete-all", h.DeleteAll)
 

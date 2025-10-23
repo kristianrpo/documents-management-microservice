@@ -10,7 +10,6 @@ import (
 
 	apierrors "github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
 	handlers "github.com/kristianrpo/document-management-microservice/internal/adapters/http/handlers"
-	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/middleware"
 	"github.com/kristianrpo/document-management-microservice/internal/domain/errors"
 	"github.com/kristianrpo/document-management-microservice/internal/domain/models"
 	"github.com/stretchr/testify/assert"
@@ -34,53 +33,32 @@ func (m *mockDeleteGetService) GetByID(ctx context.Context, id string) (*models.
 	return args.Get(0).(*models.Document), args.Error(1)
 }
 
+//nolint:dupl // test boilerplate duplicated across handlers (intentional)
 func TestDocumentDeleteHandler_Success(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-
 	service := new(mockDeleteService)
-	errMapper := apierrors.NewErrorMapper()
-	errHandler := apierrors.NewErrorHandler(errMapper)
-	metricsCollector := createTestMetrics(t)
-
 	getService := new(mockDeleteGetService)
-	// inject authenticated user (owner id 123456)
-	r.Use(func(c *gin.Context) {
-		c.Set(string(middleware.UserContextKey), &middleware.UserClaims{IDCitizen: 123456})
-		c.Next()
-	})
-
-	h := handlers.NewDocumentDeleteHandler(service, getService, errHandler, metricsCollector)
-	r.DELETE("/api/v1/documents/:id", h.Delete)
 
 	// Expect GetByID called to verify owner
 	getService.On("GetByID", mock.Anything, "doc123").Return(&models.Document{ID: "doc123", OwnerID: 123456}, nil)
 	service.On("Delete", mock.Anything, "doc123").Return(nil)
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/v1/documents/doc123", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
+	w := runWithAuthenticatedRouter(t, http.MethodDelete, "/api/v1/documents/doc123", func(r *gin.Engine) {
+		errMapper := apierrors.NewErrorMapper()
+		errHandler := apierrors.NewErrorHandler(errMapper)
+		metricsCollector := createTestMetrics(t)
+		h := handlers.NewDocumentDeleteHandler(service, getService, errHandler, metricsCollector)
+		r.DELETE("/api/v1/documents/:id", h.Delete)
+	})
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "document deleted successfully")
 	service.AssertExpectations(t)
 }
 
-//nolint:dupl // Test setup boilerplate is similar across test files
 func TestDocumentDeleteHandler_NotFound(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-
+	r, errHandler, metricsCollector := newTestRouter(t, true, 123456)
 	service := new(mockDeleteService)
-	errMapper := apierrors.NewErrorMapper()
-	errHandler := apierrors.NewErrorHandler(errMapper)
-	metricsCollector := createTestMetrics(t)
-
 	getService := new(mockDeleteGetService)
-	r.Use(func(c *gin.Context) {
-		c.Set(string(middleware.UserContextKey), &middleware.UserClaims{IDCitizen: 123456})
-		c.Next()
-	})
 	h := handlers.NewDocumentDeleteHandler(service, getService, errHandler, metricsCollector)
 	r.DELETE("/api/v1/documents/:id", h.Delete)
 
@@ -97,21 +75,10 @@ func TestDocumentDeleteHandler_NotFound(t *testing.T) {
 	service.AssertExpectations(t)
 }
 
-//nolint:dupl // similar setup across handler tests
 func TestDocumentDeleteHandler_PersistenceError(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-
+	r, errHandler, metricsCollector := newTestRouter(t, true, 123456)
 	service := new(mockDeleteService)
-	errMapper := apierrors.NewErrorMapper()
-	errHandler := apierrors.NewErrorHandler(errMapper)
-	metricsCollector := createTestMetrics(t)
-
 	getService := new(mockDeleteGetService)
-	r.Use(func(c *gin.Context) {
-		c.Set(string(middleware.UserContextKey), &middleware.UserClaims{IDCitizen: 123456})
-		c.Next()
-	})
 	h := handlers.NewDocumentDeleteHandler(service, getService, errHandler, metricsCollector)
 	r.DELETE("/api/v1/documents/:id", h.Delete)
 

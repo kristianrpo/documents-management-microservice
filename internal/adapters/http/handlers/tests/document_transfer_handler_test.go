@@ -29,14 +29,8 @@ func (m *mockTransferService) PrepareTransfer(ctx context.Context, ownerID int64
 }
 
 func TestDocumentTransferHandler_Success(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-
+	r, errHandler, metricsCollector := newTestRouter(t, false, 0)
 	service := new(mockTransferService)
-	errMapper := apierrors.NewErrorMapper()
-	errHandler := apierrors.NewErrorHandler(errMapper)
-	metricsCollector := createTestMetrics(t)
-
 	h := handlers.NewDocumentTransferHandler(service, errHandler, metricsCollector)
 	r.GET("/api/v1/documents/transfer/:id_citizen", h.PrepareTransfer)
 
@@ -80,16 +74,9 @@ func TestDocumentTransferHandler_Success(t *testing.T) {
 	service.AssertExpectations(t)
 }
 
-//nolint:dupl // Test setup boilerplate is similar across test files
 func TestDocumentTransferHandler_ValidationError_InvalidID(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-
+	r, errHandler, metricsCollector := newTestRouter(t, false, 0)
 	service := new(mockTransferService)
-	errMapper := apierrors.NewErrorMapper()
-	errHandler := apierrors.NewErrorHandler(errMapper)
-	metricsCollector := createTestMetrics(t)
-
 	h := handlers.NewDocumentTransferHandler(service, errHandler, metricsCollector)
 	r.GET("/api/v1/documents/transfer/:id_citizen", h.PrepareTransfer)
 
@@ -102,7 +89,6 @@ func TestDocumentTransferHandler_ValidationError_InvalidID(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "INVALID_ID_CITIZEN")
 }
 
-//nolint:dupl // Test setup boilerplate is similar across test files
 func TestDocumentTransferHandler_ValidationError_NegativeID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()

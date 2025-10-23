@@ -1,10 +1,14 @@
 package handlers_test
 
 import (
+	"net/http/httptest"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 
+	apierrors "github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
+	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/middleware"
 	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/metrics"
 )
 
@@ -156,4 +160,38 @@ func createTestMetrics(t *testing.T) *metrics.PrometheusMetrics {
 			[]string{"queue", "type"},
 		),
 	}
+}
+
+// newTestRouter creates a Gin router preconfigured with error handler and optional authenticated user
+func newTestRouter(t *testing.T, withAuth bool, idCitizen int64) (*gin.Engine, *apierrors.ErrorHandler, *metrics.PrometheusMetrics) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+
+	errMapper := apierrors.NewErrorMapper()
+	errHandler := apierrors.NewErrorHandler(errMapper)
+	metricsCollector := createTestMetrics(t)
+
+	if withAuth {
+		r.Use(func(c *gin.Context) {
+			c.Set(string(middleware.UserContextKey), &middleware.UserClaims{IDCitizen: idCitizen})
+			c.Next()
+		})
+	}
+
+	return r, errHandler, metricsCollector
+}
+
+// runWithAuthenticatedRouter creates an authenticated test router (idCitizen=123456),
+// registers routes via the setup callback, executes a request with the provided
+// method and path, and returns the response recorder for assertions.
+func runWithAuthenticatedRouter(t *testing.T, method, path string, setup func(r *gin.Engine)) *httptest.ResponseRecorder {
+	t.Helper()
+	r, _, _ := newTestRouter(t, true, 123456)
+
+	setup(r)
+
+	req := httptest.NewRequest(method, path, nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	return w
 }

@@ -6,11 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
-
-	apierrors "github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
 	handlers "github.com/kristianrpo/document-management-microservice/internal/adapters/http/handlers"
-	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/middleware"
 	"github.com/kristianrpo/document-management-microservice/internal/application/util"
 	domainerrors "github.com/kristianrpo/document-management-microservice/internal/domain/errors"
 	"github.com/kristianrpo/document-management-microservice/internal/domain/models"
@@ -31,19 +27,7 @@ func (errListService) List(ctx context.Context, ownerID int64, page, limit int) 
 }
 
 func TestDocumentListHandler_Success(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-
-	errMapper := apierrors.NewErrorMapper()
-	errHandler := apierrors.NewErrorHandler(errMapper)
-	metricsCollector := createTestMetrics(t)
-
-	// inject authenticated user (owner id 1)
-	r.Use(func(c *gin.Context) {
-		c.Set(string(middleware.UserContextKey), &middleware.UserClaims{IDCitizen: 1})
-		c.Next()
-	})
-
+	r, errHandler, metricsCollector := newTestRouter(t, true, 1)
 	h := handlers.NewDocumentListHandler(okListService{}, errHandler, metricsCollector)
 	r.GET("/api/v1/documents", h.List)
 
@@ -55,15 +39,8 @@ func TestDocumentListHandler_Success(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "a.pdf")
 }
 
-//nolint:dupl // Test setup boilerplate is similar across test files
 func TestDocumentListHandler_ValidationError(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-
-	errMapper := apierrors.NewErrorMapper()
-	errHandler := apierrors.NewErrorHandler(errMapper)
-	metricsCollector := createTestMetrics(t)
-
+	r, errHandler, metricsCollector := newTestRouter(t, false, 0)
 	h := handlers.NewDocumentListHandler(okListService{}, errHandler, metricsCollector)
 	r.GET("/api/v1/documents", h.List)
 
@@ -76,21 +53,8 @@ func TestDocumentListHandler_ValidationError(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "VALIDATION_ERROR")
 }
 
-//nolint:dupl // Test setup boilerplate is similar across test files
 func TestDocumentListHandler_ServiceError(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-
-	errMapper := apierrors.NewErrorMapper()
-	errHandler := apierrors.NewErrorHandler(errMapper)
-	metricsCollector := createTestMetrics(t)
-
-	// inject authenticated user (owner id 1)
-	r.Use(func(c *gin.Context) {
-		c.Set(string(middleware.UserContextKey), &middleware.UserClaims{IDCitizen: 1})
-		c.Next()
-	})
-
+	r, errHandler, metricsCollector := newTestRouter(t, true, 1)
 	h := handlers.NewDocumentListHandler(errListService{}, errHandler, metricsCollector)
 	r.GET("/api/v1/documents", h.List)
 

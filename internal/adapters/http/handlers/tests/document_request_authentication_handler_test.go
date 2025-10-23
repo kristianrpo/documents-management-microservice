@@ -34,50 +34,31 @@ func (m *mockRequestAuthService) RequestAuthentication(ctx context.Context, docu
 	return args.Error(0)
 }
 
+//nolint:dupl // test boilerplate duplicated across handlers (intentional)
 func TestDocumentRequestAuthenticationHandler_Success(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-
 	service := new(mockRequestAuthService)
-	errMapper := apierrors.NewErrorMapper()
-	errHandler := apierrors.NewErrorHandler(errMapper)
-	metricsCollector := createTestMetrics(t)
-
 	getService := new(mockAuthGetService)
-	r.Use(func(c *gin.Context) {
-		c.Set(string(middleware.UserContextKey), &middleware.UserClaims{IDCitizen: 123456})
-		c.Next()
-	})
-	h := handlers.NewDocumentRequestAuthenticationHandler(service, getService, errHandler, metricsCollector)
-	r.POST("/api/v1/documents/:id/request-authentication", h.RequestAuthentication)
 
 	getService.On("GetByID", mock.Anything, "doc123").Return(&models.Document{ID: "doc123", OwnerID: 123456}, nil)
 	service.On("RequestAuthentication", mock.Anything, "doc123").Return(nil)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/documents/doc123/request-authentication", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
+	w := runWithAuthenticatedRouter(t, http.MethodPost, "/api/v1/documents/doc123/request-authentication", func(r *gin.Engine) {
+		errMapper := apierrors.NewErrorMapper()
+		errHandler := apierrors.NewErrorHandler(errMapper)
+		metricsCollector := createTestMetrics(t)
+		h := handlers.NewDocumentRequestAuthenticationHandler(service, getService, errHandler, metricsCollector)
+		r.POST("/api/v1/documents/:id/request-authentication", h.RequestAuthentication)
+	})
 
 	assert.Equal(t, http.StatusAccepted, w.Code)
 	assert.Contains(t, w.Body.String(), "Authentication request submitted successfully")
 	service.AssertExpectations(t)
 }
 
-//nolint:dupl // Test setup boilerplate is similar across test files
 func TestDocumentRequestAuthenticationHandler_EmptyDocumentID(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-
+	r, errHandler, metricsCollector := newTestRouter(t, true, 123456)
 	service := new(mockRequestAuthService)
-	errMapper := apierrors.NewErrorMapper()
-	errHandler := apierrors.NewErrorHandler(errMapper)
-	metricsCollector := createTestMetrics(t)
-
 	getService := new(mockAuthGetService)
-	r.Use(func(c *gin.Context) {
-		c.Set(string(middleware.UserContextKey), &middleware.UserClaims{IDCitizen: 123456})
-		c.Next()
-	})
 	h := handlers.NewDocumentRequestAuthenticationHandler(service, getService, errHandler, metricsCollector)
 	r.POST("/api/v1/documents/:id/request-authentication", h.RequestAuthentication)
 
@@ -90,21 +71,10 @@ func TestDocumentRequestAuthenticationHandler_EmptyDocumentID(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "INVALID_DOCUMENT_ID")
 }
 
-//nolint:dupl // Test setup boilerplate is similar across test files
 func TestDocumentRequestAuthenticationHandler_NotFound(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-
+	r, errHandler, metricsCollector := newTestRouter(t, true, 123456)
 	service := new(mockRequestAuthService)
-	errMapper := apierrors.NewErrorMapper()
-	errHandler := apierrors.NewErrorHandler(errMapper)
-	metricsCollector := createTestMetrics(t)
-
 	getService := new(mockAuthGetService)
-	r.Use(func(c *gin.Context) {
-		c.Set(string(middleware.UserContextKey), &middleware.UserClaims{IDCitizen: 123456})
-		c.Next()
-	})
 	h := handlers.NewDocumentRequestAuthenticationHandler(service, getService, errHandler, metricsCollector)
 	r.POST("/api/v1/documents/:id/request-authentication", h.RequestAuthentication)
 
@@ -120,7 +90,6 @@ func TestDocumentRequestAuthenticationHandler_NotFound(t *testing.T) {
 	service.AssertExpectations(t)
 }
 
-//nolint:dupl // similar setup across handler tests
 func TestDocumentRequestAuthenticationHandler_PersistenceError(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()

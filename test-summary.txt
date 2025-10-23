@@ -1,0 +1,40 @@
+--- PASS: TestNewHashCalculateError (0.00s)
+=== RUN   TestNewStorageUploadError
+--- PASS: TestNewStorageUploadError (0.00s)
+=== RUN   TestNewPersistenceError
+--- PASS: TestNewPersistenceError (0.00s)
+=== RUN   TestNewNotFoundError
+--- PASS: TestNewNotFoundError (0.00s)
+PASS
+=== RUN   TestAuthenticationStatus_IsValid
+=== RUN   TestAuthenticationStatus_IsValid/unauthenticated_status_is_valid
+=== RUN   TestAuthenticationStatus_IsValid/authenticating_status_is_valid
+=== RUN   TestAuthenticationStatus_IsValid/authenticated_status_is_valid
+=== RUN   TestAuthenticationStatus_IsValid/empty_status_is_invalid
+=== RUN   TestAuthenticationStatus_IsValid/unknown_status_is_invalid
+=== RUN   TestAuthenticationStatus_IsValid/random_string_is_invalid
+--- PASS: TestAuthenticationStatus_IsValid (0.00s)
+=== RUN   TestAuthenticationStatus_String
+=== RUN   TestAuthenticationStatus_String/unauthenticated_to_string
+=== RUN   TestAuthenticationStatus_String/authenticating_to_string
+=== RUN   TestAuthenticationStatus_String/authenticated_to_string
+=== RUN   TestAuthenticationStatus_String/empty_status_to_string
+--- PASS: TestAuthenticationStatus_String (0.00s)
+=== RUN   TestDocument_Validate
+=== RUN   TestDocument_Validate/valid_document
+=== RUN   TestDocument_Validate/empty_filename
+=== RUN   TestDocument_Validate/whitespace_filename
+=== RUN   TestDocument_Validate/zero_file_size
+=== RUN   TestDocument_Validate/negative_file_size
+=== RUN   TestDocument_Validate/invalid_hash_too_short
+=== RUN   TestDocument_Validate/invalid_hash_too_long
+=== RUN   TestDocument_Validate/zero_owner_ID
+=== RUN   TestDocument_Validate/negative_owner_ID
+=== RUN   TestDocument_Validate/empty_object_key
+=== RUN   TestDocument_Validate/whitespace_object_key
+=== RUN   TestDocument_Validate/empty_bucket
+=== RUN   TestDocument_Validate/whitespace_bucket
+=== RUN   TestDocument_Validate/invalid_authentication_status
+=== RUN   TestDocument_Validate/empty_authentication_status_is_valid
+--- PASS: TestDocument_Validate (0.00s)
+PASS

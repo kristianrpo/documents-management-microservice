@@ -8,11 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
-
-	apierrors "github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
 	handlers "github.com/kristianrpo/document-management-microservice/internal/adapters/http/handlers"
-	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/middleware"
+	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
 	"github.com/kristianrpo/document-management-microservice/internal/domain/errors"
 	"github.com/kristianrpo/document-management-microservice/internal/domain/models"
 	"github.com/stretchr/testify/assert"
@@ -31,94 +28,80 @@ func (errUploadService) Upload(ctx context.Context, fileHeader *multipart.FileHe
 	return nil, errors.NewPersistenceError(assert.AnError)
 }
 
-func TestDocumentUploadHandler_Success(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
+func TestDocumentUploadHandler_TableDriven(t *testing.T) {
+	tests := []struct {
+		name            string
+		withAuth        bool
+		ownerID         int64
+		service         usecases.DocumentService
+		buildBody       func() (*bytes.Buffer, string)
+		expectedStatus  int
+		expectedContent string
+	}{
+		{
+			name:     "success",
+			withAuth: true,
+			ownerID:  1,
+			service:  okUploadService{},
+			buildBody: func() (*bytes.Buffer, string) {
+				return createMultipartBody(t, "a.pdf", "content", "1")
+			},
+			expectedStatus:  http.StatusCreated,
+			expectedContent: "a.pdf",
+		},
+		{
+			name:     "validation error",
+			withAuth: false,
+			ownerID:  0,
+			service:  okUploadService{},
+			buildBody: func() (*bytes.Buffer, string) {
+				body := &bytes.Buffer{}
+				w := multipart.NewWriter(body)
+				_ = w.Close()
+				return body, w.FormDataContentType()
+			},
+			expectedStatus:  http.StatusBadRequest,
+			expectedContent: "VALIDATION_ERROR",
+		},
+		{
+			name:     "service error",
+			withAuth: true,
+			ownerID:  1,
+			service:  errUploadService{},
+			buildBody: func() (*bytes.Buffer, string) {
+				return createMultipartBody(t, "a.pdf", "content", "1")
+			},
+			expectedStatus:  http.StatusInternalServerError,
+			expectedContent: "PERSISTENCE_ERROR",
+		},
+	}
 
-	errMapper := apierrors.NewErrorMapper()
-	errHandler := apierrors.NewErrorHandler(errMapper)
-	metricsCollector := createTestMetrics(t)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			r, errHandler, metricsCollector := newTestRouter(t, tc.withAuth, tc.ownerID)
+			h := handlers.NewDocumentUploadHandler(tc.service, errHandler, metricsCollector)
+			r.POST("/api/v1/documents", h.Upload)
 
-	// inject authenticated user (owner id 1)
-	r.Use(func(c *gin.Context) {
-		c.Set(string(middleware.UserContextKey), &middleware.UserClaims{IDCitizen: 1})
-		c.Next()
-	})
+			body, contentType := tc.buildBody()
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/documents", body)
+			req.Header.Set("Content-Type", contentType)
+			wr := httptest.NewRecorder()
+			r.ServeHTTP(wr, req)
 
-	h := handlers.NewDocumentUploadHandler(okUploadService{}, errHandler, metricsCollector)
-	r.POST("/api/v1/documents", h.Upload)
-
-	body := &bytes.Buffer{}
-	w := multipart.NewWriter(body)
-	fw, _ := w.CreateFormFile("file", "a.pdf")
-	_, _ = fw.Write([]byte("content"))
-	_ = w.WriteField("id_citizen", "1")
-	_ = w.Close()
-
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/documents", body)
-	req.Header.Set("Content-Type", w.FormDataContentType())
-	wr := httptest.NewRecorder()
-	r.ServeHTTP(wr, req)
-
-	assert.Equal(t, http.StatusCreated, wr.Code)
-	assert.Contains(t, wr.Body.String(), "a.pdf")
+			assert.Equal(t, tc.expectedStatus, wr.Code)
+			assert.Contains(t, wr.Body.String(), tc.expectedContent)
+		})
+	}
 }
 
-func TestDocumentUploadHandler_ValidationError(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-
-	errMapper := apierrors.NewErrorMapper()
-	errHandler := apierrors.NewErrorHandler(errMapper)
-	metricsCollector := createTestMetrics(t)
-
-	h := handlers.NewDocumentUploadHandler(okUploadService{}, errHandler, metricsCollector)
-	r.POST("/api/v1/documents", h.Upload)
-
+// createMultipartBody builds a multipart/form-data body with a single file and id_citizen field.
+func createMultipartBody(t *testing.T, filename, content, idCitizen string) (*bytes.Buffer, string) {
+	t.Helper()
 	body := &bytes.Buffer{}
 	w := multipart.NewWriter(body)
-	// missing file and/or id_citizen
+	fw, _ := w.CreateFormFile("file", filename)
+	_, _ = fw.Write([]byte(content))
+	_ = w.WriteField("id_citizen", idCitizen)
 	_ = w.Close()
-
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/documents", body)
-	req.Header.Set("Content-Type", w.FormDataContentType())
-	wr := httptest.NewRecorder()
-	r.ServeHTTP(wr, req)
-
-	assert.Equal(t, http.StatusBadRequest, wr.Code)
-	assert.Contains(t, wr.Body.String(), "VALIDATION_ERROR")
-}
-
-//nolint:dupl // Test setup boilerplate is similar across test files
-func TestDocumentUploadHandler_ServiceError(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-
-	errMapper := apierrors.NewErrorMapper()
-	errHandler := apierrors.NewErrorHandler(errMapper)
-	metricsCollector := createTestMetrics(t)
-
-	// inject authenticated user (owner id 1)
-	r.Use(func(c *gin.Context) {
-		c.Set(string(middleware.UserContextKey), &middleware.UserClaims{IDCitizen: 1})
-		c.Next()
-	})
-
-	h := handlers.NewDocumentUploadHandler(errUploadService{}, errHandler, metricsCollector)
-	r.POST("/api/v1/documents", h.Upload)
-
-	body := &bytes.Buffer{}
-	w := multipart.NewWriter(body)
-	fw, _ := w.CreateFormFile("file", "a.pdf")
-	_, _ = fw.Write([]byte("content"))
-	_ = w.WriteField("id_citizen", "1")
-	_ = w.Close()
-
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/documents", body)
-	req.Header.Set("Content-Type", w.FormDataContentType())
-	wr := httptest.NewRecorder()
-	r.ServeHTTP(wr, req)
-
-	assert.Equal(t, http.StatusInternalServerError, wr.Code)
-	assert.Contains(t, wr.Body.String(), "PERSISTENCE_ERROR")
+	return body, w.FormDataContentType()
 }
