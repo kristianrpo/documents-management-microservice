@@ -9,7 +9,7 @@ import (
 	"github.com/kristianrpo/document-management-microservice/internal/application/usecases"
 	"github.com/kristianrpo/document-management-microservice/internal/domain/models"
 	"github.com/stretchr/testify/assert"
-    "github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestDocumentGetService_GetByID_Success(t *testing.T) {

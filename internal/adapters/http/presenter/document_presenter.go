@@ -47,11 +47,11 @@ func toDocumentListItem(document *models.Document) *shared.DocumentResponse {
 	}
 
 	return &shared.DocumentResponse{
-		ID:                   document.ID,
-		Filename:             document.Filename,
-		MimeType:             document.MimeType,
-		SizeBytes:            document.SizeBytes,
-		HashSHA256:           document.HashSHA256,
+		ID:         document.ID,
+		Filename:   document.Filename,
+		MimeType:   document.MimeType,
+		SizeBytes:  document.SizeBytes,
+		HashSHA256: document.HashSHA256,
 		// URL intentionally omitted in list responses for security/privacy
 		URL:                  "",
 		OwnerID:              document.OwnerID,
