@@ -40,6 +40,7 @@ func NewDocumentTransferHandler(
 // @Accept json
 // @Produce json
 // @Param id_citizen path int true "Citizen ID"
+// @Security BearerAuth
 // @Success 200 {object} endpoints.TransferResponse "Documents prepared successfully"
 // @Failure 400 {object} endpoints.TransferErrorResponse "Invalid request"
 // @Failure 500 {object} endpoints.TransferErrorResponse "Internal server error"

@@ -65,19 +65,19 @@ const docTemplate = `{
                     "200": {
                         "description": "List of documents retrieved successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListResponse"
+                            "$ref": "#/definitions/endpoints.ListResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error - invalid id_citizen or pagination parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListErrorResponse"
+                            "$ref": "#/definitions/endpoints.ListErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error - database error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListErrorResponse"
+                            "$ref": "#/definitions/endpoints.ListErrorResponse"
                         }
                     }
                 }
@@ -112,25 +112,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Document uploaded successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadResponse"
+                            "$ref": "#/definitions/endpoints.UploadResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadErrorResponse"
+                            "$ref": "#/definitions/endpoints.UploadErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized - invalid or missing token",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadErrorResponse"
+                            "$ref": "#/definitions/endpoints.UploadErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadErrorResponse"
+                            "$ref": "#/definitions/endpoints.UploadErrorResponse"
                         }
                     }
                 }
@@ -138,6 +138,11 @@ const docTemplate = `{
         },
         "/api/v1/documents/transfer/{id_citizen}": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Generates pre-signed URLs for all documents owned by a user for secure transfer to another operator",
                 "consumes": [
                     "application/json"
@@ -162,19 +167,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Documents prepared successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.TransferResponse"
+                            "$ref": "#/definitions/endpoints.TransferResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.TransferErrorResponse"
+                            "$ref": "#/definitions/endpoints.TransferErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.TransferErrorResponse"
+                            "$ref": "#/definitions/endpoints.TransferErrorResponse"
                         }
                     }
                 }
@@ -202,19 +207,19 @@ const docTemplate = `{
                     "200": {
                         "description": "All documents deleted successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteAllResponse"
+                            "$ref": "#/definitions/endpoints.DeleteAllResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error - invalid citizen ID",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteAllErrorResponse"
+                            "$ref": "#/definitions/endpoints.DeleteAllErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error - database or storage error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteAllErrorResponse"
+                            "$ref": "#/definitions/endpoints.DeleteAllErrorResponse"
                         }
                     }
                 }
@@ -252,19 +257,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Document retrieved successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.GetResponse"
+                            "$ref": "#/definitions/endpoints.GetResponse"
                         }
                     },
                     "404": {
                         "description": "Document not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.GetErrorResponse"
+                            "$ref": "#/definitions/endpoints.GetErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error - database error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.GetErrorResponse"
+                            "$ref": "#/definitions/endpoints.GetErrorResponse"
                         }
                     }
                 }
@@ -300,19 +305,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Document deleted successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteResponse"
+                            "$ref": "#/definitions/endpoints.DeleteResponse"
                         }
                     },
                     "404": {
                         "description": "Document not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteErrorResponse"
+                            "$ref": "#/definitions/endpoints.DeleteErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error - database or storage error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteErrorResponse"
+                            "$ref": "#/definitions/endpoints.DeleteErrorResponse"
                         }
                     }
                 }
@@ -349,25 +354,25 @@ const docTemplate = `{
                     "202": {
                         "description": "Authentication request accepted",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.RequestAuthenticationResponse"
+                            "$ref": "#/definitions/endpoints.RequestAuthenticationResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.RequestAuthenticationErrorResponse"
+                            "$ref": "#/definitions/endpoints.RequestAuthenticationErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Document not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.RequestAuthenticationErrorResponse"
+                            "$ref": "#/definitions/endpoints.RequestAuthenticationErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.RequestAuthenticationErrorResponse"
+                            "$ref": "#/definitions/endpoints.RequestAuthenticationErrorResponse"
                         }
                     }
                 }
@@ -387,7 +392,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Service is healthy and operational",
                         "schema": {
-                            "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.HealthCheckResponse"
+                            "$ref": "#/definitions/endpoints.HealthCheckResponse"
                         }
                     }
                 }
@@ -395,7 +400,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteAllData": {
+        "endpoints.DeleteAllData": {
             "type": "object",
             "properties": {
                 "deleted_count": {
@@ -404,19 +409,19 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteAllErrorResponse": {
+        "endpoints.DeleteAllErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
-                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail"
+                    "$ref": "#/definitions/shared.ErrorDetail"
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteAllResponse": {
+        "endpoints.DeleteAllResponse": {
             "type": "object",
             "properties": {
                 "data": {
-                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteAllData"
+                    "$ref": "#/definitions/endpoints.DeleteAllData"
                 },
                 "message": {
                     "type": "string",
@@ -428,15 +433,15 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteErrorResponse": {
+        "endpoints.DeleteErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
-                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail"
+                    "$ref": "#/definitions/shared.ErrorDetail"
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.DeleteResponse": {
+        "endpoints.DeleteResponse": {
             "type": "object",
             "properties": {
                 "message": {
@@ -449,19 +454,19 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.GetErrorResponse": {
+        "endpoints.GetErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
-                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail"
+                    "$ref": "#/definitions/shared.ErrorDetail"
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.GetResponse": {
+        "endpoints.GetResponse": {
             "type": "object",
             "properties": {
                 "data": {
-                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.DocumentResponse"
+                    "$ref": "#/definitions/shared.DocumentResponse"
                 },
                 "success": {
                     "type": "boolean",
@@ -469,7 +474,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.HealthCheckResponse": {
+        "endpoints.HealthCheckResponse": {
             "type": "object",
             "properties": {
                 "ok": {
@@ -478,33 +483,33 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListData": {
+        "endpoints.ListData": {
             "type": "object",
             "properties": {
                 "documents": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.DocumentResponse"
+                        "$ref": "#/definitions/shared.DocumentResponse"
                     }
                 },
                 "pagination": {
-                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.Pagination"
+                    "$ref": "#/definitions/shared.Pagination"
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListErrorResponse": {
+        "endpoints.ListErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
-                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail"
+                    "$ref": "#/definitions/shared.ErrorDetail"
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListResponse": {
+        "endpoints.ListResponse": {
             "type": "object",
             "properties": {
                 "data": {
-                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.ListData"
+                    "$ref": "#/definitions/endpoints.ListData"
                 },
                 "success": {
                     "type": "boolean",
@@ -512,11 +517,11 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.RequestAuthenticationErrorResponse": {
+        "endpoints.RequestAuthenticationErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
-                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail"
+                    "$ref": "#/definitions/shared.ErrorDetail"
                 },
                 "success": {
                     "type": "boolean",
@@ -524,7 +529,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.RequestAuthenticationResponse": {
+        "endpoints.RequestAuthenticationResponse": {
             "type": "object",
             "properties": {
                 "message": {
@@ -537,13 +542,13 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.TransferData": {
+        "endpoints.TransferData": {
             "type": "object",
             "properties": {
                 "documents": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.TransferDocument"
+                        "$ref": "#/definitions/shared.TransferDocument"
                     }
                 },
                 "expires_in": {
@@ -560,11 +565,11 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.TransferErrorResponse": {
+        "endpoints.TransferErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
-                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail"
+                    "$ref": "#/definitions/shared.ErrorDetail"
                 },
                 "success": {
                     "type": "boolean",
@@ -572,11 +577,11 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.TransferResponse": {
+        "endpoints.TransferResponse": {
             "type": "object",
             "properties": {
                 "data": {
-                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.TransferData"
+                    "$ref": "#/definitions/endpoints.TransferData"
                 },
                 "message": {
                     "type": "string",
@@ -588,19 +593,19 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadErrorResponse": {
+        "endpoints.UploadErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
-                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail"
+                    "$ref": "#/definitions/shared.ErrorDetail"
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_endpoints.UploadResponse": {
+        "endpoints.UploadResponse": {
             "type": "object",
             "properties": {
                 "data": {
-                    "$ref": "#/definitions/github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.DocumentResponse"
+                    "$ref": "#/definitions/shared.DocumentResponse"
                 },
                 "success": {
                     "type": "boolean",
@@ -608,7 +613,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.DocumentResponse": {
+        "shared.DocumentResponse": {
             "type": "object",
             "properties": {
                 "authentication_status": {
@@ -637,7 +642,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.ErrorDetail": {
+        "shared.ErrorDetail": {
             "type": "object",
             "properties": {
                 "code": {
@@ -650,7 +655,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.Pagination": {
+        "shared.Pagination": {
             "type": "object",
             "properties": {
                 "limit": {
@@ -671,7 +676,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_kristianrpo_document-management-microservice_internal_adapters_http_dto_response_shared.TransferDocument": {
+        "shared.TransferDocument": {
             "type": "object",
             "properties": {
                 "expires_at": {

@@ -26,6 +26,7 @@ type UserClaims struct {
 type contextKey string
 
 const UserContextKey contextKey = "user_claims"
+const OAuthContextKey contextKey = "oauth_claims"
 
 // JWTAuthMiddleware valida el JWT token del microservicio de auth
 type JWTAuthMiddleware struct {
@@ -118,6 +119,107 @@ func (m *JWTAuthMiddleware) RequireRole(allowedRoles ...string) gin.HandlerFunc 
 			c.JSON(http.StatusForbidden, shared.NewErrorResponse("FORBIDDEN", "insufficient permissions"))
 			c.Abort()
 			return
+		}
+
+		c.Next()
+	}
+}
+
+// OAuthTokenClaims representa las claims de un token de tipo client_credentials
+type OAuthTokenClaims struct {
+	ClientID string   `json:"client_id"`
+	Scopes   []string `json:"scopes"`
+	TokenID  string   `json:"jti"`
+	IssuedAt int64    `json:"iat"`
+	ExpireAt int64    `json:"exp"`
+	Type     string   `json:"type"`
+	jwt.RegisteredClaims
+}
+
+// AuthenticateClient validates a client credentials JWT and stores OAuthTokenClaims in context
+func (m *JWTAuthMiddleware) AuthenticateClient() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			log.Printf("JWT auth: missing Authorization header from %s", c.ClientIP())
+			c.JSON(http.StatusUnauthorized, shared.NewErrorResponse("UNAUTHORIZED", "missing authorization header"))
+			c.Abort()
+			return
+		}
+
+		parts := strings.Split(authHeader, " ")
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			log.Printf("JWT auth: invalid authorization header format: %q from %s", authHeader, c.ClientIP())
+			c.JSON(http.StatusUnauthorized, shared.NewErrorResponse("UNAUTHORIZED", "invalid authorization header format"))
+			c.Abort()
+			return
+		}
+
+		tokenString := parts[1]
+
+		token, err := jwt.ParseWithClaims(tokenString, &OAuthTokenClaims{}, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+			return m.jwtSecret, nil
+		})
+
+		if err != nil {
+			log.Printf("OAuth JWT parse error: %v", err)
+			c.JSON(http.StatusUnauthorized, shared.NewErrorResponse("INVALID_TOKEN", "invalid or expired token"))
+			c.Abort()
+			return
+		}
+
+		claims, ok := token.Claims.(*OAuthTokenClaims)
+		if !ok || !token.Valid {
+			c.JSON(http.StatusUnauthorized, shared.NewErrorResponse("INVALID_TOKEN", "invalid token claims"))
+			c.Abort()
+			return
+		}
+
+		if claims.Type != "client_credentials" {
+			c.JSON(http.StatusForbidden, shared.NewErrorResponse("FORBIDDEN", "token is not client_credentials type"))
+			c.Abort()
+			return
+		}
+
+		log.Printf("OAuth token validated - client_id=%s token_id=%s scopes=%v", claims.ClientID, claims.TokenID, claims.Scopes)
+
+		c.Set(string(OAuthContextKey), claims)
+		c.Next()
+	}
+}
+
+// RequireClientCredentials checks that an OAuth client_credentials token is present and optionally validates scopes
+func (m *JWTAuthMiddleware) RequireClientCredentials(requiredScopes ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		value, exists := c.Get(string(OAuthContextKey))
+		if !exists {
+			c.JSON(http.StatusUnauthorized, shared.NewErrorResponse("UNAUTHORIZED", "client credentials token not provided"))
+			c.Abort()
+			return
+		}
+
+		claims, ok := value.(*OAuthTokenClaims)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, shared.NewErrorResponse("INVALID_TOKEN", "invalid token claims"))
+			c.Abort()
+			return
+		}
+
+		if len(requiredScopes) > 0 {
+			scopeSet := make(map[string]struct{}, len(claims.Scopes))
+			for _, s := range claims.Scopes {
+				scopeSet[s] = struct{}{}
+			}
+			for _, rs := range requiredScopes {
+				if _, ok := scopeSet[rs]; !ok {
+					c.JSON(http.StatusForbidden, shared.NewErrorResponse("FORBIDDEN", "insufficient scopes"))
+					c.Abort()
+					return
+				}
+			}
 		}
 
 		c.Next()
