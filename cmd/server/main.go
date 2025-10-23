@@ -213,6 +213,7 @@ func main() {
 		// Set up event handlers
 		userTransferHandler := events.NewUserTransferHandler(documentDeleteAllService)
 		authenticationHandler := events.NewDocumentAuthenticationHandler(documentRepository)
+		downloadHandler := events.NewDocumentDownloadHandler(documentService.(interfaces.DocumentUploader), messagePublisher, "documents.ready")
 
 		// Subscribe to user transfer events
 		if err := messageConsumer.SubscribeToQueue(ctx, config.RabbitMQ.ConsumerQueue, userTransferHandler.HandleUserTransferred); err != nil {
@@ -226,6 +227,13 @@ func main() {
 			log.Printf("warning: failed to subscribe to authentication result queue: %v", err)
 		} else {
 			log.Printf("listening for authentication result events on queue: %s", config.RabbitMQ.AuthenticationResultQueue)
+		}
+
+		// Subscribe to document download requested events
+		if err := messageConsumer.SubscribeToQueue(ctx, "documents.download.requested", downloadHandler.HandleDownloadRequested); err != nil {
+			log.Printf("warning: failed to subscribe to document download requested queue: %v", err)
+		} else {
+			log.Printf("listening for document download requested events on queue: documents.download.requested")
 		}
 	}
 

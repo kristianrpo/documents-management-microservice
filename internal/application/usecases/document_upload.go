@@ -1,7 +1,9 @@
 package usecases
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"mime/multipart"
 
 	"github.com/kristianrpo/document-management-microservice/internal/application/interfaces"
@@ -44,11 +46,29 @@ func (service *documentService) Upload(ctx context.Context, fileHeader *multipar
 	if err != nil {
 		return nil, errors.NewFileReadError(err)
 	}
-	defer func() {
-		_ = file.Close()
-	}()
+	defer func() { _ = file.Close() }()
 
-	hash, err := service.hasher.CalculateHash(file)
+	// Delegate to UploadFromReader which contains the shared logic
+	if seeker, ok := file.(io.ReadSeeker); ok {
+		return service.UploadFromReader(ctx, seeker, fileHeader.Filename, fileHeader.Size, ownerID)
+	}
+
+	// If not a ReadSeeker, copy into a buffer
+	// Use io.ReadAll as fallback (file should be small enough for upload use-cases)
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return nil, errors.NewFileReadError(err)
+	}
+	return service.UploadFromReader(ctx, bytes.NewReader(data), fileHeader.Filename, fileHeader.Size, ownerID)
+}
+
+// UploadFromReader uploads a document reading from an io.ReadSeeker. It implements DocumentUploader.
+func (service *documentService) UploadFromReader(ctx context.Context, r io.ReadSeeker, filename string, size int64, ownerID int64) (*models.Document, error) {
+	// Compute hash
+	if _, err := r.Seek(0, io.SeekStart); err != nil {
+		return nil, errors.NewFileReadError(err)
+	}
+	hash, err := service.hasher.CalculateHash(r)
 	if err != nil {
 		return nil, errors.NewHashCalculateError(err)
 	}
@@ -58,27 +78,22 @@ func (service *documentService) Upload(ctx context.Context, fileHeader *multipar
 		return existingDoc, nil
 	}
 
-	objectKey := util.ObjectKeyFromHash(hash, fileHeader.Filename)
+	objectKey := util.ObjectKeyFromHash(hash, filename)
+	contentType := service.mimeDetector.DetectFromFilename(filename)
 
-	contentType := service.mimeDetector.DetectFromFilename(fileHeader.Filename)
-
-	if seeker, ok := file.(interface {
-		Seek(int64, int) (int64, error)
-	}); ok {
-		if _, err := seeker.Seek(0, 0); err != nil {
-			return nil, errors.NewFileReadError(err)
-		}
+	if _, err := r.Seek(0, io.SeekStart); err != nil {
+		return nil, errors.NewFileReadError(err)
 	}
 
-	if err := service.storage.Put(ctx, file, objectKey, contentType); err != nil {
+	if err := service.storage.Put(ctx, r, objectKey, contentType); err != nil {
 		return nil, errors.NewStorageUploadError(err)
 	}
 
 	publicURL := service.storage.PublicURL(objectKey)
 	document := &models.Document{
-		Filename:             fileHeader.Filename,
+		Filename:             filename,
 		MimeType:             contentType,
-		SizeBytes:            fileHeader.Size,
+		SizeBytes:            size,
 		HashSHA256:           hash,
 		Bucket:               service.storage.Bucket(),
 		ObjectKey:            objectKey,
