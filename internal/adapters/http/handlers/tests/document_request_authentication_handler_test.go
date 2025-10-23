@@ -10,10 +10,22 @@ import (
 
 	apierrors "github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
 	handlers "github.com/kristianrpo/document-management-microservice/internal/adapters/http/handlers"
+	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/middleware"
 	"github.com/kristianrpo/document-management-microservice/internal/domain/errors"
+	"github.com/kristianrpo/document-management-microservice/internal/domain/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+type mockAuthGetService struct{ mock.Mock }
+
+func (m *mockAuthGetService) GetByID(ctx context.Context, id string) (*models.Document, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.Document), args.Error(1)
+}
 
 type mockRequestAuthService struct{ mock.Mock }
 
@@ -32,9 +44,15 @@ func TestDocumentRequestAuthenticationHandler_Success(t *testing.T) {
 	errHandler := apierrors.NewErrorHandler(errMapper)
 	metricsCollector := createTestMetrics(t)
 
-	h := handlers.NewDocumentRequestAuthenticationHandler(service, errHandler, metricsCollector)
+	getService := new(mockAuthGetService)
+	r.Use(func(c *gin.Context) {
+		c.Set(string(middleware.UserContextKey), &middleware.UserClaims{IDCitizen: 123456})
+		c.Next()
+	})
+	h := handlers.NewDocumentRequestAuthenticationHandler(service, getService, errHandler, metricsCollector)
 	r.POST("/api/v1/documents/:id/request-authentication", h.RequestAuthentication)
 
+	getService.On("GetByID", mock.Anything, "doc123").Return(&models.Document{ID: "doc123", OwnerID: 123456}, nil)
 	service.On("RequestAuthentication", mock.Anything, "doc123").Return(nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/documents/doc123/request-authentication", nil)
@@ -56,7 +74,12 @@ func TestDocumentRequestAuthenticationHandler_EmptyDocumentID(t *testing.T) {
 	errHandler := apierrors.NewErrorHandler(errMapper)
 	metricsCollector := createTestMetrics(t)
 
-	h := handlers.NewDocumentRequestAuthenticationHandler(service, errHandler, metricsCollector)
+	getService := new(mockAuthGetService)
+	r.Use(func(c *gin.Context) {
+		c.Set(string(middleware.UserContextKey), &middleware.UserClaims{IDCitizen: 123456})
+		c.Next()
+	})
+	h := handlers.NewDocumentRequestAuthenticationHandler(service, getService, errHandler, metricsCollector)
 	r.POST("/api/v1/documents/:id/request-authentication", h.RequestAuthentication)
 
 	// Empty document ID returns 400 Bad Request
@@ -78,10 +101,16 @@ func TestDocumentRequestAuthenticationHandler_NotFound(t *testing.T) {
 	errHandler := apierrors.NewErrorHandler(errMapper)
 	metricsCollector := createTestMetrics(t)
 
-	h := handlers.NewDocumentRequestAuthenticationHandler(service, errHandler, metricsCollector)
+	getService := new(mockAuthGetService)
+	r.Use(func(c *gin.Context) {
+		c.Set(string(middleware.UserContextKey), &middleware.UserClaims{IDCitizen: 123456})
+		c.Next()
+	})
+	h := handlers.NewDocumentRequestAuthenticationHandler(service, getService, errHandler, metricsCollector)
 	r.POST("/api/v1/documents/:id/request-authentication", h.RequestAuthentication)
 
-	service.On("RequestAuthentication", mock.Anything, "nonexistent").Return(errors.NewNotFoundError("document not found"))
+	// Return not found from GetByID to simulate missing document
+	getService.On("GetByID", mock.Anything, "nonexistent").Return(nil, errors.NewNotFoundError("document not found"))
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/documents/nonexistent/request-authentication", nil)
 	w := httptest.NewRecorder()
@@ -101,9 +130,15 @@ func TestDocumentRequestAuthenticationHandler_PersistenceError(t *testing.T) {
 	errHandler := apierrors.NewErrorHandler(errMapper)
 	metricsCollector := createTestMetrics(t)
 
-	h := handlers.NewDocumentRequestAuthenticationHandler(service, errHandler, metricsCollector)
+	getService := new(mockAuthGetService)
+	r.Use(func(c *gin.Context) {
+		c.Set(string(middleware.UserContextKey), &middleware.UserClaims{IDCitizen: 123456})
+		c.Next()
+	})
+	h := handlers.NewDocumentRequestAuthenticationHandler(service, getService, errHandler, metricsCollector)
 	r.POST("/api/v1/documents/:id/request-authentication", h.RequestAuthentication)
 
+	getService.On("GetByID", mock.Anything, "doc123").Return(&models.Document{ID: "doc123", OwnerID: 123456}, nil)
 	service.On("RequestAuthentication", mock.Anything, "doc123").Return(errors.NewPersistenceError(assert.AnError))
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/documents/doc123/request-authentication", nil)

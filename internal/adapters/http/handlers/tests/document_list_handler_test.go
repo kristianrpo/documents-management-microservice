@@ -10,6 +10,7 @@ import (
 
 	apierrors "github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
 	handlers "github.com/kristianrpo/document-management-microservice/internal/adapters/http/handlers"
+	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/middleware"
 	"github.com/kristianrpo/document-management-microservice/internal/application/util"
 	domainerrors "github.com/kristianrpo/document-management-microservice/internal/domain/errors"
 	"github.com/kristianrpo/document-management-microservice/internal/domain/models"
@@ -38,10 +39,16 @@ func TestDocumentListHandler_Success(t *testing.T) {
 	errHandler := apierrors.NewErrorHandler(errMapper)
 	metricsCollector := createTestMetrics(t)
 
+	// inject authenticated user (owner id 1)
+	r.Use(func(c *gin.Context) {
+		c.Set(string(middleware.UserContextKey), &middleware.UserClaims{IDCitizen: 1})
+		c.Next()
+	})
+
 	h := handlers.NewDocumentListHandler(okListService{}, errHandler, metricsCollector)
 	r.GET("/api/v1/documents", h.List)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents?id_citizen=1&page=1&limit=10", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents?page=1&limit=10", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -79,10 +86,16 @@ func TestDocumentListHandler_ServiceError(t *testing.T) {
 	errHandler := apierrors.NewErrorHandler(errMapper)
 	metricsCollector := createTestMetrics(t)
 
+	// inject authenticated user (owner id 1)
+	r.Use(func(c *gin.Context) {
+		c.Set(string(middleware.UserContextKey), &middleware.UserClaims{IDCitizen: 1})
+		c.Next()
+	})
+
 	h := handlers.NewDocumentListHandler(errListService{}, errHandler, metricsCollector)
 	r.GET("/api/v1/documents", h.List)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents?id_citizen=1&page=1&limit=10", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents?page=1&limit=10", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

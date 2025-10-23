@@ -12,6 +12,7 @@ import (
 
 	apierrors "github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
 	handlers "github.com/kristianrpo/document-management-microservice/internal/adapters/http/handlers"
+	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/middleware"
 	"github.com/kristianrpo/document-management-microservice/internal/domain/errors"
 	"github.com/kristianrpo/document-management-microservice/internal/domain/models"
 	"github.com/stretchr/testify/assert"
@@ -38,6 +39,12 @@ func TestDocumentUploadHandler_Success(t *testing.T) {
 	errMapper := apierrors.NewErrorMapper()
 	errHandler := apierrors.NewErrorHandler(errMapper)
 	metricsCollector := createTestMetrics(t)
+
+	// inject authenticated user (owner id 1)
+	r.Use(func(c *gin.Context) {
+		c.Set(string(middleware.UserContextKey), &middleware.UserClaims{IDCitizen: 1})
+		c.Next()
+	})
 
 	h := handlers.NewDocumentUploadHandler(okUploadService{}, errHandler, metricsCollector)
 	r.POST("/api/v1/documents", h.Upload)
@@ -91,6 +98,12 @@ func TestDocumentUploadHandler_ServiceError(t *testing.T) {
 	errMapper := apierrors.NewErrorMapper()
 	errHandler := apierrors.NewErrorHandler(errMapper)
 	metricsCollector := createTestMetrics(t)
+
+	// inject authenticated user (owner id 1)
+	r.Use(func(c *gin.Context) {
+		c.Set(string(middleware.UserContextKey), &middleware.UserClaims{IDCitizen: 1})
+		c.Next()
+	})
 
 	h := handlers.NewDocumentUploadHandler(errUploadService{}, errHandler, metricsCollector)
 	r.POST("/api/v1/documents", h.Upload)

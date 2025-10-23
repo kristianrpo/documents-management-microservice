@@ -10,6 +10,7 @@ import (
 
 	apierrors "github.com/kristianrpo/document-management-microservice/internal/adapters/http/errors"
 	handlers "github.com/kristianrpo/document-management-microservice/internal/adapters/http/handlers"
+	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/middleware"
 	"github.com/kristianrpo/document-management-microservice/internal/domain/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -31,12 +32,18 @@ func TestDocumentDeleteAllHandler_Success(t *testing.T) {
 	errHandler := apierrors.NewErrorHandler(errMapper)
 	metricsCollector := createTestMetrics(t)
 
+	// inject authenticated user (owner id 123456)
+	r.Use(func(c *gin.Context) {
+		c.Set(string(middleware.UserContextKey), &middleware.UserClaims{IDCitizen: 123456})
+		c.Next()
+	})
+
 	h := handlers.NewDocumentDeleteAllHandler(service, errHandler, metricsCollector)
-	r.DELETE("/api/v1/documents/user/:id_citizen", h.DeleteAll)
+	r.DELETE("/api/v1/documents/user/delete-all", h.DeleteAll)
 
 	service.On("DeleteAll", mock.Anything, int64(123456)).Return(5, nil)
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/v1/documents/user/123456", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/documents/user/delete-all", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -56,11 +63,11 @@ func TestDocumentDeleteAllHandler_ValidationError_InvalidID(t *testing.T) {
 	errHandler := apierrors.NewErrorHandler(errMapper)
 	metricsCollector := createTestMetrics(t)
 
+	// No token -> should return validation error (user not authenticated)
 	h := handlers.NewDocumentDeleteAllHandler(service, errHandler, metricsCollector)
-	r.DELETE("/api/v1/documents/user/:id_citizen", h.DeleteAll)
+	r.DELETE("/api/v1/documents/user/delete-all", h.DeleteAll)
 
-	// Invalid id_citizen (not a number)
-	req := httptest.NewRequest(http.MethodDelete, "/api/v1/documents/user/abc", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/documents/user/delete-all", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -78,11 +85,11 @@ func TestDocumentDeleteAllHandler_ValidationError_NegativeID(t *testing.T) {
 	errHandler := apierrors.NewErrorHandler(errMapper)
 	metricsCollector := createTestMetrics(t)
 
+	// No token -> should return validation error (user not authenticated)
 	h := handlers.NewDocumentDeleteAllHandler(service, errHandler, metricsCollector)
-	r.DELETE("/api/v1/documents/user/:id_citizen", h.DeleteAll)
+	r.DELETE("/api/v1/documents/user/delete-all", h.DeleteAll)
 
-	// Negative id_citizen
-	req := httptest.NewRequest(http.MethodDelete, "/api/v1/documents/user/-123", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/documents/user/delete-all", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -99,12 +106,18 @@ func TestDocumentDeleteAllHandler_PersistenceError(t *testing.T) {
 	errHandler := apierrors.NewErrorHandler(errMapper)
 	metricsCollector := createTestMetrics(t)
 
+	// inject authenticated user (owner id 123456)
+	r.Use(func(c *gin.Context) {
+		c.Set(string(middleware.UserContextKey), &middleware.UserClaims{IDCitizen: 123456})
+		c.Next()
+	})
+
 	h := handlers.NewDocumentDeleteAllHandler(service, errHandler, metricsCollector)
-	r.DELETE("/api/v1/documents/user/:id_citizen", h.DeleteAll)
+	r.DELETE("/api/v1/documents/user/delete-all", h.DeleteAll)
 
 	service.On("DeleteAll", mock.Anything, int64(123456)).Return(0, errors.NewPersistenceError(assert.AnError))
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/v1/documents/user/123456", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/documents/user/delete-all", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
