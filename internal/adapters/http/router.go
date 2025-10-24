@@ -5,7 +5,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-
+	docs "github.com/kristianrpo/document-management-microservice/docs"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/handlers"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/middleware"
 	"github.com/kristianrpo/document-management-microservice/internal/infrastructure/metrics"
@@ -30,6 +30,10 @@ type RouterConfig struct {
 // NewRouter creates and configures a new HTTP router with all API endpoints
 func NewRouter(cfg *RouterConfig) *gin.Engine {
 	router := gin.Default()
+
+	docs.SwaggerInfo.Host = ""
+	docs.SwaggerInfo.BasePath = "/api/v1"
+	docs.SwaggerInfo.Schemes = []string{"http"}
 
 	if cfg.MetricsCollector != nil {
 		router.Use(middleware.PrometheusMiddleware(cfg.MetricsCollector))
