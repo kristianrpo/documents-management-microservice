@@ -45,6 +45,89 @@ func NewDynamoDBDocumentRepo(client *dynamodb.Client, tableName string) interfac
 	}
 }
 
+// EnsureTableExists creates the documents table if it doesn't exist
+func (repo *dynamoDBDocumentRepository) EnsureTableExists(ctx context.Context) error {
+	// Check if table already exists
+	_, err := repo.client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
+		TableName: aws.String(repo.tableName),
+	})
+	
+	if err == nil {
+		// Table exists
+		return nil
+	}
+
+	// Table doesn't exist, create it
+	_, err = repo.client.CreateTable(ctx, &dynamodb.CreateTableInput{
+		TableName:   aws.String(repo.tableName),
+		BillingMode: types.BillingModePayPerRequest,
+		AttributeDefinitions: []types.AttributeDefinition{
+			{
+				AttributeName: aws.String("DocumentID"),
+				AttributeType: types.ScalarAttributeTypeS,
+			},
+			{
+				AttributeName: aws.String("OwnerID"),
+				AttributeType: types.ScalarAttributeTypeN,
+			},
+			{
+				AttributeName: aws.String("HashSHA256"),
+				AttributeType: types.ScalarAttributeTypeS,
+			},
+		},
+		KeySchema: []types.KeySchemaElement{
+			{
+				AttributeName: aws.String("DocumentID"),
+				KeyType:       types.KeyTypeHash,
+			},
+			{
+				AttributeName: aws.String("OwnerID"),
+				KeyType:       types.KeyTypeRange,
+			},
+		},
+		GlobalSecondaryIndexes: []types.GlobalSecondaryIndex{
+			{
+				IndexName: aws.String(ownerIDIndexName),
+				KeySchema: []types.KeySchemaElement{
+					{
+						AttributeName: aws.String("OwnerID"),
+						KeyType:       types.KeyTypeHash,
+					},
+				},
+				Projection: &types.Projection{
+					ProjectionType: types.ProjectionTypeAll,
+				},
+			},
+			{
+				IndexName: aws.String(hashOwnerIndexName),
+				KeySchema: []types.KeySchemaElement{
+					{
+						AttributeName: aws.String("HashSHA256"),
+						KeyType:       types.KeyTypeHash,
+					},
+					{
+						AttributeName: aws.String("OwnerID"),
+						KeyType:       types.KeyTypeRange,
+					},
+				},
+				Projection: &types.Projection{
+					ProjectionType: types.ProjectionTypeAll,
+				},
+			},
+		},
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to create documents table: %w", err)
+	}
+
+	// Wait for table to be active
+	waiter := dynamodb.NewTableExistsWaiter(repo.client)
+	return waiter.Wait(ctx, &dynamodb.DescribeTableInput{
+		TableName: aws.String(repo.tableName),
+	}, time.Second*30)
+}
+
 // Create stores a new document in DynamoDB, generating an ID and timestamps if not present
 func (repo *dynamoDBDocumentRepository) Create(ctx context.Context, document *models.Document) error {
 	if document.ID == "" {

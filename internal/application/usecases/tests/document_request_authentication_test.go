@@ -75,6 +75,8 @@ func TestRequestAuthentication_Success(t *testing.T) {
 		var event events.DocumentAuthenticationRequestedEvent
 		err := json.Unmarshal(eventJSON, &event)
 		assert.NoError(t, err)
+		assert.NotEmpty(t, event.MessageID, "MessageID should be set")
+		assert.Contains(t, event.MessageID, documentID)
 		assert.Equal(t, document.OwnerID, event.IDCitizen)
 		assert.Equal(t, presignedURL, event.URLDocument)
 		assert.Equal(t, document.Filename, event.DocumentTitle)

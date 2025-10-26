@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/kristianrpo/document-management-microservice/internal/application/interfaces"
 	"github.com/kristianrpo/document-management-microservice/internal/domain/errors"
 	"github.com/kristianrpo/document-management-microservice/internal/domain/events"
@@ -68,7 +70,11 @@ func (s *documentRequestAuthenticationService) RequestAuthentication(
 		return fmt.Errorf("failed to generate pre-signed URL: %w", err)
 	}
 
+	// Generate unique message ID for deduplication
+	messageID := fmt.Sprintf("%s-%d-%s", documentID, time.Now().Unix(), uuid.New().String()[:8])
+
 	event := events.DocumentAuthenticationRequestedEvent{
+		MessageID:     messageID,
 		IDCitizen:     doc.OwnerID,
 		URLDocument:   presignedURL,
 		DocumentTitle: doc.Filename,

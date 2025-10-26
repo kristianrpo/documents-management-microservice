@@ -2,6 +2,7 @@ package messaging
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -57,6 +58,24 @@ func (p *RabbitMQPublisher) Publish(ctx context.Context, queue string, message [
 			continue
 		}
 
+		// Extract message ID from the message if present
+		var messageID string
+		var messageData map[string]interface{}
+		if err := json.Unmarshal(message, &messageData); err == nil {
+			if id, ok := messageData["messageId"].(string); ok {
+				messageID = id
+			}
+		}
+
+		// Prepare headers for message deduplication
+		headers := amqp091.Table{}
+		if messageID != "" {
+			// Set message_id header for RabbitMQ deduplication
+			headers["x-message-id"] = messageID
+		}
+		// Set timestamp for message ordering
+		headers["x-timestamp"] = time.Now().Unix()
+
 		// Publish the message
 		err := ch.PublishWithContext(
 			ctx,
@@ -68,6 +87,8 @@ func (p *RabbitMQPublisher) Publish(ctx context.Context, queue string, message [
 				DeliveryMode: amqp091.Persistent,
 				ContentType:  "application/json",
 				Body:         message,
+				Headers:      headers,
+				MessageId:    messageID, // Standard AMQP message ID for deduplication
 			},
 		)
 		if err != nil {
@@ -78,7 +99,7 @@ func (p *RabbitMQPublisher) Publish(ctx context.Context, queue string, message [
 			continue
 		}
 
-		log.Printf("Published message to queue: %s", queue)
+		log.Printf("Published message to queue: %s (messageId: %s)", queue, messageID)
 		return nil
 	}
 	return fmt.Errorf("publish failed after retries: %w", lastErr)

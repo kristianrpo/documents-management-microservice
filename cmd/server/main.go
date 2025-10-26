@@ -97,6 +97,26 @@ func main() {
 	}
 
 	documentRepository := infrapkg.NewDynamoDBDocumentRepo(dynamoClient, config.DynamoDBTable)
+	
+	// Ensure the documents table exists (creates it if needed)
+	if err := documentRepository.EnsureTableExists(context.Background()); err != nil {
+		log.Printf("warning: failed to ensure documents table exists: %v", err)
+		log.Println("proceeding without documents table - operations will fail")
+	} else {
+		log.Println("Documents table verified/created successfully")
+	}
+	
+	// Initialize processed messages repository for idempotency
+	// Table will be created automatically if it doesn't exist
+	processedMessagesRepo := infrapkg.NewDynamoDBProcessedMessageRepository(dynamoClient, config.DynamoDBTable+"_processed_messages")
+	
+	// Ensure the processed messages table exists (creates it if needed)
+	if err := processedMessagesRepo.EnsureTableExists(context.Background()); err != nil {
+		log.Printf("warning: failed to ensure processed messages table exists: %v", err)
+		log.Println("proceeding without processed messages table - idempotency will not work")
+	} else {
+		log.Println("Processed messages table verified/created successfully")
+	}
 
 	var objectStorage interfaces.ObjectStorage = s3Client
 
@@ -212,7 +232,7 @@ func main() {
 	if messageConsumer != nil {
 		// Set up event handlers
 		userTransferHandler := events.NewUserTransferHandler(documentDeleteAllService)
-		authenticationHandler := events.NewDocumentAuthenticationHandler(documentRepository)
+		authenticationHandler := events.NewDocumentAuthenticationHandler(documentRepository, processedMessagesRepo)
 		downloadHandler := events.NewDocumentDownloadHandler(documentService.(interfaces.DocumentUploader), messagePublisher, "documents.ready")
 
 		// Subscribe to user transfer events
