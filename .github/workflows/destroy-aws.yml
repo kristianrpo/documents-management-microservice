@@ -63,6 +63,39 @@ jobs:
       # ---------------------------
       # 1) Conectarnos al cluster (que existe en infraestructura compartida)
       # ---------------------------
+      - name: Fix checksum mismatch BEFORE init
+        continue-on-error: true
+        run: |
+          echo "================================================="
+          echo "Prevención: Limpiando checksums huérfanos ANTES de init"
+          echo "================================================="
+          
+          # Eliminar el digest (checksum) de DynamoDB
+          echo "Eliminando checksum (digest) del estado en DynamoDB..."
+          LOCK_ID="$TF_BACKEND_BUCKET/infra/terraform/aws/terraform.tfstate-md5"
+          if aws dynamodb delete-item \
+            --table-name "$TF_BACKEND_DDB_TABLE" \
+            --key "{\"LockID\":{\"S\":\"$LOCK_ID\"}}" \
+            --region "$TF_BACKEND_REGION" 2>/dev/null; then
+            echo "✓ Checksum eliminado de DynamoDB"
+          else
+            echo "  Checksum no existe o ya fue eliminado"
+          fi
+          
+          # Eliminar el lock principal si existe
+          echo "Eliminando lock del estado en DynamoDB..."
+          LOCK_ID="$TF_BACKEND_BUCKET/infra/terraform/aws/terraform.tfstate"
+          if aws dynamodb delete-item \
+            --table-name "$TF_BACKEND_DDB_TABLE" \
+            --key "{\"LockID\":{\"S\":\"$LOCK_ID\"}}" \
+            --region "$TF_BACKEND_REGION" 2>/dev/null; then
+            echo "✓ Lock eliminado de DynamoDB"
+          else
+            echo "  Lock no existe o ya fue eliminado"
+          fi
+          
+          echo "Limpieza completada. Procediendo con init..."
+
       - name: Init Terraform (infra dir) para leer outputs
         working-directory: infra/terraform/aws
         run: |
@@ -154,10 +187,44 @@ jobs:
             kubectl delete pvc --all -n documents --force --grace-period=0 || true
           fi
 
+      - name: Fix K8s state checksum mismatch BEFORE init
+        continue-on-error: true
+        run: |
+          echo "Limpiando checksums de K8s state en DynamoDB..."
+          
+          # K8s state checksum
+          LOCK_ID_K8S="$TF_BACKEND_BUCKET/k8s/terraform/aws/terraform.tfstate-md5"
+          if aws dynamodb delete-item \
+            --table-name "$TF_BACKEND_DDB_TABLE" \
+            --key "{\"LockID\":{\"S\":\"$LOCK_ID_K8S\"}}" \
+            --region "$TF_BACKEND_REGION" 2>/dev/null; then
+            echo "✓ K8s checksum eliminado de DynamoDB"
+          else
+            echo "  K8s checksum no existe"
+          fi
+          
+          # K8s state lock
+          LOCK_ID_K8S="$TF_BACKEND_BUCKET/k8s/terraform/aws/terraform.tfstate"
+          if aws dynamodb delete-item \
+            --table-name "$TF_BACKEND_DDB_TABLE" \
+            --key "{\"LockID\":{\"S\":\"$LOCK_ID_K8S\"}}" \
+            --region "$TF_BACKEND_REGION" 2>/dev/null; then
+            echo "✓ K8s lock eliminado de DynamoDB"
+          else
+            echo "  K8s lock no existe"
+          fi
+
       - name: Terraform Init (k8s)
         working-directory: k8s/terraform/aws
         run: |
-          terraform init -input=false -upgrade \
+          # Intentar con -migrate-state primero
+          terraform init -input=false -upgrade -migrate-state \
+            -backend-config="bucket=$TF_BACKEND_BUCKET" \
+            -backend-config="key=k8s/terraform/aws/terraform.tfstate" \
+            -backend-config="region=$TF_BACKEND_REGION" \
+            -backend-config="dynamodb_table=$TF_BACKEND_DDB_TABLE" \
+            -backend-config="encrypt=true" || \
+          terraform init -input=false -upgrade -reconfigure \
             -backend-config="bucket=$TF_BACKEND_BUCKET" \
             -backend-config="key=k8s/terraform/aws/terraform.tfstate" \
             -backend-config="region=$TF_BACKEND_REGION" \
