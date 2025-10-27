@@ -54,21 +54,27 @@ func (h *DocumentAuthenticationHandler) HandleAuthenticationCompleted(ctx contex
 		newStatus = models.AuthenticationStatusUnauthenticated
 	}
 
+	// Actualizar el estado del documento
 	if err := h.repo.UpdateAuthenticationStatus(ctx, event.DocumentID, newStatus); err != nil {
 		return fmt.Errorf("failed to update document authentication status: %w", err)
 	}
 
+	log.Printf("Document status updated to %s for document %s", newStatus, event.DocumentID)
+
 	// Marcar el mensaje como procesado para idempotencia
+	// IMPORTANTE: Solo hacemos ACK después de procesar completamente
+	// Si esto falla, el mensaje será re-enviado (idempotente gracias al check anterior)
 	if event.MessageID != "" && h.processedMsgRepo != nil {
 		processedMsg := models.NewProcessedMessage(event.MessageID, event.DocumentID, "authentication-handler")
 		if err := h.processedMsgRepo.MarkAsProcessed(ctx, processedMsg); err != nil {
-			log.Printf("warning: failed to mark message as processed: %v", err)
-			// No retornamos error porque el proceso principal ya se completó exitosamente
+			log.Printf("error: failed to mark message as processed: %v", err)
+			return fmt.Errorf("failed to mark message as processed: %w", err)
 		}
+		log.Printf("Message %s marked as processed", event.MessageID)
 	}
 
-	log.Printf("successfully updated authentication status to %s for document %s (messageId: %s, message: %s)",
-		newStatus, event.DocumentID, event.MessageID, event.Message)
+	log.Printf("successfully processed authentication event for document %s (messageId: %s, status: %s, message: %s)",
+		event.DocumentID, event.MessageID, newStatus, event.Message)
 
-	return nil
+	return nil // ACK del mensaje
 }

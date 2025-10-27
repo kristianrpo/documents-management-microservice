@@ -182,25 +182,31 @@ func (r *RabbitMQConsumer) processMessage(ctx context.Context, queueName string,
 		log.Printf("Processing message from queue %s with messageId: %s", queueName, messageID)
 	}
 
+	// Process the message with the handler
 	err := handler(ctx, msg.Body)
 	if err != nil {
+		// Handler returned an error - NACK the message to requeue it
 		log.Printf("Error processing message from queue %s (messageId: %s): %v", queueName, messageID, err)
+		log.Printf("Message will be NACK'd and requeued for retry")
 		if nackErr := msg.Nack(false, true); nackErr != nil {
 			log.Printf("Failed to NACK message: %v", nackErr)
+		} else {
+			log.Printf("   ✓ Message NACK'd - will be retried")
 		}
 		return
 	}
 
+	// Handler returned nil (success) - ACK the message
 	cfg := r.client.GetConfig()
 	if !cfg.AutoAck {
 		if ackErr := msg.Ack(false); ackErr != nil {
 			log.Printf("Failed to ACK message: %v", ackErr)
+		} else {
+			log.Printf("Message ACK'd successfully (messageId: %s, queue: %s)", messageID, queueName)
 		}
 	}
 
-	if messageID != "" {
-		log.Printf("Successfully processed message with messageId: %s from queue %s", messageID, queueName)
-	}
+	log.Printf("Successfully processed and acknowledged message with messageId: %s from queue %s", messageID, queueName)
 }
 
 // Close closes the consumer channel (connection is managed by RabbitMQClient)
