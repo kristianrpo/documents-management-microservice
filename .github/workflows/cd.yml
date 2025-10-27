@@ -335,6 +335,10 @@ jobs:
           sleep 5
           echo "Old ExternalSecret deleted"
           
+      - name: Deploy application
+        run: |
+          kubectl apply -k k8s/overlays/prod/
+          
       - name: Check External Secret status
         run: |
           echo "=== Checking ExternalSecret status ==="
@@ -363,10 +367,6 @@ jobs:
             kubectl -n documents get externalsecret documents-secrets -o yaml
             exit 1
           fi
-          
-      - name: Deploy application
-        run: |
-          kubectl apply -k k8s/overlays/prod/
           
       - name: Check deployment status and debug
         run: |
