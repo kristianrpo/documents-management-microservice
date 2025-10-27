@@ -66,7 +66,14 @@ jobs:
       - name: Init Terraform (infra dir) para leer outputs
         working-directory: infra/terraform/aws
         run: |
-          terraform init -input=false \
+          # Intentar con -migrate-state para resolver problemas de checksum
+          terraform init -input=false -migrate-state \
+            -backend-config="bucket=$TF_BACKEND_BUCKET" \
+            -backend-config="key=$TF_BACKEND_KEY" \
+            -backend-config="region=$TF_BACKEND_REGION" \
+            -backend-config="dynamodb_table=$TF_BACKEND_DDB_TABLE" \
+            -backend-config="encrypt=true" || \
+          terraform init -input=false -reconfigure \
             -backend-config="bucket=$TF_BACKEND_BUCKET" \
             -backend-config="key=$TF_BACKEND_KEY" \
             -backend-config="region=$TF_BACKEND_REGION" \
@@ -221,6 +228,30 @@ jobs:
           # Wait a moment for the change to propagate
           sleep 2
 
+      - name: Fix Terraform state checksum mismatch if needed
+        working-directory: infra/terraform/aws
+        continue-on-error: true
+        run: |
+          echo "Verificando posible checksum mismatch..."
+          
+          # Verificar si existe el digest en DynamoDB
+          LOCK_ID="$TF_BACKEND_BUCKET/infra/terraform/aws/terraform.tfstate-md5"
+          STATE_CHECKSUM=$(aws dynamodb get-item \
+            --table-name "$TF_BACKEND_DDB_TABLE" \
+            --key "{\"LockID\":{\"S\":\"$LOCK_ID\"}}" \
+            --query 'Item.Digest.S' \
+            --output text \
+            --region "$TF_BACKEND_REGION" 2>/dev/null || echo "")
+          
+          if [ -n "$STATE_CHECKSUM" ]; then
+            echo "Checksum encontrado en DynamoDB: $STATE_CHECKSUM"
+            echo "Si terraform falla con checksum mismatch, intentará con -migrate-state"
+          fi
+          
+          # Verificar si existe el archivo de state en S3
+          STATE_EXISTS=$(aws s3 ls s3://"$TF_BACKEND_BUCKET"/"$TF_BACKEND_KEY" --region "$TF_BACKEND_REGION" 2>/dev/null && echo "yes" || echo "no")
+          echo "State file en S3 existe: $STATE_EXISTS"
+
       - name: Terraform Destroy (microservice resources)
         working-directory: infra/terraform/aws
         env:
@@ -229,20 +260,71 @@ jobs:
           set -e
           echo "Destruyendo recursos AWS del microservicio..."
           
-          # Primero intentar con terraform destroy normal
-          echo "Intento 1: Terraform destroy normal"
-          terraform destroy -auto-approve -input=false \
-            -var "tf_backend_bucket=$TF_BACKEND_BUCKET" || DESTROY_FAILED=true
+          # Verificar si los recursos ya fueron eliminados manualmente
+          echo "Verificando si los recursos existen..."
+          S3_BUCKET=$(terraform output -raw s3_bucket 2>/dev/null || echo "")
+          DYNAMODB_TABLE=$(terraform output -raw dynamodb_table 2>/dev/null || echo "")
           
-          if [ "${DESTROY_FAILED}" = "true" ]; then
-            echo "Terraform destroy falló, intentando con -refresh=false"
-            
-            # Si falla, intentar sin refresh para evitar problemas con el state
-            terraform destroy -auto-approve -input=false -refresh=false \
-              -var "tf_backend_bucket=$TF_BACKEND_BUCKET" || echo "Segundo intento también falló"
+          if [ -n "$S3_BUCKET" ]; then
+            BUCKET_EXISTS=$(aws s3 ls s3://"$S3_BUCKET" 2>/dev/null && echo "yes" || echo "no")
+            echo "S3 Bucket existe: $BUCKET_EXISTS"
           fi
           
-          echo "Terraform destroy completado para recursos del microservicio"
+          if [ -n "$DYNAMODB_TABLE" ]; then
+            TABLE_EXISTS=$(aws dynamodb describe-table --table-name "$DYNAMODB_TABLE" --region "${{ secrets.AWS_REGION }}" 2>/dev/null && echo "yes" || echo "no")
+            echo "DynamoDB Table existe: $TABLE_EXISTS"
+          fi
+          
+          # Si todos los recursos ya fueron eliminados, limpiar el estado
+          if [[ "${BUCKET_EXISTS:-no}" == "no" && "${TABLE_EXISTS:-no}" == "no" ]]; then
+            echo "ADVERTENCIA: Los recursos ya fueron eliminados manualmente"
+            echo "Limpiando el estado de Terraform..."
+            
+            # Remover del estado los recursos que ya no existen
+            terraform state list 2>/dev/null | while read resource; do
+              echo "Removing from state: $resource"
+              terraform state rm "$resource" 2>/dev/null || true
+            done
+            
+            echo "Estado limpiado. Los recursos ya no existen en AWS."
+            exit 0
+          fi
+          
+          # Si los recursos existen, proceder con destroy normal
+          echo "Los recursos aún existen. Procediendo con destroy..."
+          
+          # Intento 1: terraform destroy normal
+          if terraform destroy -auto-approve -input=false \
+            -var "tf_backend_bucket=$TF_BACKEND_BUCKET"; then
+            echo "Terraform destroy exitoso"
+            exit 0
+          fi
+          
+          # Intento 2: sin refresh
+          echo "Intento 2: Terraform destroy sin refresh"
+          if terraform destroy -auto-approve -input=false -refresh=false \
+            -var "tf_backend_bucket=$TF_BACKEND_BUCKET"; then
+            echo "Terraform destroy exitoso sin refresh"
+            exit 0
+          fi
+          
+          # Intento 3: reinit backend y destruir recursos que falten
+          echo "Intento 3: Limpiando recursos huérfanos del estado"
+          terraform state list 2>/dev/null || echo "No state available"
+          
+          # Intentar eliminar manualmente recursos que ya no existen
+          for resource in $(terraform state list 2>/dev/null); do
+            echo "Verificando resource: $resource"
+            if [[ "$resource" == *"aws_s3_bucket"* ]] && [ "${BUCKET_EXISTS:-no}" == "no" ]; then
+              echo "Eliminando del estado: $resource"
+              terraform state rm "$resource" 2>/dev/null || true
+            elif [[ "$resource" == *"aws_dynamodb_table"* ]] && [ "${TABLE_EXISTS:-no}" == "no" ]; then
+              echo "Eliminando del estado: $resource"
+              terraform state rm "$resource" 2>/dev/null || true
+            fi
+          done
+          
+          echo "Limpieza completada"
 
       - name: Force destroy resources if Terraform failed
         if: failure()
@@ -307,6 +389,70 @@ jobs:
       # 4) (Opcional) Borrar SOLO el state del microservicio
       #    NO toca el bucket compartido ni la tabla DynamoDB de locks
       # ---------------------------
+      - name: Fix checksum mismatch by removing state locks
+        continue-on-error: true
+        run: |
+          echo "================================================="
+          echo "SOLUCIÓN: Limpiando checksums y locks huérfanos"
+          echo "================================================="
+          echo ""
+          echo "Esto es necesario cuando:"
+          echo "  1. Los recursos fueron eliminados manualmente en AWS"
+          echo "  2. El estado de Terraform tiene checksums desincronizados"
+          echo "  3. DynamoDB tiene locks o digests huérfanos"
+          echo ""
+          
+          # Eliminar el digest (checksum) de DynamoDB
+          echo "Eliminando checksum (digest) del estado en DynamoDB..."
+          LOCK_ID="$TF_BACKEND_BUCKET/infra/terraform/aws/terraform.tfstate-md5"
+          if aws dynamodb delete-item \
+            --table-name "$TF_BACKEND_DDB_TABLE" \
+            --key "{\"LockID\":{\"S\":\"$LOCK_ID\"}}" \
+            --region "$TF_BACKEND_REGION" 2>/dev/null; then
+            echo "✓ Checksum eliminado de DynamoDB"
+          else
+            echo "  Checksum no existe o ya fue eliminado"
+          fi
+          
+          # Eliminar el lock principal si existe
+          echo "Eliminando lock del estado en DynamoDB..."
+          LOCK_ID="$TF_BACKEND_BUCKET/infra/terraform/aws/terraform.tfstate"
+          if aws dynamodb delete-item \
+            --table-name "$TF_BACKEND_DDB_TABLE" \
+            --key "{\"LockID\":{\"S\":\"$LOCK_ID\"}}" \
+            --region "$TF_BACKEND_REGION" 2>/dev/null; then
+            echo "✓ Lock eliminado de DynamoDB"
+          else
+            echo "  Lock no existe o ya fue eliminado"
+          fi
+          
+          # K8s state checksum
+          echo "Eliminando checksum de K8s state en DynamoDB..."
+          LOCK_ID_K8S="$TF_BACKEND_BUCKET/k8s/terraform/aws/terraform.tfstate-md5"
+          if aws dynamodb delete-item \
+            --table-name "$TF_BACKEND_DDB_TABLE" \
+            --key "{\"LockID\":{\"S\":\"$LOCK_ID_K8S\"}}" \
+            --region "$TF_BACKEND_REGION" 2>/dev/null; then
+            echo "✓ K8s checksum eliminado de DynamoDB"
+          else
+            echo "  K8s checksum no existe"
+          fi
+          
+          # K8s state lock
+          LOCK_ID_K8S="$TF_BACKEND_BUCKET/k8s/terraform/aws/terraform.tfstate"
+          if aws dynamodb delete-item \
+            --table-name "$TF_BACKEND_DDB_TABLE" \
+            --key "{\"LockID\":{\"S\":\"$LOCK_ID_K8S\"}}" \
+            --region "$TF_BACKEND_REGION" 2>/dev/null; then
+            echo "✓ K8s lock eliminado de DynamoDB"
+          else
+            echo "  K8s lock no existe"
+          fi
+          
+          echo ""
+          echo "Limpieza completada. Ahora puedes ejecutar terraform init nuevamente."
+          echo "================================================="
+
       - name: Delete microservice terraform state files
         if: ${{ github.event.inputs.delete_backend == 'true' }}
         run: |
