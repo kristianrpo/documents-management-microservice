@@ -32,7 +32,7 @@ func NewRouter(cfg *RouterConfig) *gin.Engine {
 	router := gin.Default()
 
 	docs.SwaggerInfo.Host = ""
-	docs.SwaggerInfo.BasePath = "/api/v1"
+	docs.SwaggerInfo.BasePath = "/"
 	docs.SwaggerInfo.Schemes = []string{"http"}
 
 	if cfg.MetricsCollector != nil {

@@ -5,8 +5,15 @@ resources:
   - ../../base
   - externalsecrets.yaml
   - hpa.yaml
-  - ingress.yaml
+  # - ingress.yaml  # Commented out until ALB is enabled in AWS account
   - servicemonitor.yaml
+
+patches:
+  - path: service-patch.yaml
+    target:
+      kind: Service
+      name: documents-service
+
 images:
   - name: REPOSITORY/documents-service
     newName: kristianrpo30/documents-microservice
