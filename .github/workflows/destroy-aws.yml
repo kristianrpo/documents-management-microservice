@@ -225,19 +225,83 @@ jobs:
         working-directory: infra/terraform/aws
         env:
           TF_LOG: INFO
-        continue-on-error: true
         run: |
           set -e
           echo "Destruyendo recursos AWS del microservicio..."
           
-          # Mostrar qué se va a destruir
-          terraform plan -destroy -var "tf_backend_bucket=$TF_BACKEND_BUCKET" || true
-          
-          # Destruir recursos
+          # Primero intentar con terraform destroy normal
+          echo "Intento 1: Terraform destroy normal"
           terraform destroy -auto-approve -input=false \
-            -var "tf_backend_bucket=$TF_BACKEND_BUCKET" || true
+            -var "tf_backend_bucket=$TF_BACKEND_BUCKET" || DESTROY_FAILED=true
+          
+          if [ "${DESTROY_FAILED}" = "true" ]; then
+            echo "Terraform destroy falló, intentando con -refresh=false"
+            
+            # Si falla, intentar sin refresh para evitar problemas con el state
+            terraform destroy -auto-approve -input=false -refresh=false \
+              -var "tf_backend_bucket=$TF_BACKEND_BUCKET" || echo "Segundo intento también falló"
+          fi
           
           echo "Terraform destroy completado para recursos del microservicio"
+
+      - name: Force destroy resources if Terraform failed
+        if: failure()
+        continue-on-error: true
+        working-directory: infra/terraform/aws
+        run: |
+          set -e
+          echo "Intentando eliminar recursos manualmente debido a errores de Terraform..."
+          
+          # Intentar leer los outputs del state para destruir manualmente
+          S3_BUCKET=$(terraform output -raw s3_bucket 2>/dev/null || echo "")
+          DYNAMODB_TABLE=$(terraform output -raw dynamodb_table 2>/dev/null || echo "")
+          SECRET_ARN=$(terraform output -raw secretsmanager_secret_arn 2>/dev/null || echo "")
+          IRSA_ROLE_ARN=$(terraform output -raw irsa_role_arn 2>/dev/null || echo "")
+          
+          echo "Recursos encontrados:"
+          echo "  S3 Bucket: $S3_BUCKET"
+          echo "  DynamoDB Table: $DYNAMODB_TABLE"
+          echo "  Secret ARN: $SECRET_ARN"
+          echo "  IRSA Role ARN: $IRSA_ROLE_ARN"
+          
+          # Eliminar S3 bucket
+          if [ -n "$S3_BUCKET" ]; then
+            echo "Eliminando S3 bucket: $S3_BUCKET"
+            aws s3 rb s3://"$S3_BUCKET" --force --region "${{ secrets.AWS_REGION }}" || echo "Error eliminando S3"
+          fi
+          
+          # Eliminar DynamoDB table
+          if [ -n "$DYNAMODB_TABLE" ]; then
+            echo "Eliminando DynamoDB table: $DYNAMODB_TABLE"
+            aws dynamodb delete-table --table-name "$DYNAMODB_TABLE" --region "${{ secrets.AWS_REGION }}" || echo "Error eliminando DynamoDB"
+          fi
+          
+          # Eliminar Secrets Manager secret
+          if [ -n "$SECRET_ARN" ]; then
+            echo "Eliminando Secrets Manager secret"
+            aws secretsmanager delete-secret --secret-id "$SECRET_ARN" --force-delete-without-recovery --region "${{ secrets.AWS_REGION }}" || echo "Error eliminando Secret"
+          fi
+          
+          # Eliminar IAM Role (que tiene las policies adjuntas)
+          if [ -n "$IRSA_ROLE_ARN" ]; then
+            ROLE_NAME=$(echo "$IRSA_ROLE_ARN" | cut -d'/' -f2)
+            echo "Eliminando IAM Role: $ROLE_NAME"
+            
+            # Detach policies
+            for policy_arn in $(aws iam list-attached-role-policies --role-name "$ROLE_NAME" --query 'AttachedPolicies[].PolicyArn' --output text 2>/dev/null); do
+              aws iam detach-role-policy --role-name "$ROLE_NAME" --policy-arn "$policy_arn" || true
+            done
+            
+            # Delete inline policies
+            for policy_name in $(aws iam list-role-policies --role-name "$ROLE_NAME" --query 'PolicyNames[]' --output text 2>/dev/null); do
+              aws iam delete-role-policy --role-name "$ROLE_NAME" --policy-name "$policy_name" || true
+            done
+            
+            # Delete role
+            aws iam delete-role --role-name "$ROLE_NAME" || echo "Error eliminando IAM Role"
+          fi
+          
+          echo "Eliminación manual completada"
 
       # ---------------------------
       # 4) (Opcional) Borrar SOLO el state del microservicio
@@ -268,18 +332,18 @@ jobs:
           
           # Verificar que no queden recursos en namespace documents
           if kubectl get namespace documents >/dev/null 2>&1; then
-            echo "⚠️  Namespace 'documents' todavía existe"
+            echo "Namespace 'documents' todavía existe"
             kubectl get all -n documents || true
           else
-            echo "✅ Namespace 'documents' eliminado correctamente"
+            echo "Namespace 'documents' eliminado correctamente"
           fi
           
           # Verificar que no queden LoadBalancers del microservicio
           if kubectl get svc -A 2>/dev/null | grep -E "(documents|grafana)" >/dev/null; then
-            echo "⚠️  Algunos services todavía existen"
+            echo "Algunos services todavía existen"
             kubectl get svc -A | grep -E "(documents|grafana)" || true
           else
-            echo "✅ Todos los services eliminados"
+            echo "Todos los services eliminados"
           fi
 
       - name: Done
@@ -289,20 +353,20 @@ jobs:
           echo "========================================"
           echo ""
           echo "Recursos eliminados:"
-          echo "  ✅ S3 Bucket (documents)"
-          echo "  ✅ DynamoDB Table (documents)"
-          echo "  ✅ IAM Role/Policy (documents-irsa)"
-          echo "  ✅ Secrets Manager (application config)"
-          echo "  ✅ Monitoring stack (kube-prometheus)"
-          echo "  ✅ LoadBalancers (Classic/NLB)"
-          echo "  ✅ Namespace documents"
-          echo "  ✅ Kubernetes resources (Deployments, Services, etc.)"
+          echo "  S3 Bucket (documents)"
+          echo "  DynamoDB Table (documents)"
+          echo "  IAM Role/Policy (documents-irsa)"
+          echo "  Secrets Manager (application config)"
+          echo "  Monitoring stack (kube-prometheus)"
+          echo "  LoadBalancers (Classic/NLB)"
+          echo "  Namespace documents"
+          echo "  Kubernetes resources (Deployments, Services, etc.)"
           echo ""
           echo "Recursos compartidos conservados:"
-          echo "  🔒 VPC"
-          echo "  🔒 EKS Cluster"
-          echo "  🔒 RabbitMQ"
-          echo "  🔒 AWS Load Balancer Controller"
-          echo "  🔒 External Secrets Operator"
+          echo "  VPC"
+          echo "  EKS Cluster"
+          echo "  RabbitMQ"
+          echo "  AWS Load Balancer Controller"
+          echo "  External Secrets Operator"
           echo ""
           echo "Para destruir la infraestructura compartida, ejecuta el workflow de destroy en el repo infrastructure-shared"
