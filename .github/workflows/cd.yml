@@ -311,10 +311,45 @@ jobs:
           sed -i "s|__AWS_SECRET_NAME__|$SECRET_NAME|g" k8s/overlays/prod/externalsecrets.yaml
           # Sustituir placeholder de IRSA role en ServiceAccount
           sed -i "s|IRSA_ROLE_ARN|$IRSA_ROLE|g" k8s/base/service-account.yaml
+          
+          # Debug: Ver los valores sustituidos
+          echo "=== Values used ==="
+          echo "SECRET_NAME: $SECRET_NAME"
+          echo "REGION: $REGION"
+          echo "IRSA_ROLE: $IRSA_ROLE"
+          echo "=== Checking rendered External Secret ==="
+          grep -A 2 "__AWS_" k8s/overlays/prod/externalsecrets.yaml || echo "All placeholders replaced successfully"
 
+      - name: Verify External Secrets Operator is installed
+        run: |
+          echo "=== Checking External Secrets Operator ==="
+          kubectl get pods -n external-secrets || echo "External Secrets namespace not found"
+          
+      - name: Wait for External Secrets to create secret
+        run: |
+          echo "Waiting for ExternalSecret to create documents-secrets..."
+          timeout 60 bash -c 'until kubectl -n documents get secret documents-secrets; do echo "Waiting..."; sleep 5; done' || echo "Secret might not be created yet"
+          
       - name: Deploy application
         run: |
           kubectl apply -k k8s/overlays/prod/
+          
+      - name: Check deployment status and debug
+        run: |
+          echo "=== Checking deployment status ==="
+          kubectl -n documents get deploy documents-service -o yaml
+          echo ""
+          echo "=== Checking pod status ==="
+          kubectl -n documents get pods -l app=documents-service
+          echo ""
+          echo "=== Checking pod logs (if any pods exist) ==="
+          kubectl -n documents logs -l app=documents-service --tail=50 || echo "No logs available yet"
+          echo ""
+          echo "=== Describing deployment ==="
+          kubectl -n documents describe deploy documents-service || true
+          
+      - name: Wait for deployment rollout
+        run: |
           kubectl -n documents rollout status deploy/documents-service --timeout=180s
 
       - name: Display Access Information
