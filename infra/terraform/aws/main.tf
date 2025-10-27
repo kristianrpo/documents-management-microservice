@@ -144,11 +144,6 @@ resource "aws_iam_policy" "external_secrets" {
   policy = data.aws_iam_policy_document.external_secrets.json
 }
 
-# Attach this policy to the shared ESO role (from shared infra)
-resource "aws_iam_role_policy_attachment" "eso_documents_secret" {
-  role       = data.terraform_remote_state.shared.outputs.external_secrets_role_name
-  policy_arn = aws_iam_policy.external_secrets.arn
-}
 
 # ============================================================================
 # Outputs - Only microservice-specific resources
@@ -170,5 +165,4 @@ output "secretsmanager_secret_arn" { value = aws_secretsmanager_secret.app.arn }
 output "cluster_name"              { value = local.cluster_name }
 output "cluster_endpoint"          { value = data.terraform_remote_state.shared.outputs.cluster_endpoint }
 output "cluster_ca_certificate"    { value = data.terraform_remote_state.shared.outputs.cluster_ca_certificate }
-output "eso_irsa_role_arn"         { value = data.terraform_remote_state.shared.outputs.external_secrets_irsa_role_arn }
 output "aws_lb_controller_role_arn"{ value = data.terraform_remote_state.shared.outputs.aws_load_balancer_controller_irsa_role_arn }
