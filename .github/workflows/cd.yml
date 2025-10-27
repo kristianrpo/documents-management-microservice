@@ -324,11 +324,38 @@ jobs:
         run: |
           echo "=== Checking External Secrets Operator ==="
           kubectl get pods -n external-secrets || echo "External Secrets namespace not found"
+          echo ""
+          echo "=== Checking External Secrets Operator logs ==="
+          kubectl logs -n external-secrets -l app.kubernetes.io/name=external-secrets --tail=50 || echo "Cannot get logs"
+          
+      - name: Check External Secret status
+        run: |
+          echo "=== Checking ExternalSecret status ==="
+          kubectl -n documents get externalsecret documents-secrets -o yaml || echo "ExternalSecret not found"
+          echo ""
+          echo "=== Checking ExternalSecret events ==="
+          kubectl -n documents describe externalsecret documents-secrets || true
           
       - name: Wait for External Secrets to create secret
         run: |
           echo "Waiting for ExternalSecret to create documents-secrets..."
-          timeout 60 bash -c 'until kubectl -n documents get secret documents-secrets; do echo "Waiting..."; sleep 5; done' || echo "Secret might not be created yet"
+          for i in {1..12}; do
+            if kubectl -n documents get secret documents-secrets &>/dev/null; then
+              echo "Secret created successfully!"
+              kubectl -n documents get secret documents-secrets
+              break
+            fi
+            echo "Waiting... (attempt $i/12)"
+            sleep 5
+          done
+          
+          # If still not created, show ExternalSecret status
+          if ! kubectl -n documents get secret documents-secrets &>/dev/null; then
+            echo "ERROR: Secret still not created after 60 seconds"
+            echo "=== ExternalSecret status ==="
+            kubectl -n documents get externalsecret documents-secrets -o yaml
+            exit 1
+          fi
           
       - name: Deploy application
         run: |
