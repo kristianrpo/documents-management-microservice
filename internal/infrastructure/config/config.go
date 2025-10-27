@@ -10,8 +10,9 @@ import (
 type Config struct {
 	Port string
 
-	DynamoDBTable    string
-	DynamoDBEndpoint string
+	DynamoDBTable                  string
+	DynamoDBProcessedMessagesTable string
+	DynamoDBEndpoint               string
 
 	AWSAccessKey string
 	AWSSecretKey string
@@ -50,19 +51,20 @@ func Load() *Config {
 	rabbitMQConfig.AuthenticationResultQueue = getenv("RABBITMQ_AUTH_RESULT_QUEUE", "document.authentication.completed")
 
 	return &Config{
-		Port:              port,
-		DynamoDBTable:     getenv("DYNAMODB_TABLE", "documents"),
-		DynamoDBEndpoint:  getenv("DYNAMODB_ENDPOINT", ""),
-		AWSAccessKey:      getenv("AWS_ACCESS_KEY_ID", "local"),
-		AWSSecretKey:      getenv("AWS_SECRET_ACCESS_KEY", "local"),
-		AWSRegion:         getenv("AWS_REGION", "us-east-1"),
-		S3Bucket:          getenv("S3_BUCKET", "documents"),
-		S3Endpoint:        getenv("S3_ENDPOINT", ""),
-		S3UsePath:         getbool("S3_USE_PATH_STYLE"),
-		S3PublicBase:      getenv("S3_PUBLIC_BASE_URL", ""),
-		RabbitMQ:          rabbitMQConfig,
-		ReadHeaderTimeout: 5 * time.Second,
-		JWTSecret:         jwtSecret,
+		Port:                           port,
+		DynamoDBTable:                  getenv("DYNAMODB_TABLE", "documents"),
+		DynamoDBProcessedMessagesTable: getenv("DYNAMODB_PROCESSED_MESSAGES_TABLE", ""),
+		DynamoDBEndpoint:               getenv("DYNAMODB_ENDPOINT", ""),
+		AWSAccessKey:                   getenv("AWS_ACCESS_KEY_ID", "local"),
+		AWSSecretKey:                   getenv("AWS_SECRET_ACCESS_KEY", "local"),
+		AWSRegion:                      getenv("AWS_REGION", "us-east-1"),
+		S3Bucket:                       getenv("S3_BUCKET", "documents"),
+		S3Endpoint:                     getenv("S3_ENDPOINT", ""),
+		S3UsePath:                      getbool("S3_USE_PATH_STYLE"),
+		S3PublicBase:                   getenv("S3_PUBLIC_BASE_URL", ""),
+		RabbitMQ:                       rabbitMQConfig,
+		ReadHeaderTimeout:              5 * time.Second,
+		JWTSecret:                      jwtSecret,
 	}
 }
 

@@ -1,6 +1,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: auth
+namespace: documents
 resources:
   - ../../base
   - externalsecrets.yaml
@@ -8,6 +8,6 @@ resources:
   - ingress.yaml
   - servicemonitor.yaml
 images:
-  - name: REPOSITORY/auth-service
-    newName: kristianrpo30/auth-microservice
+  - name: REPOSITORY/documents-service
+    newName: kristianrpo30/documents-microservice
     newTag: latest

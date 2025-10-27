@@ -17,6 +17,9 @@ locals {
   cluster_name       = data.terraform_remote_state.shared.outputs.cluster_name
   # cluster_oidc_arn   = data.terraform_remote_state.shared.outputs.oidc_provider_arn  # Temporalmente comentado
   rabbitmq_url       = data.terraform_remote_state.shared.outputs.rabbitmq_amqp_url
+  processed_messages_table_name = data.terraform_remote_state.shared.outputs.rabbitmq_processed_messages_table_name
+  processed_messages_table_arn  = data.terraform_remote_state.shared.outputs.rabbitmq_processed_messages_table_arn
+  rabbitmq_consumer_dynamodb_policy_arn = data.terraform_remote_state.shared.outputs.rabbitmq_consumer_dynamodb_policy_arn
 }
 
 # ============================================================================
@@ -94,6 +97,10 @@ data "aws_iam_policy_document" "documents_policy" {
     resources = [aws_dynamodb_table.documents.arn, "${aws_dynamodb_table.documents.arn}/index/*"]
   }
   statement {
+    actions   = ["dynamodb:PutItem","dynamodb:GetItem","dynamodb:Query"]
+    resources = [local.processed_messages_table_arn]
+  }
+  statement {
     actions   = ["secretsmanager:GetSecretValue"]
     resources = [aws_secretsmanager_secret.app.arn]
   }
@@ -115,7 +122,10 @@ module "irsa" {
       namespace_service_accounts = ["documents:documents-sa"]
     }
   }
-  role_policy_arns = { documents = aws_iam_policy.documents.arn }
+  role_policy_arns = { 
+    documents = aws_iam_policy.documents.arn
+    rabbitmq_consumer = local.rabbitmq_consumer_dynamodb_policy_arn
+  }
 }
 
 # ============================================================================
@@ -148,6 +158,9 @@ output "dynamodb_table"            { value = aws_dynamodb_table.documents.name }
 output "rabbitmq_amqp_url"         { 
   value     = local.rabbitmq_url
   sensitive = true
+}
+output "rabbitmq_processed_messages_table_name" {
+  value = local.processed_messages_table_name
 }
 output "irsa_role_arn"             { value = module.irsa.iam_role_arn }
 output "secretsmanager_secret_name"{ value = aws_secretsmanager_secret.app.name }

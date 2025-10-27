@@ -14,6 +14,94 @@ env:
   TF_BACKEND_DDB_TABLE: ${{ secrets.TF_BACKEND_DDB_TABLE }}
 
 jobs:
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/documents-microservice
+          tags: |
+            type=sha,prefix=main-
+            type=raw,value=latest
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Image digest
+        run: echo ${{ steps.meta.outputs.digest }}
+
+  sonar-tracking:
+    name: SonarCloud Tracking (Main Branch)
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache: true
+
+      - name: Install dependencies
+        run: |
+          go mod download
+          go mod tidy
+
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Run golangci-lint
+        run: |
+          golangci-lint run --output.checkstyle.path=golangci-lint-report.xml || true
+
+      - name: Run Tests with Coverage
+        run: |
+          echo "Running unit tests..."
+          go test ./internal/.../tests/... -v
+          
+          echo "Generating coverage report..."
+          go test -coverpkg=./internal/... ./internal/.../tests -coverprofile=coverage.out -covermode=atomic
+          
+          echo "Coverage Summary:"
+          go tool cover -func=coverage.out | tail -1
+
+      - name: SonarCloud Scan (Main Branch)
+        uses: SonarSource/sonarcloud-github-action@ffc3010689be73b8e5ae0c57ce35968afd7909e8 # v5.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.branch.name=main
+
   infra-apply:
     name: Provision Microservice AWS Resources (Terraform) - Phase 1
     runs-on: ubuntu-latest
@@ -181,11 +269,13 @@ jobs:
           SECRET_NAME=$(terraform -chdir=$TF_DIR output -raw secretsmanager_secret_name)
           RABBIT_URL=$(terraform -chdir=$TF_DIR output -raw rabbitmq_amqp_url)
           S3_BUCKET=$(terraform -chdir=$TF_DIR output -raw s3_bucket)
+          PROCESSED_MSGS_TABLE=$(terraform -chdir=$TF_DIR output -raw rabbitmq_processed_messages_table_name)
           aws secretsmanager put-secret-value \
             --secret-id "$SECRET_NAME" \
             --secret-string "$(jq -n \
               --arg port "${{ secrets.APP_PORT }}" \
               --arg table "$(terraform -chdir=$TF_DIR output -raw dynamodb_table)" \
+              --arg processed_table "$PROCESSED_MSGS_TABLE" \
               --arg region "${{ secrets.AWS_REGION }}" \
               --arg bucket "$S3_BUCKET" \
               --arg rabbit "$RABBIT_URL" \
@@ -195,6 +285,7 @@ jobs:
               '{
                 APP_PORT: $port,
                 DYNAMODB_TABLE: $table,
+                DYNAMODB_PROCESSED_MESSAGES_TABLE: $processed_table,
                 DYNAMODB_ENDPOINT: "",
                 AWS_REGION: $region,
                 S3_BUCKET: $bucket,
@@ -214,13 +305,16 @@ jobs:
           set -euo pipefail
           SECRET_NAME=$(terraform -chdir=$TF_DIR output -raw secretsmanager_secret_name)
           REGION='${{ secrets.AWS_REGION }}'
+          IRSA_ROLE=$(terraform -chdir=$TF_DIR output -raw irsa_role_arn)
           # Sustituir placeholders en External Secrets
-          sed -i "s|__AWS_REGION__|$REGION|g" k8s/externalsecrets.yaml
-          sed -i "s|__AWS_SECRET_NAME__|$SECRET_NAME|g" k8s/externalsecrets.yaml
+          sed -i "s|__AWS_REGION__|$REGION|g" k8s/overlays/prod/externalsecrets.yaml
+          sed -i "s|__AWS_SECRET_NAME__|$SECRET_NAME|g" k8s/overlays/prod/externalsecrets.yaml
+          # Sustituir placeholder de IRSA role en ServiceAccount
+          sed -i "s|IRSA_ROLE_ARN|$IRSA_ROLE|g" k8s/base/service-account.yaml
 
       - name: Deploy application
         run: |
-          kubectl apply -k k8s/
+          kubectl apply -k k8s/overlays/prod/
           kubectl -n documents rollout status deploy/documents-service --timeout=180s
 
       - name: Display Access Information

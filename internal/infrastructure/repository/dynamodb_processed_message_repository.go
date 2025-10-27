@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
@@ -76,45 +75,4 @@ func (r *DynamoDBProcessedMessageRepository) MarkAsProcessed(ctx context.Context
 	}
 
 	return nil
-}
-
-// EnsureTableExists creates the processed messages table if it doesn't exist
-func (r *DynamoDBProcessedMessageRepository) EnsureTableExists(ctx context.Context) error {
-	// Check if table already exists
-	_, err := r.client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
-		TableName: aws.String(r.tableName),
-	})
-
-	if err == nil {
-		// Table exists
-		return nil
-	}
-
-	// Table doesn't exist, create it
-	_, err = r.client.CreateTable(ctx, &dynamodb.CreateTableInput{
-		TableName:   aws.String(r.tableName),
-		BillingMode: types.BillingModePayPerRequest,
-		AttributeDefinitions: []types.AttributeDefinition{
-			{
-				AttributeName: aws.String("MessageID"),
-				AttributeType: types.ScalarAttributeTypeS,
-			},
-		},
-		KeySchema: []types.KeySchemaElement{
-			{
-				AttributeName: aws.String("MessageID"),
-				KeyType:       types.KeyTypeHash,
-			},
-		},
-	})
-
-	if err != nil {
-		return fmt.Errorf("failed to create processed messages table: %w", err)
-	}
-
-	// Wait for table to be active
-	waiter := dynamodb.NewTableExistsWaiter(r.client)
-	return waiter.Wait(ctx, &dynamodb.DescribeTableInput{
-		TableName: aws.String(r.tableName),
-	}, time.Second*30)
 }

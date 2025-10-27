@@ -107,15 +107,15 @@ func main() {
 	}
 
 	// Initialize processed messages repository for idempotency
-	// Table will be created automatically if it doesn't exist
-	processedMessagesRepo := infrapkg.NewDynamoDBProcessedMessageRepository(dynamoClient, config.DynamoDBTable+"_processed_messages")
-
-	// Ensure the processed messages table exists (creates it if needed)
-	if err := processedMessagesRepo.EnsureTableExists(context.Background()); err != nil {
-		log.Printf("warning: failed to ensure processed messages table exists: %v", err)
-		log.Println("proceeding without processed messages table - idempotency will not work")
+	// Uses the shared DynamoDB table from infrastructure (already exists, don't create it)
+	var processedMessagesRepo interfaces.ProcessedMessageRepository
+	processedMessagesTableName := config.DynamoDBProcessedMessagesTable
+	if processedMessagesTableName == "" {
+		log.Println("warning: DYNAMODB_PROCESSED_MESSAGES_TABLE not configured, message idempotency disabled")
+		processedMessagesRepo = nil
 	} else {
-		log.Println("Processed messages table verified/created successfully")
+		processedMessagesRepo = infrapkg.NewDynamoDBProcessedMessageRepository(dynamoClient, processedMessagesTableName)
+		log.Printf("Using shared DynamoDB table for processed messages: %s", processedMessagesTableName)
 	}
 
 	var objectStorage interfaces.ObjectStorage = s3Client

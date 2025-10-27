@@ -12,8 +12,4 @@ type ProcessedMessageRepository interface {
 
 	// MarkAsProcessed marks a message as processed
 	MarkAsProcessed(ctx context.Context, message *models.ProcessedMessage) error
-
-	// EnsureTableExists ensures the processed messages table exists (implementation-specific)
-	// Called automatically on initialization
-	EnsureTableExists(ctx context.Context) error
 }
