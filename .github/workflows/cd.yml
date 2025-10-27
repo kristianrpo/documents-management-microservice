@@ -339,6 +339,11 @@ jobs:
         run: |
           kubectl apply -k k8s/overlays/prod/
           
+      - name: Force rolling update (to pick up new image)
+        run: |
+          echo "Triggering rolling update to ensure new image is used..."
+          kubectl rollout restart deployment/documents-service -n documents
+          
       - name: Check External Secret status
         run: |
           echo "=== Checking ExternalSecret status ==="
