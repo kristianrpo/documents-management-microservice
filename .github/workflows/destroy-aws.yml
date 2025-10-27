@@ -194,6 +194,33 @@ jobs:
       # ---------------------------
       # 3) Destroy microservice-specific AWS resources (S3, DynamoDB, IAM)
       # ---------------------------
+      - name: Get microservice DynamoDB table name
+        working-directory: infra/terraform/aws
+        id: get_microservice_table
+        continue-on-error: true
+        run: |
+          # Intentar obtener el nombre de la tabla de DynamoDB del microservicio
+          TABLE_NAME=$(terraform output -raw dynamodb_table 2>/dev/null || echo "")
+          if [ -n "$TABLE_NAME" ]; then
+            echo "table_name=$TABLE_NAME" >> $GITHUB_OUTPUT
+            echo "TABLE_NAME=$TABLE_NAME" >> $GITHUB_ENV
+          else
+            echo "No DynamoDB table found for microservice (or already destroyed)"
+          fi
+
+      - name: Disable DynamoDB PITR before destroy
+        if: env.TABLE_NAME != ''
+        continue-on-error: true
+        run: |
+          echo "Disabling Point-in-time Recovery for DynamoDB table: $TABLE_NAME"
+          aws dynamodb update-continuous-backups \
+            --table-name "$TABLE_NAME" \
+            --point-in-time-recovery-specification PointInTimeRecoveryEnabled=false \
+            --region ${{ secrets.AWS_REGION }} || echo "Could not disable PITR (table might not exist or already disabled)"
+          
+          # Wait a moment for the change to propagate
+          sleep 2
+
       - name: Terraform Destroy (microservice resources)
         working-directory: infra/terraform/aws
         env:
