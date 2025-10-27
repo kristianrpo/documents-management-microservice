@@ -2,7 +2,7 @@ name: Documents Microservice CD
 
 on:
   push:
-    branches: [change]
+    branches: [main]
 
 permissions:
   contents: read
