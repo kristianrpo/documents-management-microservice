@@ -328,6 +328,13 @@ jobs:
           echo "=== Checking External Secrets Operator logs ==="
           kubectl logs -n external-secrets -l app.kubernetes.io/name=external-secrets --tail=50 || echo "Cannot get logs"
           
+      - name: Delete old ExternalSecret if exists
+        run: |
+          echo "=== Deleting old ExternalSecret ==="
+          kubectl -n documents delete externalsecret documents-secrets --ignore-not-found=true
+          sleep 5
+          echo "Old ExternalSecret deleted"
+          
       - name: Check External Secret status
         run: |
           echo "=== Checking ExternalSecret status ==="
