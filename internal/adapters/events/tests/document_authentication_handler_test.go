@@ -53,10 +53,15 @@ func (m *mockRepo) UpdateAuthenticationStatus(ctx context.Context, documentID st
 	return args.Error(0)
 }
 
+func (m *mockRepo) EnsureTableExists(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
 func TestHandleAuthenticationCompleted_Success(t *testing.T) {
 	ctx := context.Background()
 	repo := new(mockRepo)
-	h := adapters.NewDocumentAuthenticationHandler(repo)
+	h := adapters.NewDocumentAuthenticationHandler(repo, nil)
 
 	evt := events.DocumentAuthenticationCompletedEvent{
 		DocumentID:    "doc-1",
@@ -75,7 +80,7 @@ func TestHandleAuthenticationCompleted_Success(t *testing.T) {
 func TestHandleAuthenticationCompleted_UnmarshalError(t *testing.T) {
 	ctx := context.Background()
 	repo := new(mockRepo)
-	h := adapters.NewDocumentAuthenticationHandler(repo)
+	h := adapters.NewDocumentAuthenticationHandler(repo, nil)
 	// invalid JSON
 	payload := []byte("{invalid}")
 	err := h.HandleAuthenticationCompleted(ctx, payload)
@@ -86,7 +91,7 @@ func TestHandleAuthenticationCompleted_UnmarshalError(t *testing.T) {
 func TestHandleAuthenticationCompleted_UpdateError(t *testing.T) {
 	ctx := context.Background()
 	repo := new(mockRepo)
-	h := adapters.NewDocumentAuthenticationHandler(repo)
+	h := adapters.NewDocumentAuthenticationHandler(repo, nil)
 	evt := events.DocumentAuthenticationCompletedEvent{DocumentID: "doc-1", IDCitizen: 3, Authenticated: false}
 	payload, _ := json.Marshal(evt)
 	repo.On("UpdateAuthenticationStatus", ctx, "doc-1", models.AuthenticationStatusUnauthenticated).Return(errors.New("db err"))

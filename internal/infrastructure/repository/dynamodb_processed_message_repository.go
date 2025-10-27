@@ -84,7 +84,7 @@ func (r *DynamoDBProcessedMessageRepository) EnsureTableExists(ctx context.Conte
 	_, err := r.client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
 		TableName: aws.String(r.tableName),
 	})
-	
+
 	if err == nil {
 		// Table exists
 		return nil

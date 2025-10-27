@@ -28,7 +28,7 @@ type DocumentRepository interface {
 
 	// UpdateAuthenticationStatus updates the authentication status of a document
 	UpdateAuthenticationStatus(ctx context.Context, documentID string, status models.AuthenticationStatus) error
-	
+
 	// EnsureTableExists ensures the documents table exists (implementation-specific)
 	// Called automatically on initialization
 	EnsureTableExists(ctx context.Context) error

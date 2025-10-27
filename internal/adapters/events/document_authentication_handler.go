@@ -13,14 +13,14 @@ import (
 
 // DocumentAuthenticationHandler handles authentication completion events
 type DocumentAuthenticationHandler struct {
-	repo            interfaces.DocumentRepository
+	repo             interfaces.DocumentRepository
 	processedMsgRepo interfaces.ProcessedMessageRepository
 }
 
 // NewDocumentAuthenticationHandler creates a new handler for document authentication events
 func NewDocumentAuthenticationHandler(repo interfaces.DocumentRepository, processedMsgRepo interfaces.ProcessedMessageRepository) *DocumentAuthenticationHandler {
 	return &DocumentAuthenticationHandler{
-		repo:            repo,
+		repo:             repo,
 		processedMsgRepo: processedMsgRepo,
 	}
 }

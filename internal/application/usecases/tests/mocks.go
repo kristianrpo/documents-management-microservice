@@ -61,6 +61,11 @@ func (m *MockDocumentRepository) UpdateAuthenticationStatus(ctx context.Context,
 	return args.Error(0)
 }
 
+func (m *MockDocumentRepository) EnsureTableExists(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
 // MockObjectStorage is a mock implementation of ObjectStorage
 type MockObjectStorage struct {
 	mock.Mock

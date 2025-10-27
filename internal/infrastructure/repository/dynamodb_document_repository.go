@@ -51,7 +51,7 @@ func (repo *dynamoDBDocumentRepository) EnsureTableExists(ctx context.Context) e
 	_, err := repo.client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
 		TableName: aws.String(repo.tableName),
 	})
-	
+
 	if err == nil {
 		// Table exists
 		return nil

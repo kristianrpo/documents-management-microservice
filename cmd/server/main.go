@@ -97,7 +97,7 @@ func main() {
 	}
 
 	documentRepository := infrapkg.NewDynamoDBDocumentRepo(dynamoClient, config.DynamoDBTable)
-	
+
 	// Ensure the documents table exists (creates it if needed)
 	if err := documentRepository.EnsureTableExists(context.Background()); err != nil {
 		log.Printf("warning: failed to ensure documents table exists: %v", err)
@@ -105,11 +105,11 @@ func main() {
 	} else {
 		log.Println("Documents table verified/created successfully")
 	}
-	
+
 	// Initialize processed messages repository for idempotency
 	// Table will be created automatically if it doesn't exist
 	processedMessagesRepo := infrapkg.NewDynamoDBProcessedMessageRepository(dynamoClient, config.DynamoDBTable+"_processed_messages")
-	
+
 	// Ensure the processed messages table exists (creates it if needed)
 	if err := processedMessagesRepo.EnsureTableExists(context.Background()); err != nil {
 		log.Printf("warning: failed to ensure processed messages table exists: %v", err)
