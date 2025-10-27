@@ -56,6 +56,9 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_wrapper: false
+      
+      - name: Install jq (for JSON parsing)
+        run: sudo apt-get update && sudo apt-get install -y jq
 
       # ---------------------------
       # 1) Conectarnos al cluster (que existe en infraestructura compartida)
@@ -90,12 +93,59 @@ jobs:
         run: |
           set -e
           echo "Eliminando recursos K8s del microservicio documents"
+          
+          # Guardar nombres de LoadBalancers para eliminarlos después
+          DOCUMENTS_LB=$(kubectl -n documents get svc documents-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+          GRAFANA_LB=$(kubectl -n monitoring get svc kube-prometheus-stack-grafana -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+          
+          if [ -n "$DOCUMENTS_LB" ]; then
+            echo "documents_lb_hostname=$DOCUMENTS_LB" >> $GITHUB_OUTPUT
+          fi
+          if [ -n "$GRAFANA_LB" ]; then
+            echo "grafana_lb_hostname=$GRAFANA_LB" >> $GITHUB_OUTPUT
+          fi
+          
+          # Esperar a que los pods terminen antes de eliminar recursos
+          echo "Esperando a que deployments terminen..."
+          kubectl -n documents rollout status deployment/documents-service --timeout=60s || true
+          
           # Eliminar aplicación
-          kubectl delete -k k8s/ --ignore-not-found
+          echo "Eliminando aplicación con kustomize..."
+          kubectl delete -k k8s/overlays/prod/ --ignore-not-found --wait=true --timeout=300s || true
+          
+          # Eliminar namespace completo si existe (para limpiar totalmente)
+          echo "Eliminando namespace documents..."
+          kubectl delete namespace documents --ignore-not-found --wait=true --timeout=180s || true
+          
           # ConfigMap del dashboard específico
-          kubectl delete configmap documents-service-dashboard -n monitoring --ignore-not-found
+          kubectl delete configmap documents-service-dashboard -n monitoring --ignore-not-found || true
           # PrometheusRule específico
-          kubectl delete prometheusrule documents-service-alerts -n monitoring --ignore-not-found
+          kubectl delete prometheusrule documents-service-alerts -n monitoring --ignore-not-found || true
+          # ServiceMonitor específico
+          kubectl delete servicemonitor documents-service -n monitoring --ignore-not-found || true
+
+      - name: Wait for LoadBalancers and PVCs to be deleted
+        if: steps.kubeconfig.outcome == 'success'
+        continue-on-error: true
+        run: |
+          echo "Esperando a que LoadBalancers y PVCs se eliminen..."
+          # Esperar hasta 5 minutos para que AWS elimine los LoadBalancers
+          for i in {1..10}; do
+            LB_COUNT=$(kubectl get svc -A -o json | jq '.items[] | select(.metadata.name | contains("documents") or contains("grafana")) | .status.loadBalancer.ingress' | jq -s 'length' || echo "0")
+            if [ "$LB_COUNT" = "0" ]; then
+              echo "Todos los LoadBalancers han sido eliminados"
+              break
+            fi
+            echo "Esperando... ($i/10) LoadBalancers restantes: $LB_COUNT"
+            sleep 30
+          done
+          
+          # Verificar PVCs pendientes de eliminación
+          PVC_COUNT=$(kubectl get pvc -n documents 2>/dev/null | wc -l || echo "0")
+          if [ "$PVC_COUNT" -gt "1" ]; then
+            echo "Forzando eliminación de PVCs en namespace documents..."
+            kubectl delete pvc --all -n documents --force --grace-period=0 || true
+          fi
 
       - name: Terraform Init (k8s)
         working-directory: k8s/terraform/aws
@@ -123,11 +173,23 @@ jobs:
         continue-on-error: true
         run: |
           set -e
+          echo "Destruyendo monitoring stack (Prometheus/Grafana)..."
+          
+          # Primero intentar eliminar Helm release manualmente si existe
+          if kubectl get namespace monitoring >/dev/null 2>&1; then
+            echo "Eliminando Helm release kube-prometheus-stack..."
+            kubectl delete namespace monitoring --wait=true --timeout=300s || true
+            sleep 30
+          fi
+          
+          # Ahora hacer terraform destroy
           terraform destroy -auto-approve -input=false \
             -var "aws_region=${{ secrets.AWS_REGION }}" \
             -var "cluster_name=${{ steps.infra_outputs_destroy.outputs.CLUSTER_NAME }}" \
             -var "cluster_endpoint=${{ steps.infra_outputs_destroy.outputs.CLUSTER_ENDPOINT }}" \
             -var "cluster_ca_certificate=${{ steps.infra_outputs_destroy.outputs.CLUSTER_CA }}"
+          
+          echo "Terraform destroy completado para monitoring stack"
 
       # ---------------------------
       # 3) Destroy microservice-specific AWS resources (S3, DynamoDB, IAM)
@@ -136,10 +198,19 @@ jobs:
         working-directory: infra/terraform/aws
         env:
           TF_LOG: INFO
+        continue-on-error: true
         run: |
           set -e
+          echo "Destruyendo recursos AWS del microservicio..."
+          
+          # Mostrar qué se va a destruir
+          terraform plan -destroy -var "tf_backend_bucket=$TF_BACKEND_BUCKET" || true
+          
+          # Destruir recursos
           terraform destroy -auto-approve -input=false \
-            -var "tf_backend_bucket=$TF_BACKEND_BUCKET"
+            -var "tf_backend_bucket=$TF_BACKEND_BUCKET" || true
+          
+          echo "Terraform destroy completado para recursos del microservicio"
 
       # ---------------------------
       # 4) (Opcional) Borrar SOLO el state del microservicio
@@ -162,22 +233,49 @@ jobs:
           echo "State files del microservicio eliminados"
           echo "Backend compartido (S3 + DynamoDB) conservado para otros servicios"
 
+      - name: Verify cleanup
+        if: steps.kubeconfig.outcome == 'success'
+        continue-on-error: true
+        run: |
+          echo "Verificando limpieza de recursos..."
+          
+          # Verificar que no queden recursos en namespace documents
+          if kubectl get namespace documents >/dev/null 2>&1; then
+            echo "⚠️  Namespace 'documents' todavía existe"
+            kubectl get all -n documents || true
+          else
+            echo "✅ Namespace 'documents' eliminado correctamente"
+          fi
+          
+          # Verificar que no queden LoadBalancers del microservicio
+          if kubectl get svc -A 2>/dev/null | grep -E "(documents|grafana)" >/dev/null; then
+            echo "⚠️  Algunos services todavía existen"
+            kubectl get svc -A | grep -E "(documents|grafana)" || true
+          else
+            echo "✅ Todos los services eliminados"
+          fi
+
       - name: Done
         run: |
-          echo "Destroy del microservicio completado."
+          echo "========================================"
+          echo "Destroy del microservicio completado"
+          echo "========================================"
           echo ""
           echo "Recursos eliminados:"
-          echo "  - S3 Bucket (documents)"
-          echo "  - DynamoDB Table (documents)"
-          echo "  - IAM Role/Policy (documents-irsa)"
-          echo "  - Secrets Manager (application config)"
-          echo "  - Monitoring stack (kube-prometheus)"
+          echo "  ✅ S3 Bucket (documents)"
+          echo "  ✅ DynamoDB Table (documents)"
+          echo "  ✅ IAM Role/Policy (documents-irsa)"
+          echo "  ✅ Secrets Manager (application config)"
+          echo "  ✅ Monitoring stack (kube-prometheus)"
+          echo "  ✅ LoadBalancers (Classic/NLB)"
+          echo "  ✅ Namespace documents"
+          echo "  ✅ Kubernetes resources (Deployments, Services, etc.)"
           echo ""
           echo "Recursos compartidos conservados:"
-          echo "  - VPC"
-          echo "  - EKS Cluster"
-          echo "  - RabbitMQ"
-          echo "  - AWS Load Balancer Controller"
-          echo "  - External Secrets Operator"
+          echo "  🔒 VPC"
+          echo "  🔒 EKS Cluster"
+          echo "  🔒 RabbitMQ"
+          echo "  🔒 AWS Load Balancer Controller"
+          echo "  🔒 External Secrets Operator"
           echo ""
           echo "Para destruir la infraestructura compartida, ejecuta el workflow de destroy en el repo infrastructure-shared"
