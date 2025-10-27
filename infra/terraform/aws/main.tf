@@ -144,6 +144,13 @@ resource "aws_iam_policy" "external_secrets" {
   policy = data.aws_iam_policy_document.external_secrets.json
 }
 
+# Attach this policy to the shared ESO role from shared infra
+# This allows External Secrets Operator to read THIS microservice's secret
+resource "aws_iam_role_policy_attachment" "eso_documents_secret" {
+  role       = data.terraform_remote_state.shared.outputs.eso_irsa_role_name
+  policy_arn = aws_iam_policy.external_secrets.arn
+}
+
 
 # ============================================================================
 # Outputs - Only microservice-specific resources
