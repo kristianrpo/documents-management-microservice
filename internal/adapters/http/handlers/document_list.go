@@ -58,7 +58,7 @@ func NewDocumentListHandler(service usecases.DocumentListService, errorHandler *
 // @Success 200 {object} endpoints.ListResponse "List of documents retrieved successfully"
 // @Failure 400 {object} endpoints.ListErrorResponse "Validation error - invalid id_citizen or pagination parameters"
 // @Failure 500 {object} endpoints.ListErrorResponse "Internal server error - database error"
-// @Router /api/v1/documents [get]
+// @Router /api/docs/documents [get]
 func (handler *DocumentListHandler) List(ctx *gin.Context) {
 	idCitizen, err := middleware.GetUserIDCitizen(ctx)
 	if err != nil {

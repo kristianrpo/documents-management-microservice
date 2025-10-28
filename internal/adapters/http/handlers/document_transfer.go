@@ -44,7 +44,7 @@ func NewDocumentTransferHandler(
 // @Success 200 {object} endpoints.TransferResponse "Documents prepared successfully"
 // @Failure 400 {object} endpoints.TransferErrorResponse "Invalid request"
 // @Failure 500 {object} endpoints.TransferErrorResponse "Internal server error"
-// @Router /api/v1/documents/transfer/{id_citizen} [get]
+// @Router /api/docs/documents/transfer/{id_citizen} [get]
 func (h *DocumentTransferHandler) PrepareTransfer(c *gin.Context) {
 	idCitizenStr := c.Param("id_citizen")
 

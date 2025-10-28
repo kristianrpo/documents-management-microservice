@@ -80,10 +80,10 @@ func TestDocumentUploadHandler_TableDriven(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			r, errHandler, metricsCollector := newTestRouter(t, tc.withAuth, tc.ownerID)
 			h := handlers.NewDocumentUploadHandler(tc.service, errHandler, metricsCollector)
-			r.POST("/api/v1/documents", h.Upload)
+			r.POST("/api/docs/documents", h.Upload)
 
 			body, contentType := tc.buildBody()
-			req := httptest.NewRequest(http.MethodPost, "/api/v1/documents", body)
+			req := httptest.NewRequest(http.MethodPost, "/api/docs/documents", body)
 			req.Header.Set("Content-Type", contentType)
 			wr := httptest.NewRecorder()
 			r.ServeHTTP(wr, req)

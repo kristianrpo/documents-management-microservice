@@ -23,11 +23,11 @@ func TestDocumentDeleteAllHandler_Success(t *testing.T) {
 	r, errHandler, metricsCollector := newTestRouter(t, true, 123456)
 	service := new(mockDeleteAllService)
 	h := handlers.NewDocumentDeleteAllHandler(service, errHandler, metricsCollector)
-	r.DELETE("/api/v1/documents/user/delete-all", h.DeleteAll)
+	r.DELETE("/api/docs/documents/user/delete-all", h.DeleteAll)
 
 	service.On("DeleteAll", mock.Anything, int64(123456)).Return(5, nil)
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/v1/documents/user/delete-all", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/api/docs/documents/user/delete-all", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -41,9 +41,9 @@ func TestDocumentDeleteAllHandler_ValidationError_InvalidID(t *testing.T) {
 	r, errHandler, metricsCollector := newTestRouter(t, false, 0)
 	service := new(mockDeleteAllService)
 	h := handlers.NewDocumentDeleteAllHandler(service, errHandler, metricsCollector)
-	r.DELETE("/api/v1/documents/user/delete-all", h.DeleteAll)
+	r.DELETE("/api/docs/documents/user/delete-all", h.DeleteAll)
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/v1/documents/user/delete-all", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/api/docs/documents/user/delete-all", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -55,9 +55,9 @@ func TestDocumentDeleteAllHandler_ValidationError_NegativeID(t *testing.T) {
 	r, errHandler, metricsCollector := newTestRouter(t, false, 0)
 	service := new(mockDeleteAllService)
 	h := handlers.NewDocumentDeleteAllHandler(service, errHandler, metricsCollector)
-	r.DELETE("/api/v1/documents/user/delete-all", h.DeleteAll)
+	r.DELETE("/api/docs/documents/user/delete-all", h.DeleteAll)
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/v1/documents/user/delete-all", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/api/docs/documents/user/delete-all", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -69,11 +69,11 @@ func TestDocumentDeleteAllHandler_PersistenceError(t *testing.T) {
 	r, errHandler, metricsCollector := newTestRouter(t, true, 123456)
 	service := new(mockDeleteAllService)
 	h := handlers.NewDocumentDeleteAllHandler(service, errHandler, metricsCollector)
-	r.DELETE("/api/v1/documents/user/delete-all", h.DeleteAll)
+	r.DELETE("/api/docs/documents/user/delete-all", h.DeleteAll)
 
 	service.On("DeleteAll", mock.Anything, int64(123456)).Return(0, errors.NewPersistenceError(assert.AnError))
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/v1/documents/user/delete-all", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/api/docs/documents/user/delete-all", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

@@ -41,12 +41,16 @@ func NewRouter(cfg *RouterConfig) *gin.Engine {
 
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
-	router.GET("/healthz", cfg.HealthHandler.Ping)
-
-	apiGroup := router.Group("/api/v1")
+	// API routes under /api/docs for API Gateway routing
+	// Includes health, swagger, and all document endpoints
+	apiGroup := router.Group("/api/docs")
 	{
+		// Health check endpoint
+		apiGroup.GET("/healthz", cfg.HealthHandler.Ping)
+		
+		// Swagger documentation
+		apiGroup.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+		
 		// User-protected endpoints (require authenticated user with role USER)
 		apiGroup.POST("/documents", cfg.JWTMiddleware.Authenticate(), cfg.JWTMiddleware.RequireRole("USER"), cfg.UploadHandler.Upload)
 		apiGroup.GET("/documents", cfg.JWTMiddleware.Authenticate(), cfg.JWTMiddleware.RequireRole("USER"), cfg.ListHandler.List)
@@ -56,6 +60,9 @@ func NewRouter(cfg *RouterConfig) *gin.Engine {
 		apiGroup.POST("/documents/:id/request-authentication", cfg.JWTMiddleware.Authenticate(), cfg.JWTMiddleware.RequireRole("USER"), cfg.RequestAuthHandler.RequestAuthentication)
 		apiGroup.GET("/documents/transfer/:id_citizen", cfg.JWTMiddleware.AuthenticateClient(), cfg.JWTMiddleware.RequireClientCredentials(), cfg.TransferHandler.PrepareTransfer)
 	}
+	
+	// Keep root health check for Kubernetes probes compatibility
+	router.GET("/healthz", cfg.HealthHandler.Ping)
 
 	return router
 }

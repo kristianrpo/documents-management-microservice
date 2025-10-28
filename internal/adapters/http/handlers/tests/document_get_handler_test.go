@@ -37,12 +37,12 @@ func TestDocumentGetHandler_Success(t *testing.T) {
 	metricsCollector := createTestMetrics(t)
 
 	h := handlers.NewDocumentGetHandler(service, errHandler, metricsCollector)
-	r.GET("/api/v1/documents/:id", h.GetByID)
+	r.GET("/api/docs/documents/:id", h.GetByID)
 
 	doc := &models.Document{ID: "123", Filename: "a.pdf", MimeType: "application/pdf"}
 	service.On("GetByID", mock.Anything, "123").Return(doc, nil)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents/123", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/docs/documents/123", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -62,11 +62,11 @@ func TestDocumentGetHandler_NotFound(t *testing.T) {
 	metricsCollector := createTestMetrics(t)
 
 	h := handlers.NewDocumentGetHandler(service, errHandler, metricsCollector)
-	r.GET("/api/v1/documents/:id", h.GetByID)
+	r.GET("/api/docs/documents/:id", h.GetByID)
 
 	service.On("GetByID", mock.Anything, "nope").Return(nil, errors.NewNotFoundError("document not found"))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents/nope", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/docs/documents/nope", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -84,9 +84,9 @@ func TestDocumentGetHandler_ValidationError(t *testing.T) {
 	metricsCollector := createTestMetrics(t)
 
 	h := handlers.NewDocumentGetHandler(service, errHandler, metricsCollector)
-	r.GET("/api/v1/documents/:id", h.GetByID)
+	r.GET("/api/docs/documents/:id", h.GetByID)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/docs/documents/", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

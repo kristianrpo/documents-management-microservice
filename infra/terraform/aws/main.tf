@@ -193,11 +193,11 @@ resource "aws_apigatewayv2_integration" "documents" {
   payload_format_version = "1.0"
 }
 
-# API Gateway Route: /api/v1/*
-# This route forwards requests directly to the microservice which has routes under /api/v1/
+# API Gateway Route: /api/docs/*
+# Routes to the documents microservice via ALB
 resource "aws_apigatewayv2_route" "documents_api" {
   api_id    = local.api_gateway_id
-  route_key = "ANY /api/v1/{proxy+}"
+  route_key = "ANY /api/docs/{proxy+}"
   
   target = "integrations/${aws_apigatewayv2_integration.documents.id}"
 }
@@ -232,10 +232,15 @@ output "alb_hostname" {
 
 output "api_gateway_url" {
   description = "API Gateway URL for this microservice"
-  value       = "${local.api_gateway_stage}/api/v1/documents"
+  value       = "${local.api_gateway_stage}/api/docs"
 }
 
 output "api_gateway_health_check_url" {
   description = "Health check URL via API Gateway"
-  value       = "${local.api_gateway_stage}/healthz"
+  value       = "${local.api_gateway_stage}/api/docs/healthz"
+}
+
+output "api_gateway_swagger_url" {
+  description = "Swagger documentation URL via API Gateway"
+  value       = "${local.api_gateway_stage}/api/docs/swagger/"
 }

@@ -22,7 +22,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/v1/documents": {
+        "/api/docs/documents": {
             "get": {
                 "security": [
                     {
@@ -136,7 +136,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/documents/transfer/{id_citizen}": {
+        "/api/docs/documents/transfer/{id_citizen}": {
             "get": {
                 "security": [
                     {
@@ -185,7 +185,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/documents/user/delete-all": {
+        "/api/docs/documents/user/delete-all": {
             "delete": {
                 "security": [
                     {
@@ -225,7 +225,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/documents/{id}": {
+        "/api/docs/documents/{id}": {
             "get": {
                 "security": [
                     {
@@ -323,7 +323,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/documents/{id}/request-authentication": {
+        "/api/docs/documents/{id}/request-authentication": {
             "post": {
                 "security": [
                     {

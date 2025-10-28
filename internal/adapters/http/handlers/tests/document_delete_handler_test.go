@@ -42,12 +42,12 @@ func TestDocumentDeleteHandler_Success(t *testing.T) {
 	getService.On("GetByID", mock.Anything, "doc123").Return(&models.Document{ID: "doc123", OwnerID: 123456}, nil)
 	service.On("Delete", mock.Anything, "doc123").Return(nil)
 
-	w := runWithAuthenticatedRouter(t, http.MethodDelete, "/api/v1/documents/doc123", func(r *gin.Engine) {
+	w := runWithAuthenticatedRouter(t, http.MethodDelete, "/api/docs/documents/doc123", func(r *gin.Engine) {
 		errMapper := apierrors.NewErrorMapper()
 		errHandler := apierrors.NewErrorHandler(errMapper)
 		metricsCollector := createTestMetrics(t)
 		h := handlers.NewDocumentDeleteHandler(service, getService, errHandler, metricsCollector)
-		r.DELETE("/api/v1/documents/:id", h.Delete)
+		r.DELETE("/api/docs/documents/:id", h.Delete)
 	})
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -60,13 +60,13 @@ func TestDocumentDeleteHandler_NotFound(t *testing.T) {
 	service := new(mockDeleteService)
 	getService := new(mockDeleteGetService)
 	h := handlers.NewDocumentDeleteHandler(service, getService, errHandler, metricsCollector)
-	r.DELETE("/api/v1/documents/:id", h.Delete)
+	r.DELETE("/api/docs/documents/:id", h.Delete)
 
 	// GetByID returns a document; Delete returns not found for this id
 	getService.On("GetByID", mock.Anything, "nope").Return(&models.Document{ID: "nope", OwnerID: 123456}, nil)
 	service.On("Delete", mock.Anything, "nope").Return(errors.NewNotFoundError("document not found"))
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/v1/documents/nope", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/api/docs/documents/nope", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -80,12 +80,12 @@ func TestDocumentDeleteHandler_PersistenceError(t *testing.T) {
 	service := new(mockDeleteService)
 	getService := new(mockDeleteGetService)
 	h := handlers.NewDocumentDeleteHandler(service, getService, errHandler, metricsCollector)
-	r.DELETE("/api/v1/documents/:id", h.Delete)
+	r.DELETE("/api/docs/documents/:id", h.Delete)
 
 	getService.On("GetByID", mock.Anything, "doc123").Return(&models.Document{ID: "doc123", OwnerID: 123456}, nil)
 	service.On("Delete", mock.Anything, "doc123").Return(errors.NewPersistenceError(assert.AnError))
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/v1/documents/doc123", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/api/docs/documents/doc123", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

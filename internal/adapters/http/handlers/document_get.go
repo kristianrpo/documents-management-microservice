@@ -55,7 +55,7 @@ func NewDocumentGetHandler(service usecases.DocumentGetService, errorHandler *er
 // @Success 200 {object} endpoints.GetResponse "Document retrieved successfully"
 // @Failure 404 {object} endpoints.GetErrorResponse "Document not found"
 // @Failure 500 {object} endpoints.GetErrorResponse "Internal server error - database error"
-// @Router /api/v1/documents/{id} [get]
+// @Router /api/docs/documents/{id} [get]
 func (handler *DocumentGetHandler) GetByID(ctx *gin.Context) {
 	id := ctx.Param("id")
 

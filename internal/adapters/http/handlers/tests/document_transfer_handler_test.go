@@ -32,7 +32,7 @@ func TestDocumentTransferHandler_Success(t *testing.T) {
 	r, errHandler, metricsCollector := newTestRouter(t, false, 0)
 	service := new(mockTransferService)
 	h := handlers.NewDocumentTransferHandler(service, errHandler, metricsCollector)
-	r.GET("/api/v1/documents/transfer/:id_citizen", h.PrepareTransfer)
+	r.GET("/api/docs/documents/transfer/:id_citizen", h.PrepareTransfer)
 
 	expiresAt := time.Now().Add(15 * time.Minute)
 	transferResults := []usecases.DocumentTransferResult{
@@ -62,7 +62,7 @@ func TestDocumentTransferHandler_Success(t *testing.T) {
 
 	service.On("PrepareTransfer", mock.Anything, int64(123456)).Return(transferResults, nil)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents/transfer/123456", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/docs/documents/transfer/123456", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -78,10 +78,10 @@ func TestDocumentTransferHandler_ValidationError_InvalidID(t *testing.T) {
 	r, errHandler, metricsCollector := newTestRouter(t, false, 0)
 	service := new(mockTransferService)
 	h := handlers.NewDocumentTransferHandler(service, errHandler, metricsCollector)
-	r.GET("/api/v1/documents/transfer/:id_citizen", h.PrepareTransfer)
+	r.GET("/api/docs/documents/transfer/:id_citizen", h.PrepareTransfer)
 
 	// Invalid id_citizen (not a number)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents/transfer/abc", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/docs/documents/transfer/abc", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -99,10 +99,10 @@ func TestDocumentTransferHandler_ValidationError_NegativeID(t *testing.T) {
 	metricsCollector := createTestMetrics(t)
 
 	h := handlers.NewDocumentTransferHandler(service, errHandler, metricsCollector)
-	r.GET("/api/v1/documents/transfer/:id_citizen", h.PrepareTransfer)
+	r.GET("/api/docs/documents/transfer/:id_citizen", h.PrepareTransfer)
 
 	// Negative id_citizen
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents/transfer/-123", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/docs/documents/transfer/-123", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -119,11 +119,11 @@ func TestDocumentTransferHandler_PersistenceError(t *testing.T) {
 	metricsCollector := createTestMetrics(t)
 
 	h := handlers.NewDocumentTransferHandler(service, errHandler, metricsCollector)
-	r.GET("/api/v1/documents/transfer/:id_citizen", h.PrepareTransfer)
+	r.GET("/api/docs/documents/transfer/:id_citizen", h.PrepareTransfer)
 
 	service.On("PrepareTransfer", mock.Anything, int64(123456)).Return(nil, errors.NewPersistenceError(assert.AnError))
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents/transfer/123456", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/docs/documents/transfer/123456", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -142,12 +142,12 @@ func TestDocumentTransferHandler_EmptyResults(t *testing.T) {
 	metricsCollector := createTestMetrics(t)
 
 	h := handlers.NewDocumentTransferHandler(service, errHandler, metricsCollector)
-	r.GET("/api/v1/documents/transfer/:id_citizen", h.PrepareTransfer)
+	r.GET("/api/docs/documents/transfer/:id_citizen", h.PrepareTransfer)
 
 	// User has no documents
 	service.On("PrepareTransfer", mock.Anything, int64(999999)).Return([]usecases.DocumentTransferResult{}, nil)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents/transfer/999999", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/docs/documents/transfer/999999", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

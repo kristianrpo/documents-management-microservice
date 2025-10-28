@@ -40,7 +40,7 @@ func NewDocumentUploadHandler(service usecases.DocumentService, errorHandler *er
 // @Failure 400 {object} endpoints.UploadErrorResponse "Validation error"
 // @Failure 401 {object} endpoints.UploadErrorResponse "Unauthorized - invalid or missing token"
 // @Failure 500 {object} endpoints.UploadErrorResponse "Internal server error"
-// @Router /api/v1/documents [post]
+// @Router /api/docs/documents [post]
 func (handler *DocumentUploadHandler) Upload(ctx *gin.Context) {
 	// Get user ID from JWT token
 	idCitizen, err := middleware.GetUserIDCitizen(ctx)

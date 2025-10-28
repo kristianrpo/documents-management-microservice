@@ -441,9 +441,9 @@ jobs:
           ALB_HOSTNAME=$(kubectl -n documents get ingress documents-ingress -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
           if [ -n "$ALB_HOSTNAME" ]; then
             echo "  Hostname: $ALB_HOSTNAME"
-            echo "  API: http://$ALB_HOSTNAME/api/v1/documents"
+            echo "  API: http://$ALB_HOSTNAME/api/docs/documents"
             echo "  Health: http://$ALB_HOSTNAME/healthz"
-            echo "  Swagger: http://$ALB_HOSTNAME/swagger"
+            echo "  Swagger: http://$ALB_HOSTNAME/api/docs/swagger"
           else
             echo "  Pending... Waiting for ALB to be provisioned"
             echo "  This can take 2-5 minutes"

@@ -42,12 +42,12 @@ func TestDocumentRequestAuthenticationHandler_Success(t *testing.T) {
 	getService.On("GetByID", mock.Anything, "doc123").Return(&models.Document{ID: "doc123", OwnerID: 123456}, nil)
 	service.On("RequestAuthentication", mock.Anything, "doc123").Return(nil)
 
-	w := runWithAuthenticatedRouter(t, http.MethodPost, "/api/v1/documents/doc123/request-authentication", func(r *gin.Engine) {
+	w := runWithAuthenticatedRouter(t, http.MethodPost, "/api/docs/documents/doc123/request-authentication", func(r *gin.Engine) {
 		errMapper := apierrors.NewErrorMapper()
 		errHandler := apierrors.NewErrorHandler(errMapper)
 		metricsCollector := createTestMetrics(t)
 		h := handlers.NewDocumentRequestAuthenticationHandler(service, getService, errHandler, metricsCollector)
-		r.POST("/api/v1/documents/:id/request-authentication", h.RequestAuthentication)
+		r.POST("/api/docs/documents/:id/request-authentication", h.RequestAuthentication)
 	})
 
 	assert.Equal(t, http.StatusAccepted, w.Code)
@@ -60,10 +60,10 @@ func TestDocumentRequestAuthenticationHandler_EmptyDocumentID(t *testing.T) {
 	service := new(mockRequestAuthService)
 	getService := new(mockAuthGetService)
 	h := handlers.NewDocumentRequestAuthenticationHandler(service, getService, errHandler, metricsCollector)
-	r.POST("/api/v1/documents/:id/request-authentication", h.RequestAuthentication)
+	r.POST("/api/docs/documents/:id/request-authentication", h.RequestAuthentication)
 
 	// Empty document ID returns 400 Bad Request
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/documents//request-authentication", nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/docs/documents//request-authentication", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -76,12 +76,12 @@ func TestDocumentRequestAuthenticationHandler_NotFound(t *testing.T) {
 	service := new(mockRequestAuthService)
 	getService := new(mockAuthGetService)
 	h := handlers.NewDocumentRequestAuthenticationHandler(service, getService, errHandler, metricsCollector)
-	r.POST("/api/v1/documents/:id/request-authentication", h.RequestAuthentication)
+	r.POST("/api/docs/documents/:id/request-authentication", h.RequestAuthentication)
 
 	// Return not found from GetByID to simulate missing document
 	getService.On("GetByID", mock.Anything, "nonexistent").Return(nil, errors.NewNotFoundError("document not found"))
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/documents/nonexistent/request-authentication", nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/docs/documents/nonexistent/request-authentication", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -105,12 +105,12 @@ func TestDocumentRequestAuthenticationHandler_PersistenceError(t *testing.T) {
 		c.Next()
 	})
 	h := handlers.NewDocumentRequestAuthenticationHandler(service, getService, errHandler, metricsCollector)
-	r.POST("/api/v1/documents/:id/request-authentication", h.RequestAuthentication)
+	r.POST("/api/docs/documents/:id/request-authentication", h.RequestAuthentication)
 
 	getService.On("GetByID", mock.Anything, "doc123").Return(&models.Document{ID: "doc123", OwnerID: 123456}, nil)
 	service.On("RequestAuthentication", mock.Anything, "doc123").Return(errors.NewPersistenceError(assert.AnError))
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/documents/doc123/request-authentication", nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/docs/documents/doc123/request-authentication", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

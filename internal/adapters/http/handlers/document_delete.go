@@ -55,7 +55,7 @@ func NewDocumentDeleteHandler(service usecases.DocumentDeleteService, serviceGet
 // @Success 200 {object} endpoints.DeleteResponse "Document deleted successfully"
 // @Failure 404 {object} endpoints.DeleteErrorResponse "Document not found"
 // @Failure 500 {object} endpoints.DeleteErrorResponse "Internal server error - database or storage error"
-// @Router /api/v1/documents/{id} [delete]
+// @Router /api/docs/documents/{id} [delete]
 func (handler *DocumentDeleteHandler) Delete(ctx *gin.Context) {
 	id := ctx.Param("id")
 

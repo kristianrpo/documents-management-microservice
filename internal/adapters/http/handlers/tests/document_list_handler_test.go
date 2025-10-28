@@ -29,9 +29,9 @@ func (errListService) List(ctx context.Context, ownerID int64, page, limit int) 
 func TestDocumentListHandler_Success(t *testing.T) {
 	r, errHandler, metricsCollector := newTestRouter(t, true, 1)
 	h := handlers.NewDocumentListHandler(okListService{}, errHandler, metricsCollector)
-	r.GET("/api/v1/documents", h.List)
+	r.GET("/api/docs/documents", h.List)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents?page=1&limit=10", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/docs/documents?page=1&limit=10", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -42,10 +42,10 @@ func TestDocumentListHandler_Success(t *testing.T) {
 func TestDocumentListHandler_ValidationError(t *testing.T) {
 	r, errHandler, metricsCollector := newTestRouter(t, false, 0)
 	h := handlers.NewDocumentListHandler(okListService{}, errHandler, metricsCollector)
-	r.GET("/api/v1/documents", h.List)
+	r.GET("/api/docs/documents", h.List)
 
 	// invalid id_citizen (string instead of int)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents?id_citizen=abc&page=1&limit=10", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/docs/documents?id_citizen=abc&page=1&limit=10", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -56,9 +56,9 @@ func TestDocumentListHandler_ValidationError(t *testing.T) {
 func TestDocumentListHandler_ServiceError(t *testing.T) {
 	r, errHandler, metricsCollector := newTestRouter(t, true, 1)
 	h := handlers.NewDocumentListHandler(errListService{}, errHandler, metricsCollector)
-	r.GET("/api/v1/documents", h.List)
+	r.GET("/api/docs/documents", h.List)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/documents?page=1&limit=10", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/docs/documents?page=1&limit=10", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

@@ -48,7 +48,7 @@ func NewDocumentRequestAuthenticationHandler(
 // @Failure 400 {object} endpoints.RequestAuthenticationErrorResponse "Invalid request"
 // @Failure 404 {object} endpoints.RequestAuthenticationErrorResponse "Document not found"
 // @Failure 500 {object} endpoints.RequestAuthenticationErrorResponse "Internal server error"
-// @Router /api/v1/documents/{id}/request-authentication [post]
+// @Router /api/docs/documents/{id}/request-authentication [post]
 func (h *DocumentRequestAuthenticationHandler) RequestAuthentication(c *gin.Context) {
 	// If the authentication service is not available (e.g., RabbitMQ disabled or failed to initialize),
 	// return a clear 503 error instead of panicking on nil pointer dereference.

@@ -20,7 +20,7 @@
     "host": "localhost:8080",
     "basePath": "/",
     "paths": {
-        "/api/v1/documents": {
+        "/api/docs/documents": {
             "get": {
                 "security": [
                     {
@@ -134,7 +134,7 @@
                 }
             }
         },
-        "/api/v1/documents/transfer/{id_citizen}": {
+        "/api/docs/documents/transfer/{id_citizen}": {
             "get": {
                 "security": [
                     {
@@ -183,7 +183,7 @@
                 }
             }
         },
-        "/api/v1/documents/user/delete-all": {
+        "/api/docs/documents/user/delete-all": {
             "delete": {
                 "security": [
                     {
@@ -223,7 +223,7 @@
                 }
             }
         },
-        "/api/v1/documents/{id}": {
+        "/api/docs/documents/{id}": {
             "get": {
                 "security": [
                     {
@@ -321,7 +321,7 @@
                 }
             }
         },
-        "/api/v1/documents/{id}/request-authentication": {
+        "/api/docs/documents/{id}/request-authentication": {
             "post": {
                 "security": [
                     {

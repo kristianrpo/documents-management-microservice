@@ -54,7 +54,7 @@ func NewDocumentDeleteAllHandler(service usecases.DocumentDeleteAllService, erro
 // @Success 200 {object} endpoints.DeleteAllResponse "All documents deleted successfully"
 // @Failure 400 {object} endpoints.DeleteAllErrorResponse "Validation error - invalid citizen ID"
 // @Failure 500 {object} endpoints.DeleteAllErrorResponse "Internal server error - database or storage error"
-// @Router /api/v1/documents/user/delete-all [delete]
+// @Router /api/docs/documents/user/delete-all [delete]
 func (handler *DocumentDeleteAllHandler) DeleteAll(ctx *gin.Context) {
 	idCitizen, err := middleware.GetUserIDCitizen(ctx)
 	if err != nil {

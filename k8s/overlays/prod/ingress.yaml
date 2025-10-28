@@ -25,6 +25,7 @@ spec:
   rules:
     - http:
         paths:
+          # Keep root healthz for ALB health checks
           - path: /healthz
             pathType: Exact
             backend:
@@ -32,14 +33,8 @@ spec:
                 name: documents-service
                 port:
                   number: 80
-          - path: /swagger
-            pathType: Prefix
-            backend:
-              service:
-                name: documents-service
-                port:
-                  number: 80
-          - path: /api/v1/
+          # Main API route - catches everything under /api/docs/*
+          - path: /api/docs
             pathType: Prefix
             backend:
               service:
