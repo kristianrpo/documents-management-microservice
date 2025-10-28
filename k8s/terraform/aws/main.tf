@@ -30,6 +30,9 @@ resource "kubernetes_manifest" "prometheus_rule" {
     metadata = {
       name      = "documents-service-alerts"
       namespace = "monitoring"
+      labels = {
+        release = "kube-prometheus-stack"
+      }
     }
     spec = yamldecode(file("${path.module}/../../../prometheus/alerts.yml"))
   }
