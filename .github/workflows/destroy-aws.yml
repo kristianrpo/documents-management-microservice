@@ -128,7 +128,32 @@ jobs:
             -var "cluster_endpoint=${{ steps.cluster_info.outputs.CLUSTER_ENDPOINT }}" \
             -var "cluster_ca_certificate=${{ steps.cluster_info.outputs.CLUSTER_CA }}"
 
-      # ========== 6. ELIMINAR RECURSOS DEL API GATEWAY PRIMERO ==========
+      # ========== 6. TERRAFORM DESTROY INFRA (PRIMERO - recursos gestionados) ==========
+      - name: Terraform Destroy microservice resources
+        working-directory: infra/terraform/aws
+        continue-on-error: true
+        run: |
+          echo "=== Destruyendo recursos AWS gestionados por Terraform ==="
+          
+          # Intentar destroy completo
+          terraform destroy -auto-approve -input=false \
+            -var "tf_backend_bucket=$TF_BACKEND_BUCKET" || {
+            
+            # Si falla por el ALB, intentar sin recursos que dependen de ALB
+            echo "⚠️  Destroy completo falló, intentando sin recursos dependientes de ALB..."
+            terraform destroy -auto-approve -input=false \
+              -target random_id.suffix \
+              -target aws_s3_bucket.documents \
+              -target aws_s3_bucket_public_access_block.this \
+              -target aws_dynamodb_table.documents \
+              -target aws_secretsmanager_secret.app \
+              -target data.aws_iam_policy_document.documents_policy \
+              -target aws_iam_policy.documents \
+              -target module.irsa \
+              -var "tf_backend_bucket=$TF_BACKEND_BUCKET"
+          }
+
+      # ========== 7. ELIMINAR RECURSOS DEL API GATEWAY ==========
       - name: Clean up API Gateway routes and integrations
         run: |
           echo "=== Limpiando recursos de API Gateway ==="
@@ -166,15 +191,7 @@ jobs:
             echo "No se pudo obtener API Gateway ID, saltando limpieza de API Gateway"
           fi
 
-      # ========== 7. TERRAFORM DESTROY INFRA ==========
-      - name: Terraform Destroy microservice resources
-        working-directory: infra/terraform/aws
-        run: |
-          echo "=== Destruyendo recursos AWS del microservicio ==="
-          terraform destroy -auto-approve -input=false \
-            -var "tf_backend_bucket=$TF_BACKEND_BUCKET"
-
-      # ========== 8. LIMPIAR RECURSOS RESIDUALES ==========
+      # ========== 8. LIMPIAR RECURSOS RESIDUALES (ALB, IAM, etc) ==========
       - name: Clean up residual AWS resources
         run: |
           echo "=== Limpiando recursos AWS residuales ==="
@@ -267,7 +284,22 @@ jobs:
           
           echo "✓ Recursos residuales eliminados"
 
-      # ========== 9. OPCIONAL: ELIMINAR STATE FILES ==========
+      # ========== 9. DESTRUIR RECURSOS DE API GATEWAY Y ALB (si quedaron) ==========
+      - name: Force destroy ALB-dependent resources
+        working-directory: infra/terraform/aws
+        continue-on-error: true
+        run: |
+          echo "=== Destruyendo recursos que dependen de ALB ==="
+          # Intentar destruir los recursos que dependen del ALB si aún existen
+          terraform destroy -auto-approve -input=false \
+            -target data.aws_lb.documents_alb \
+            -target data.aws_lb_listener.documents_alb_http \
+            -target aws_security_group_rule.vpc_link_to_alb \
+            -target aws_apigatewayv2_integration.documents \
+            -target aws_apigatewayv2_route.documents_api \
+            -var "tf_backend_bucket=$TF_BACKEND_BUCKET" 2>&1 | grep -v "Search returned 0 results" || true
+
+      # ========== 10. OPCIONAL: ELIMINAR STATE FILES ==========
       - name: Delete state files (optional)
         if: ${{ github.event.inputs.delete_state == 'true' }}
         run: |
