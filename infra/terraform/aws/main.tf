@@ -173,6 +173,23 @@ data "aws_lb" "documents_alb" {
   }
 }
 
+# Data source: Get VPC Link to find its security group
+data "aws_apigatewayv2_vpc_link" "api_gateway_vpc_link" {
+  vpc_link_id = local.vpc_link_id
+}
+
+# Security Group Rule: Allow VPC Link to access ALB
+# This is required for API Gateway to reach the ALB through VPC Link
+resource "aws_security_group_rule" "vpc_link_to_alb" {
+  type                     = "ingress"
+  from_port                = 80
+  to_port                  = 80
+  protocol                 = "tcp"
+  source_security_group_id = data.aws_apigatewayv2_vpc_link.api_gateway_vpc_link.security_group_ids[0]
+  security_group_id        = data.aws_lb.documents_alb.security_groups[0]
+  description              = "Allow API Gateway VPC Link to access ALB"
+}
+
 # Data source: Get the HTTP listener (port 80) of the ALB
 # API Gateway needs the listener ARN, not the DNS name
 data "aws_lb_listener" "documents_alb_http" {
