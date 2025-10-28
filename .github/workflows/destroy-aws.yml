@@ -110,41 +110,26 @@ jobs:
           
           echo "✓ Recursos de Kubernetes eliminados"
 
-      # ========== 5. TERRAFORM DESTROY MONITORING CONFIG ==========
-      - name: Init Terraform k8s
+      # ========== 5. LIMPIAR ESTADO DE TERRAFORM K8S (si existe) ==========
+      - name: Clean up k8s Terraform state
         working-directory: k8s/terraform/aws
+        continue-on-error: true
         run: |
+          echo "=== Limpiando estado de Terraform k8s ==="
           terraform init -input=false \
             -backend-config="bucket=$TF_BACKEND_BUCKET" \
             -backend-config="key=k8s/terraform/aws/terraform.tfstate" \
             -backend-config="region=$TF_BACKEND_REGION" \
             -backend-config="dynamodb_table=$TF_BACKEND_DDB_TABLE" \
-            -backend-config="encrypt=true"
-
-      - name: Read cluster outputs
-        id: cluster_info
-        run: |
-          # Intentar obtener outputs de Terraform, si falla obtenerlos de AWS
-          CLUSTER_NAME=$(terraform -chdir=infra/terraform/aws output -raw cluster_name 2>/dev/null || aws eks list-clusters --region "${{ secrets.AWS_REGION }}" --query 'clusters[0]' --output text)
-          CLUSTER_ENDPOINT=$(terraform -chdir=infra/terraform/aws output -raw cluster_endpoint 2>/dev/null || aws eks describe-cluster --name "$CLUSTER_NAME" --region "${{ secrets.AWS_REGION }}" --query 'cluster.endpoint' --output text)
-          CLUSTER_CA=$(terraform -chdir=infra/terraform/aws output -raw cluster_ca_certificate 2>/dev/null || aws eks describe-cluster --name "$CLUSTER_NAME" --region "${{ secrets.AWS_REGION }}" --query 'cluster.certificateAuthority.data' --output text)
+            -backend-config="encrypt=true" 2>&1 || echo "No hay estado de k8s para limpiar"
           
-          echo "CLUSTER_NAME=$CLUSTER_NAME" >> $GITHUB_OUTPUT
-          echo "CLUSTER_ENDPOINT=$CLUSTER_ENDPOINT" >> $GITHUB_OUTPUT
-          echo "CLUSTER_CA=$CLUSTER_CA" >> $GITHUB_OUTPUT
-          
-          echo "Cluster info obtenido:"
-          echo "Name: $CLUSTER_NAME"
-          echo "Endpoint: $CLUSTER_ENDPOINT"
-
-      - name: Terraform Destroy monitoring config
-        working-directory: k8s/terraform/aws
-        run: |
-          terraform destroy -auto-approve -input=false \
-            -var "aws_region=${{ secrets.AWS_REGION }}" \
-            -var "cluster_name=${{ steps.cluster_info.outputs.CLUSTER_NAME }}" \
-            -var "cluster_endpoint=${{ steps.cluster_info.outputs.CLUSTER_ENDPOINT }}" \
-            -var "cluster_ca_certificate=${{ steps.cluster_info.outputs.CLUSTER_CA }}"
+          # Listar y eliminar todos los recursos del estado
+          terraform state list 2>/dev/null | while read resource; do
+            if [ -n "$resource" ]; then
+              echo "Eliminando del estado: $resource"
+              terraform state rm "$resource" 2>&1 || true
+            fi
+          done
 
       # ========== 6. LIMPIAR ESTADO DE RECURSOS PROBLEMÁTICOS ==========
       - name: Clean up problematic Terraform state
