@@ -173,9 +173,15 @@ data "aws_lb" "documents_alb" {
   }
 }
 
+# Data source: Get the HTTP listener (port 80) of the ALB
+# API Gateway needs the listener ARN, not the DNS name
+data "aws_lb_listener" "documents_alb_http" {
+  load_balancer_arn = data.aws_lb.documents_alb.arn
+  port              = 80
+}
+
 # API Gateway Integration: Connects API Gateway to the ALB via VPC Link
-# Maps API Gateway /api/documents/* to ALB /api/v1/*
-# Example: GET /api/documents/documents -> ALB receives GET /api/v1/documents
+# Uses the ALB listener ARN - the listener handles all routing
 resource "aws_apigatewayv2_integration" "documents" {
   api_id           = local.api_gateway_id
   integration_type = "HTTP_PROXY"
@@ -183,21 +189,15 @@ resource "aws_apigatewayv2_integration" "documents" {
   connection_type        = "VPC_LINK"
   connection_id          = local.vpc_link_id
   integration_method     = "ANY"
-  integration_uri        = "http://${data.aws_lb.documents_alb.dns_name}/api/v1/{proxy}"
+  integration_uri        = data.aws_lb_listener.documents_alb_http.arn
   payload_format_version = "1.0"
-  
-  # Request parameters
-  request_parameters = {
-    "append:header.X-Forwarded-Host" = "$request.header.host"
-    "append:header.X-Forwarded-For"  = "$context.identity.sourceIp"
-  }
 }
 
-# API Gateway Route: /api/documents/*
-# This route forwards /api/documents/* to the ALB
+# API Gateway Route: /api/v1/*
+# This route forwards requests directly to the microservice which has routes under /api/v1/
 resource "aws_apigatewayv2_route" "documents_api" {
   api_id    = local.api_gateway_id
-  route_key = "ANY /api/documents/{proxy+}"
+  route_key = "ANY /api/v1/{proxy+}"
   
   target = "integrations/${aws_apigatewayv2_integration.documents.id}"
 }
@@ -232,10 +232,10 @@ output "alb_hostname" {
 
 output "api_gateway_url" {
   description = "API Gateway URL for this microservice"
-  value       = "${local.api_gateway_stage}/api/documents/documents"
+  value       = "${local.api_gateway_stage}/api/v1/documents"
 }
 
 output "api_gateway_health_check_url" {
   description = "Health check URL via API Gateway"
-  value       = "${local.api_gateway_stage}/api/documents/healthz"
+  value       = "${local.api_gateway_stage}/healthz"
 }
