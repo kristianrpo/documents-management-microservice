@@ -209,16 +209,19 @@ jobs:
           IAM_ROLE=$(aws iam list-roles --query 'Roles[?contains(RoleName, `documents`)].RoleName' --output text 2>/dev/null || echo "")
           if [ -n "$IAM_ROLE" ]; then
             echo "Eliminando IAM Role: $IAM_ROLE"
-            # Desadjuntar políticas primero
+            # Desadjuntar políticas primero (una por una)
             aws iam list-attached-role-policies --role-name "$IAM_ROLE" \
-              --query 'AttachedPolicies[].PolicyArn' --output text | \
+              --query 'AttachedPolicies[].PolicyArn' --output json | \
+              jq -r '.[]' | \
               while read policy_arn; do
-                if [ -n "$policy_arn" ]; then
-                  aws iam detach-role-policy --role-name "$IAM_ROLE" --policy-arn "$policy_arn"
+                if [ -n "$policy_arn" ] && [ "$policy_arn" != "null" ]; then
+                  echo "Desadjuntando política: $policy_arn"
+                  aws iam detach-role-policy --role-name "$IAM_ROLE" --policy-arn "$policy_arn" || true
                 fi
               done
             # Eliminar role
-            aws iam delete-role --role-name "$IAM_ROLE"
+            echo "Eliminando role: $IAM_ROLE"
+            aws iam delete-role --role-name "$IAM_ROLE" || true
           fi
           
           # 3. Eliminar IAM Policy si existe
