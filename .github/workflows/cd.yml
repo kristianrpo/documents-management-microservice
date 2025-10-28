@@ -422,9 +422,9 @@ jobs:
           ALB_HOSTNAME=$(kubectl -n documents get ingress documents-ingress -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
           if [ -n "$ALB_HOSTNAME" ]; then
             echo "  Hostname: $ALB_HOSTNAME"
-            echo "  Access: https://$ALB_HOSTNAME/api/v1/documents"
-            echo "  Swagger: https://$ALB_HOSTNAME/swagger"
-            echo "  Health: https://$ALB_HOSTNAME/healthz"
+            echo "  Access: http://$ALB_HOSTNAME/api/v1/documents"
+            echo "  Swagger: http://$ALB_HOSTNAME/swagger"
+            echo "  Health: http://$ALB_HOSTNAME/healthz"
           else
             echo "  Pending... Waiting for ALB to be provisioned"
             echo "  This can take 2-5 minutes"
@@ -436,7 +436,7 @@ jobs:
           GRAFANA_ALB=$(kubectl -n monitoring get ingress grafana-ingress -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
           if [ -n "$GRAFANA_ALB" ]; then
             echo "  Hostname: $GRAFANA_ALB"
-            echo "  Access: https://$GRAFANA_ALB/grafana"
+            echo "  Access: http://$GRAFANA_ALB/grafana"
             echo "  (user: admin, pass: admin)"
           else
             echo "  Pending..."
