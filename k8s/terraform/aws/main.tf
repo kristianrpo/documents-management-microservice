@@ -41,8 +41,7 @@ resource "helm_release" "kube_prometheus_stack" {
 
   set = [
     { name = "prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues", value = "false" },
-    { name = "grafana.service.type",                                             value = "LoadBalancer" },
-    { name = "grafana.service.annotations.service\\.beta\\.kubernetes\\.io/aws-load-balancer-type", value = "nlb" },
+    { name = "grafana.service.type",                                             value = "ClusterIP" },
     { name = "grafana.sidecar.dashboards.enabled",                               value = "true" },
     { name = "grafana.sidecar.dashboards.label",                                 value = "grafana_dashboard" }
   ]
@@ -70,6 +69,7 @@ resource "time_sleep" "wait_after_kps_install" {
   depends_on      = [helm_release.kube_prometheus_stack]
   create_duration = "60s"
 }
+
 
 # -------- Outputs útiles --------
 output "kube_prom_stack_status" {

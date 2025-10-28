@@ -391,50 +391,52 @@ jobs:
         run: |
           kubectl -n documents rollout status deploy/documents-service --timeout=180s
 
-      - name: Wait for LoadBalancer to be provisioned
+      - name: Wait for ALB to be provisioned
         run: |
-          echo "Waiting for NLB LoadBalancer to get hostname assigned..."
+          echo "Waiting for ALB to get hostname assigned..."
           for i in {1..30}; do
-            NLB_HOSTNAME=$(kubectl -n documents get svc documents-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
-            if [ -n "$NLB_HOSTNAME" ]; then
-              echo "✓ LoadBalancer provisioned: $NLB_HOSTNAME"
+            ALB_HOSTNAME=$(kubectl -n documents get ingress documents-ingress -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+            if [ -n "$ALB_HOSTNAME" ]; then
+              echo "✓ ALB provisioned: $ALB_HOSTNAME"
               break
             fi
-            echo "Waiting for LoadBalancer... (attempt $i/30)"
+            echo "Waiting for ALB... (attempt $i/30)"
             sleep 10
           done
           
-          # Mostrar estado actual del servicio
-          if [ -z "$NLB_HOSTNAME" ]; then
-            echo "LoadBalancer still pending after 5 minutes"
-            echo "=== Current Service Status ==="
-            kubectl -n documents get svc documents-service
+          # Mostrar estado actual del ingress
+          if [ -z "$ALB_HOSTNAME" ]; then
+            echo "ALB still pending after 5 minutes"
+            echo "=== Current Ingress Status ==="
+            kubectl -n documents get ingress documents-ingress
             echo ""
-            echo "=== Service Events ==="
-            kubectl -n documents describe svc documents-service | grep -A 20 "Events:" || true
+            echo "=== Ingress Events ==="
+            kubectl -n documents describe ingress documents-ingress | grep -A 20 "Events:" || true
           fi
 
       - name: Display Access Information
         run: |
           echo "=== Deployment Summary ==="
           echo ""
-          echo "Application LoadBalancer (NLB):"
-          NLB_HOSTNAME=$(kubectl -n documents get svc documents-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
-          if [ -n "$NLB_HOSTNAME" ]; then
-            echo "  Hostname: $NLB_HOSTNAME"
-            echo "  Access: http://$NLB_HOSTNAME/api/v1/documents"
-            echo "  Swagger: http://$NLB_HOSTNAME/swagger"
+          echo "Application Load Balancer (ALB):"
+          ALB_HOSTNAME=$(kubectl -n documents get ingress documents-ingress -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+          if [ -n "$ALB_HOSTNAME" ]; then
+            echo "  Hostname: $ALB_HOSTNAME"
+            echo "  Access: https://$ALB_HOSTNAME/api/v1/documents"
+            echo "  Swagger: https://$ALB_HOSTNAME/swagger"
+            echo "  Health: https://$ALB_HOSTNAME/healthz"
           else
-            echo "  Pending... Waiting for NLB to be provisioned"
+            echo "  Pending... Waiting for ALB to be provisioned"
             echo "  This can take 2-5 minutes"
-            kubectl -n documents get svc documents-service -o yaml
+            kubectl -n documents get ingress documents-ingress -o yaml
           fi
           echo ""
           echo ""
-          echo "Grafana LoadBalancer:"
-          GRAFANA_LB=$(kubectl -n monitoring get svc kube-prometheus-stack-grafana -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
-          if [ -n "$GRAFANA_LB" ]; then
-            echo "  Hostname: $GRAFANA_LB"
+          echo "Grafana ALB:"
+          GRAFANA_ALB=$(kubectl -n monitoring get ingress grafana-ingress -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+          if [ -n "$GRAFANA_ALB" ]; then
+            echo "  Hostname: $GRAFANA_ALB"
+            echo "  Access: https://$GRAFANA_ALB/grafana"
             echo "  (user: admin, pass: admin)"
           else
             echo "  Pending..."
