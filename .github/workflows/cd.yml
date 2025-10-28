@@ -149,8 +149,9 @@ jobs:
                   --force-delete-without-recovery || true
               fi
             done
-          echo "Waiting 10 seconds for AWS to process..."
-          sleep 10
+          # Wait longer for AWS to process the deletion
+          echo "Waiting 30 seconds for AWS to process..."
+          sleep 30
 
       - name: Terraform Apply (microservice resources - without ALB)
         working-directory: infra/terraform/aws
