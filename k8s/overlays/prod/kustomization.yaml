@@ -14,12 +14,12 @@ patches:
     target:
       kind: Service
       name: documents-service
+  - path: grafana-namespace-patch.yaml
+    target:
+      kind: Ingress
+      name: grafana-ingress
 
 images:
   - name: REPOSITORY/documents-service
     newName: kristianrpo30/documents-microservice
     newTag: latest
-
-# Configurar namespace específico para Grafana
-namespaceOverrides:
-  - grafana-ingress: monitoring
