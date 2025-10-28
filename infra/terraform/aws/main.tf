@@ -166,6 +166,9 @@ resource "aws_iam_role_policy_attachment" "eso_documents_secret" {
 # The ALB is tagged by the Kubernetes ingress annotations
 # Note: This ALB is created dynamically by the AWS Load Balancer Controller
 # and will be available after the ingress is deployed in Kubernetes
+# 
+# IMPORTANT: If this fails on first deploy, it means ALB doesn't exist yet.
+# The workflow will create ALB first, then run terraform apply again to create API Gateway integration.
 data "aws_lb" "documents_alb" {
   tags = {
     Service     = "documents"
@@ -209,7 +212,6 @@ resource "aws_apigatewayv2_integration" "documents" {
   integration_uri           = data.aws_lb_listener.documents_alb_http.arn
   payload_format_version    = "1.0"
   
-  # Request parameters to preserve the full path
   request_parameters = {
     "overwrite:path" = "$request.path"
   }
