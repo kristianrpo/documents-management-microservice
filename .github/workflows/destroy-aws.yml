@@ -76,7 +76,16 @@ jobs:
       - name: Update kubeconfig
         id: kubeconfig
         run: |
-          CLUSTER_NAME=$(terraform -chdir=infra/terraform/aws output -raw cluster_name)
+          # Intentar obtener el nombre del cluster desde Terraform output
+          CLUSTER_NAME=$(terraform -chdir=infra/terraform/aws output -raw cluster_name 2>/dev/null || echo "")
+          
+          # Si no se obtiene del output, obtenerlo de AWS directamente
+          if [ -z "$CLUSTER_NAME" ] || [ ${#CLUSTER_NAME} -gt 100 ]; then
+            echo "Obteniendo nombre del cluster desde AWS..."
+            CLUSTER_NAME=$(aws eks list-clusters --region "${{ secrets.AWS_REGION }}" --query 'clusters[0]' --output text)
+          fi
+          
+          echo "Cluster name: $CLUSTER_NAME"
           aws eks update-kubeconfig --name "$CLUSTER_NAME" --region "${{ secrets.AWS_REGION }}"
           kubectl get nodes
 
