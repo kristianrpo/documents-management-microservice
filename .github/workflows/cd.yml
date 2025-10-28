@@ -288,6 +288,8 @@ jobs:
                 DYNAMODB_TABLE: $table,
                 DYNAMODB_PROCESSED_MESSAGES_TABLE: $processed_table,
                 DYNAMODB_ENDPOINT: "",
+                AWS_ACCESS_KEY_ID: "",
+                AWS_SECRET_ACCESS_KEY: "",
                 AWS_REGION: $region,
                 S3_BUCKET: $bucket,
                 S3_ENDPOINT: "",
