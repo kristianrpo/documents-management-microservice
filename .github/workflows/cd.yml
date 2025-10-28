@@ -134,6 +134,24 @@ jobs:
         working-directory: infra/terraform/aws
         run: terraform validate
 
+      - name: Clean up scheduled-for-deletion secrets
+        run: |
+          # List all secrets with "documents" in the name
+          echo "Checking for secrets scheduled for deletion..."
+          aws secretsmanager list-secrets --region ${{ secrets.AWS_REGION }} \
+            --filters Key=name,Values=documents --output json | \
+            jq -r '.SecretList[] | select(.DeletedDate != null) | .ARN' | \
+            while read -r secret_arn; do
+              if [ -n "$secret_arn" ]; then
+                echo "Force deleting secret: $secret_arn"
+                aws secretsmanager delete-secret --secret-id "$secret_arn" \
+                  --region ${{ secrets.AWS_REGION }} \
+                  --force-delete-without-recovery || true
+              fi
+            done
+          echo "Waiting 10 seconds for AWS to process..."
+          sleep 10
+
       - name: Terraform Apply (microservice resources - without ALB)
         working-directory: infra/terraform/aws
         run: |
@@ -227,7 +245,7 @@ jobs:
   app-deploy:
     name: Deploy Application to EKS (kubectl/kustomize) - Phase 3
     runs-on: ubuntu-latest
-    needs: [build-and-push]
+    needs: [build-and-push, infra-apply, k8s-apply]
     steps:
       - uses: actions/checkout@v4
 
