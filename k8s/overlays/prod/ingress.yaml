@@ -34,7 +34,7 @@ spec:
                 port:
                   number: 80
           # Main API route - catches everything under /api/docs/*
-          - path: /api/docs
+          - path: /api/docs/
             pathType: Prefix
             backend:
               service:
