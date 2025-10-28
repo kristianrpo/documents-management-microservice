@@ -33,7 +33,7 @@ func NewRouter(cfg *RouterConfig) *gin.Engine {
 
 	docs.SwaggerInfo.Host = ""
 	docs.SwaggerInfo.BasePath = "/"
-	docs.SwaggerInfo.Schemes = []string{"http"}
+	docs.SwaggerInfo.Schemes = []string{"http", "https"}
 
 	if cfg.MetricsCollector != nil {
 		router.Use(middleware.PrometheusMiddleware(cfg.MetricsCollector))
