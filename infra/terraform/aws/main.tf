@@ -198,7 +198,7 @@ data "aws_lb_listener" "documents_alb_http" {
 }
 
 # API Gateway Integration: Connects API Gateway to the ALB via VPC Link
-# Uses the ALB listener ARN - the listener handles all routing
+# Uses the ALB DNS name with path forwarding
 resource "aws_apigatewayv2_integration" "documents" {
   api_id           = local.api_gateway_id
   integration_type = "HTTP_PROXY"
@@ -206,7 +206,7 @@ resource "aws_apigatewayv2_integration" "documents" {
   connection_type        = "VPC_LINK"
   connection_id          = local.vpc_link_id
   integration_method     = "ANY"
-  integration_uri        = data.aws_lb_listener.documents_alb_http.arn
+  integration_uri        = "http://${data.aws_lb.documents_alb.dns_name}/{proxy}"
   payload_format_version = "1.0"
 }
 
