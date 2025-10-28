@@ -3,15 +3,10 @@ kind: Service
 metadata:
   name: documents-service
   annotations:
-    # Configurar NLB con target IP (modo recomendado para EKS)
-    service.beta.kubernetes.io/aws-load-balancer-type: "nlb-ip"
     # LoadBalancer público con acceso desde internet
     service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
     
-    # Habilitar balanceo entre zonas para mejor disponibilidad
-    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
-    
-    # Configuración de health checks
+    # Health checks para Classic Load Balancer
     service.beta.kubernetes.io/aws-load-balancer-healthcheck-port: "8080"
     service.beta.kubernetes.io/aws-load-balancer-healthcheck-path: "/healthz"
     service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol: "HTTP"
@@ -20,7 +15,7 @@ metadata:
     service.beta.kubernetes.io/aws-load-balancer-healthcheck-healthy-threshold: "2"
     service.beta.kubernetes.io/aws-load-balancer-healthcheck-unhealthy-threshold: "2"
     
-    # Atributos del target group para mejor manejo de conexiones
-    service.beta.kubernetes.io/aws-load-balancer-target-group-attributes: "deregistration_delay.timeout_seconds=60"
+    # Idle timeout (tiempo que el LB mantiene la conexión sin tráfico)
+    service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: "60"
 spec:
   type: LoadBalancer
