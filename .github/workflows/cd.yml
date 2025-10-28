@@ -424,7 +424,20 @@ jobs:
         run: |
           echo "=== Deployment Summary ==="
           echo ""
-          echo "Application Load Balancer (ALB):"
+          echo "API Gateway (Shared Infrastructure):"
+          API_GW_URL=$(terraform -chdir=infra/terraform/aws output -raw api_gateway_url 2>/dev/null || echo "")
+          if [ -n "$API_GW_URL" ]; then
+            echo "  API Gateway Endpoint: $API_GW_URL"
+            HEALTH_URL=$(terraform -chdir=infra/terraform/aws output -raw api_gateway_health_check_url 2>/dev/null || echo "")
+            echo "  Health Check: $HEALTH_URL"
+            echo ""
+            echo " Note: API Gateway routes to microservice ALB via VPC Link"
+          else
+            echo "  Pending... Waiting for API Gateway integration to complete"
+          fi
+          echo ""
+          echo ""
+          echo "Application Load Balancer (Direct Access):"
           ALB_HOSTNAME=$(kubectl -n documents get ingress documents-ingress -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
           if [ -n "$ALB_HOSTNAME" ]; then
             echo "  Hostname: $ALB_HOSTNAME"

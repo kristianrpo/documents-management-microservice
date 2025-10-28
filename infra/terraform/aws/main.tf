@@ -20,6 +20,12 @@ locals {
   processed_messages_table_name = data.terraform_remote_state.shared.outputs.rabbitmq_processed_messages_table_name
   processed_messages_table_arn  = data.terraform_remote_state.shared.outputs.rabbitmq_processed_messages_table_arn
   rabbitmq_consumer_dynamodb_policy_arn = data.terraform_remote_state.shared.outputs.rabbitmq_consumer_dynamodb_policy_arn
+  
+  # API Gateway outputs from shared infra
+  api_gateway_id     = data.terraform_remote_state.shared.outputs.api_gateway_id
+  api_gateway_arn    = data.terraform_remote_state.shared.outputs.api_gateway_arn
+  vpc_link_id        = data.terraform_remote_state.shared.outputs.api_gateway_vpc_link_id
+  api_gateway_stage  = data.terraform_remote_state.shared.outputs.api_gateway_invoke_url
 }
 
 # ============================================================================
@@ -151,6 +157,50 @@ resource "aws_iam_role_policy_attachment" "eso_documents_secret" {
   policy_arn = aws_iam_policy.external_secrets.arn
 }
 
+# ============================================================================
+# API GATEWAY INTEGRATION
+# ============================================================================
+# This integrates this microservice's ALB with the shared API Gateway
+
+# Data source: Find the ALB created by AWS Load Balancer Controller
+# The ALB is tagged by the Kubernetes ingress annotations
+# Note: This ALB is created dynamically by the AWS Load Balancer Controller
+# and will be available after the ingress is deployed in Kubernetes
+data "aws_lb" "documents_alb" {
+  tags = {
+    Service     = "documents"
+    Environment = "prod"
+  }
+}
+
+# API Gateway Integration: Connects API Gateway to the ALB via VPC Link
+# Maps API Gateway /api/documents/* to ALB /api/v1/*
+# Example: GET /api/documents/documents -> ALB receives GET /api/v1/documents
+resource "aws_apigatewayv2_integration" "documents" {
+  api_id           = local.api_gateway_id
+  integration_type = "HTTP_PROXY"
+  
+  connection_type        = "VPC_LINK"
+  connection_id          = local.vpc_link_id
+  integration_method     = "ANY"
+  integration_uri        = "http://${data.aws_lb.documents_alb.dns_name}/api/v1/{proxy}"
+  payload_format_version = "1.0"
+  
+  # Request parameters
+  request_parameters = {
+    "append:header.X-Forwarded-Host" = "$request.header.host"
+    "append:header.X-Forwarded-For"  = "$context.identity.sourceIp"
+  }
+}
+
+# API Gateway Route: /api/documents/*
+# This route forwards /api/documents/* to the ALB
+resource "aws_apigatewayv2_route" "documents_api" {
+  api_id    = local.api_gateway_id
+  route_key = "ANY /api/documents/{proxy+}"
+  
+  target = "integrations/${aws_apigatewayv2_integration.documents.id}"
+}
 
 # ============================================================================
 # Outputs - Only microservice-specific resources
@@ -173,3 +223,19 @@ output "cluster_name"              { value = local.cluster_name }
 output "cluster_endpoint"          { value = data.terraform_remote_state.shared.outputs.cluster_endpoint }
 output "cluster_ca_certificate"    { value = data.terraform_remote_state.shared.outputs.cluster_ca_certificate }
 output "aws_lb_controller_role_arn"{ value = data.terraform_remote_state.shared.outputs.aws_load_balancer_controller_irsa_role_arn }
+
+# API Gateway outputs
+output "alb_hostname" {
+  description = "ALB hostname for this microservice"
+  value       = try(data.aws_lb.documents_alb.dns_name, "Pending ALB creation")
+}
+
+output "api_gateway_url" {
+  description = "API Gateway URL for this microservice"
+  value       = "${local.api_gateway_stage}/api/documents/documents"
+}
+
+output "api_gateway_health_check_url" {
+  description = "Health check URL via API Gateway"
+  value       = "${local.api_gateway_stage}/api/documents/healthz"
+}
