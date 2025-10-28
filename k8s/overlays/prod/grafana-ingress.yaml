@@ -22,13 +22,14 @@ metadata:
     alb.ingress.kubernetes.io/tags: Environment=prod,Service=grafana
     
 spec:
+  ingressClassName: alb
   rules:
     - http:
-      paths:
-        - path: /grafana(/|$)(.*)
-          pathType: ImplementationSpecific
-          backend:
-            service:
-              name: kube-prometheus-stack-grafana
-              port:
-                number: 80
+        paths:
+          - path: /grafana(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: kube-prometheus-stack-grafana
+                port:
+                  number: 80
