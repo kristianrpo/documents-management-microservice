@@ -174,10 +174,11 @@ jobs:
         run: |
           echo "=== Limpiando recursos de API Gateway ==="
           
-          # Obtener el API Gateway ID desde remote state
-          API_GATEWAY_ID=$(terraform -chdir=infra/terraform/aws output -raw api_gateway_id 2>/dev/null || echo "")
+          # Obtener el API Gateway ID desde AWS directamente (ya que puede que no haya estado de Terraform)
+          API_GATEWAY_ID=$(aws apigatewayv2 get-apis --region ${{ secrets.AWS_REGION }} --query 'Items[0].ApiId' --output text 2>/dev/null || echo "")
           
-          if [ -n "$API_GATEWAY_ID" ]; then
+          if [ -n "$API_GATEWAY_ID" ] && [ "$API_GATEWAY_ID" != "None" ]; then
+            echo "API Gateway ID: $API_GATEWAY_ID"
             # Buscar y eliminar todas las rutas del microservicio documents
             ROUTES=$(aws apigatewayv2 get-routes --api-id "$API_GATEWAY_ID" --region ${{ secrets.AWS_REGION }} \
               --query "Items[?contains(RouteKey, '/api/docs')].{RouteId:RouteId,RouteKey:RouteKey}" \
