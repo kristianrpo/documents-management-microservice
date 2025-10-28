@@ -185,8 +185,8 @@ resource "aws_security_group_rule" "vpc_link_to_alb" {
   from_port                = 80
   to_port                  = 80
   protocol                 = "tcp"
-  source_security_group_id = data.aws_apigatewayv2_vpc_link.api_gateway_vpc_link.security_group_ids[0]
-  security_group_id        = data.aws_lb.documents_alb.security_groups[0]
+  source_security_group_id = tolist(data.aws_apigatewayv2_vpc_link.api_gateway_vpc_link.security_group_ids)[0]
+  security_group_id        = tolist(data.aws_lb.documents_alb.security_groups)[0]
   description              = "Allow API Gateway VPC Link to access ALB"
 }
 
