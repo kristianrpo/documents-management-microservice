@@ -65,24 +65,26 @@ jobs:
       # ========== 3. CONECTAR AL CLUSTER ==========
       - name: Init Terraform infra
         working-directory: infra/terraform/aws
+        continue-on-error: true
         run: |
+          # Intentar inicializar, pero si hay problemas de lock, continuar
           terraform init -input=false \
             -backend-config="bucket=$TF_BACKEND_BUCKET" \
             -backend-config="key=$TF_BACKEND_KEY" \
             -backend-config="region=$TF_BACKEND_REGION" \
             -backend-config="dynamodb_table=$TF_BACKEND_DDB_TABLE" \
-            -backend-config="encrypt=true"
+            -backend-config="encrypt=true" || echo "Terraform init falló (estado corrupto o no existe) - continuando..."
 
       - name: Update kubeconfig
         id: kubeconfig
         run: |
-          # Intentar obtener el nombre del cluster desde Terraform output
-          CLUSTER_NAME=$(terraform -chdir=infra/terraform/aws output -raw cluster_name 2>/dev/null || echo "")
+          # Obtener el nombre del cluster directamente desde AWS (no depender de Terraform)
+          echo "Obteniendo nombre del cluster desde AWS..."
+          CLUSTER_NAME=$(aws eks list-clusters --region "${{ secrets.AWS_REGION }}" --query 'clusters[0]' --output text)
           
-          # Si no se obtiene del output, obtenerlo de AWS directamente
-          if [ -z "$CLUSTER_NAME" ] || [ ${#CLUSTER_NAME} -gt 100 ]; then
-            echo "Obteniendo nombre del cluster desde AWS..."
-            CLUSTER_NAME=$(aws eks list-clusters --region "${{ secrets.AWS_REGION }}" --query 'clusters[0]' --output text)
+          if [ -z "$CLUSTER_NAME" ] || [ "$CLUSTER_NAME" == "None" ]; then
+            echo "No se encontró ningún cluster EKS"
+            exit 1
           fi
           
           echo "Cluster name: $CLUSTER_NAME"
@@ -192,11 +194,11 @@ jobs:
             done
             
             # Buscar y eliminar todas las integraciones del microservicio
+            # Buscar por listener ARN que contiene "app/k8s-document" o similar
             INTEGRATIONS=$(aws apigatewayv2 get-integrations --api-id "$API_GATEWAY_ID" --region ${{ secrets.AWS_REGION }} \
-              --query "Items[?contains(IntegrationUri, 'documents') || contains(Description, 'documents')].{IntegrationId:IntegrationId}" \
-              --output json 2>/dev/null || echo "[]")
+              --output json 2>/dev/null || echo "{}")
             
-            echo "$INTEGRATIONS" | jq -r '.[] | .IntegrationId' | while read integration_id; do
+            echo "$INTEGRATIONS" | jq -r '.Items[] | select(.IntegrationUri | contains("app/k8s") or contains("documents") or contains("Document")) | .IntegrationId' | while read integration_id; do
               if [ -n "$integration_id" ]; then
                 echo "Eliminando integración: $integration_id"
                 aws apigatewayv2 delete-integration --api-id "$API_GATEWAY_ID" --integration-id "$integration_id" --region ${{ secrets.AWS_REGION }} 2>/dev/null || true
