@@ -134,11 +134,21 @@ jobs:
         working-directory: infra/terraform/aws
         run: terraform validate
 
-      - name: Terraform Apply (microservice resources)
+      - name: Terraform Apply (microservice resources - without ALB)
         working-directory: infra/terraform/aws
         run: |
+          # Apply only resources that don't depend on ALB
+          # ALB will be created later when ingress is deployed in app-deploy step
           terraform apply -auto-approve -input=false \
-            -var "tf_backend_bucket=$TF_BACKEND_BUCKET"
+            -var "tf_backend_bucket=$TF_BACKEND_BUCKET" \
+            -target random_id.suffix \
+            -target aws_s3_bucket.documents \
+            -target aws_s3_bucket_public_access_block.this \
+            -target aws_dynamodb_table.documents \
+            -target aws_secretsmanager_secret.app \
+            -target data.aws_iam_policy_document.documents_policy \
+            -target aws_iam_policy.documents \
+            -target module.irsa
 
   k8s-apply:
     name: Deploy Monitoring Config (Dashboards & Alerts) - Phase 2
@@ -418,11 +428,21 @@ jobs:
           else
             # ALB exists, now apply API Gateway integration
             echo ""
-            echo "=== Applying API Gateway Integration ==="
+            echo "=== ALB Found: $ALB_HOSTNAME ==="
+            echo "Applying API Gateway integration..."
+            
             cd infra/terraform/aws
-            terraform init -input=false -upgrade || true
+            terraform init -input=false
+            
+            # Apply ONLY ALB-dependent resources
             terraform apply -auto-approve -input=false \
-              -var "tf_backend_bucket=$TF_BACKEND_BUCKET" || echo "Terraform apply skipped if already exists"
+              -target data.aws_lb.documents_alb \
+              -target data.aws_lb_listener.documents_alb_http \
+              -target aws_security_group_rule.vpc_link_to_alb \
+              -target aws_apigatewayv2_integration.documents \
+              -target aws_apigatewayv2_route.documents_api \
+              -var "tf_backend_bucket=$TF_BACKEND_BUCKET"
+            
             cd ../../..
           fi
 
