@@ -86,7 +86,7 @@ resource "aws_dynamodb_table" "documents" {
 # Secret Manager for application config
 # ============================================================================
 resource "aws_secretsmanager_secret" "app" {
-  name        = "${local.name}/application-${random_id.suffix.hex}"
+  name        = "citizen-dev/documents-application-${random_id.suffix.hex}"
   description = "Documents service application configuration"
 }
 
