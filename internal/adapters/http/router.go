@@ -1,6 +1,8 @@
 package http
 
 import (
+	"os"
+	
 	"github.com/gin-gonic/gin"
 	docs "github.com/kristianrpo/document-management-microservice/docs"
 	"github.com/kristianrpo/document-management-microservice/internal/adapters/http/handlers"
@@ -32,8 +34,12 @@ func NewRouter(cfg *RouterConfig) *gin.Engine {
 	router := gin.Default()
 
 	docs.SwaggerInfo.Host = ""
-	docs.SwaggerInfo.BasePath = "/"
-	docs.SwaggerInfo.Schemes = []string{"http", "https"}
+	docs.SwaggerInfo.Schemes = []string{"https", "http"}
+	// BasePath includes API Gateway stage for correct URL generation
+	docs.SwaggerInfo.BasePath = os.Getenv("API_GATEWAY_STAGE")
+	if docs.SwaggerInfo.BasePath == "" {
+		docs.SwaggerInfo.BasePath = "/dev" // Default to dev
+	}
 
 	if cfg.MetricsCollector != nil {
 		router.Use(middleware.PrometheusMiddleware(cfg.MetricsCollector))
