@@ -7,8 +7,8 @@ on:
         description: 'Escribe EXACTAMENTE: I UNDERSTAND (para confirmar el destroy)'
         required: true
         default: ''
-      delete_backend:
-        description: 'Eliminar también el S3 backend y la tabla DynamoDB de locks? (true/false)'
+      delete_state:
+        description: 'Eliminar también los state files del microservicio? (true/false)'
         required: true
         default: 'false'
 
@@ -27,17 +27,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ========== 1. VERIFICACIÓN ==========
       - name: Guard rail confirmation
         run: |
           if [ "${{ github.event.inputs.confirm }}" != "I UNDERSTAND" ]; then
             echo "Falta confirmación exacta: I UNDERSTAND"
             exit 1
           fi
-          echo "Confirmación OK - Destruyendo SOLO recursos del microservicio"
-          echo "La infraestructura compartida (VPC, EKS, RabbitMQ) NO será destruida"
+          echo "✓ Destruyendo SOLO recursos del microservicio"
+          echo "✓ La infraestructura compartida (VPC, EKS, RabbitMQ) NO será destruida"
 
       - uses: actions/checkout@v4
 
+      # ========== 2. SETUP ==========
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -45,541 +47,94 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region:            ${{ secrets.AWS_REGION }}
 
-      - name: Install kubectl
+      - name: Install tools
         run: |
-          set -e
+          # kubectl
           KUBECTL_VERSION=$(curl -sL https://dl.k8s.io/release/stable.txt)
           curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
           chmod +x kubectl && sudo mv kubectl /usr/local/bin/kubectl
+          
+          # jq
+          sudo apt-get update && sudo apt-get install -y jq
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_wrapper: false
-      
-      - name: Install jq (for JSON parsing)
-        run: sudo apt-get update && sudo apt-get install -y jq
 
-      # ---------------------------
-      # 1) Conectarnos al cluster (que existe en infraestructura compartida)
-      # ---------------------------
-      - name: Fix checksum mismatch BEFORE init
-        continue-on-error: true
-        run: |
-          echo "================================================="
-          echo "Prevención: Limpiando checksums huérfanos ANTES de init"
-          echo "================================================="
-          
-          # Eliminar el digest (checksum) de DynamoDB
-          echo "Eliminando checksum (digest) del estado en DynamoDB..."
-          LOCK_ID="$TF_BACKEND_BUCKET/infra/terraform/aws/terraform.tfstate-md5"
-          if aws dynamodb delete-item \
-            --table-name "$TF_BACKEND_DDB_TABLE" \
-            --key "{\"LockID\":{\"S\":\"$LOCK_ID\"}}" \
-            --region "$TF_BACKEND_REGION" 2>/dev/null; then
-            echo "✓ Checksum eliminado de DynamoDB"
-          else
-            echo "  Checksum no existe o ya fue eliminado"
-          fi
-          
-          # Eliminar el lock principal si existe
-          echo "Eliminando lock del estado en DynamoDB..."
-          LOCK_ID="$TF_BACKEND_BUCKET/infra/terraform/aws/terraform.tfstate"
-          if aws dynamodb delete-item \
-            --table-name "$TF_BACKEND_DDB_TABLE" \
-            --key "{\"LockID\":{\"S\":\"$LOCK_ID\"}}" \
-            --region "$TF_BACKEND_REGION" 2>/dev/null; then
-            echo "✓ Lock eliminado de DynamoDB"
-          else
-            echo "  Lock no existe o ya fue eliminado"
-          fi
-          
-          echo "Limpieza completada. Procediendo con init..."
-
-      - name: Init Terraform (infra dir) para leer outputs
+      # ========== 3. CONECTAR AL CLUSTER ==========
+      - name: Init Terraform infra
         working-directory: infra/terraform/aws
         run: |
-          # Intentar con -migrate-state para resolver problemas de checksum
-          terraform init -input=false -migrate-state \
-            -backend-config="bucket=$TF_BACKEND_BUCKET" \
-            -backend-config="key=$TF_BACKEND_KEY" \
-            -backend-config="region=$TF_BACKEND_REGION" \
-            -backend-config="dynamodb_table=$TF_BACKEND_DDB_TABLE" \
-            -backend-config="encrypt=true" || \
-          terraform init -input=false -reconfigure \
+          terraform init -input=false \
             -backend-config="bucket=$TF_BACKEND_BUCKET" \
             -backend-config="key=$TF_BACKEND_KEY" \
             -backend-config="region=$TF_BACKEND_REGION" \
             -backend-config="dynamodb_table=$TF_BACKEND_DDB_TABLE" \
             -backend-config="encrypt=true"
 
-      - name: Update kubeconfig (EKS desde shared infrastructure)
+      - name: Update kubeconfig
         id: kubeconfig
-        continue-on-error: true
         run: |
-          set -e
           CLUSTER_NAME=$(terraform -chdir=infra/terraform/aws output -raw cluster_name)
-          echo "cluster_name=$CLUSTER_NAME" >> $GITHUB_OUTPUT
           aws eks update-kubeconfig --name "$CLUSTER_NAME" --region "${{ secrets.AWS_REGION }}"
-          kubectl version --client
-          kubectl get nodes || true
+          kubectl get nodes
 
-      # ---------------------------
-      # 2) Limpiar recursos K8s del microservicio
-      # ---------------------------
-      - name: Delete microservice-specific K8s resources
+      # ========== 4. ELIMINAR RECURSOS K8S ==========
+      - name: Delete Kubernetes resources
         if: steps.kubeconfig.outcome == 'success'
-        continue-on-error: true
         run: |
-          set -e
-          echo "Eliminando recursos K8s del microservicio documents"
+          echo "Eliminando recursos Kubernetes del microservicio..."
           
-          # Guardar nombres de LoadBalancers para eliminarlos después
-          DOCUMENTS_LB=$(kubectl -n documents get svc documents-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
-          GRAFANA_LB=$(kubectl -n monitoring get svc kube-prometheus-stack-grafana -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+          # Aplicación
+          kubectl delete -k k8s/overlays/prod/ --ignore-not-found --wait=true || true
           
-          if [ -n "$DOCUMENTS_LB" ]; then
-            echo "documents_lb_hostname=$DOCUMENTS_LB" >> $GITHUB_OUTPUT
-          fi
-          if [ -n "$GRAFANA_LB" ]; then
-            echo "grafana_lb_hostname=$GRAFANA_LB" >> $GITHUB_OUTPUT
-          fi
+          # Namespace
+          kubectl delete namespace documents --ignore-not-found --wait=true || true
           
-          # Esperar a que los pods terminen antes de eliminar recursos
-          echo "Esperando a que deployments terminen..."
-          kubectl -n documents rollout status deployment/documents-service --timeout=60s || true
-          
-          # Eliminar aplicación
-          echo "Eliminando aplicación con kustomize..."
-          kubectl delete -k k8s/overlays/prod/ --ignore-not-found --wait=true --timeout=300s || true
-          
-          # Eliminar namespace completo si existe (para limpiar totalmente)
-          echo "Eliminando namespace documents..."
-          kubectl delete namespace documents --ignore-not-found --wait=true --timeout=180s || true
-          
-          # ConfigMap del dashboard específico
+          # Monitoring resources
           kubectl delete configmap documents-service-dashboard -n monitoring --ignore-not-found || true
-          # PrometheusRule específico
           kubectl delete prometheusrule documents-service-alerts -n monitoring --ignore-not-found || true
-          # ServiceMonitor específico
           kubectl delete servicemonitor documents-service -n monitoring --ignore-not-found || true
 
-      - name: Wait for LoadBalancers and PVCs to be deleted
-        if: steps.kubeconfig.outcome == 'success'
-        continue-on-error: true
-        run: |
-          echo "Esperando a que LoadBalancers y PVCs se eliminen..."
-          # Esperar hasta 5 minutos para que AWS elimine los LoadBalancers
-          for i in {1..10}; do
-            LB_COUNT=$(kubectl get svc -A -o json | jq '.items[] | select(.metadata.name | contains("documents") or contains("grafana")) | .status.loadBalancer.ingress' | jq -s 'length' || echo "0")
-            if [ "$LB_COUNT" = "0" ]; then
-              echo "Todos los LoadBalancers han sido eliminados"
-              break
-            fi
-            echo "Esperando... ($i/10) LoadBalancers restantes: $LB_COUNT"
-            sleep 30
-          done
-          
-          # Verificar PVCs pendientes de eliminación
-          PVC_COUNT=$(kubectl get pvc -n documents 2>/dev/null | wc -l || echo "0")
-          if [ "$PVC_COUNT" -gt "1" ]; then
-            echo "Forzando eliminación de PVCs en namespace documents..."
-            kubectl delete pvc --all -n documents --force --grace-period=0 || true
-          fi
-
-      - name: Fix K8s state checksum mismatch BEFORE init
-        continue-on-error: true
-        run: |
-          echo "Limpiando checksums de K8s state en DynamoDB..."
-          
-          # K8s state checksum
-          LOCK_ID_K8S="$TF_BACKEND_BUCKET/k8s/terraform/aws/terraform.tfstate-md5"
-          if aws dynamodb delete-item \
-            --table-name "$TF_BACKEND_DDB_TABLE" \
-            --key "{\"LockID\":{\"S\":\"$LOCK_ID_K8S\"}}" \
-            --region "$TF_BACKEND_REGION" 2>/dev/null; then
-            echo "✓ K8s checksum eliminado de DynamoDB"
-          else
-            echo "  K8s checksum no existe"
-          fi
-          
-          # K8s state lock
-          LOCK_ID_K8S="$TF_BACKEND_BUCKET/k8s/terraform/aws/terraform.tfstate"
-          if aws dynamodb delete-item \
-            --table-name "$TF_BACKEND_DDB_TABLE" \
-            --key "{\"LockID\":{\"S\":\"$LOCK_ID_K8S\"}}" \
-            --region "$TF_BACKEND_REGION" 2>/dev/null; then
-            echo "✓ K8s lock eliminado de DynamoDB"
-          else
-            echo "  K8s lock no existe"
-          fi
-
-      - name: Terraform Init (k8s)
+      # ========== 5. TERRAFORM DESTROY MONITORING ==========
+      - name: Init Terraform k8s
         working-directory: k8s/terraform/aws
         run: |
-          # Intentar con -migrate-state primero
-          terraform init -input=false -upgrade -migrate-state \
-            -backend-config="bucket=$TF_BACKEND_BUCKET" \
-            -backend-config="key=k8s/terraform/aws/terraform.tfstate" \
-            -backend-config="region=$TF_BACKEND_REGION" \
-            -backend-config="dynamodb_table=$TF_BACKEND_DDB_TABLE" \
-            -backend-config="encrypt=true" || \
-          terraform init -input=false -upgrade -reconfigure \
+          terraform init -input=false \
             -backend-config="bucket=$TF_BACKEND_BUCKET" \
             -backend-config="key=k8s/terraform/aws/terraform.tfstate" \
             -backend-config="region=$TF_BACKEND_REGION" \
             -backend-config="dynamodb_table=$TF_BACKEND_DDB_TABLE" \
             -backend-config="encrypt=true"
 
-      - name: Read infra outputs (para variables del provider k8s/helm)
-        id: infra_outputs_destroy
-        continue-on-error: true
+      - name: Read cluster outputs
+        id: cluster_info
         run: |
           echo "CLUSTER_NAME=$(terraform -chdir=infra/terraform/aws output -raw cluster_name)" >> $GITHUB_OUTPUT
           echo "CLUSTER_ENDPOINT=$(terraform -chdir=infra/terraform/aws output -raw cluster_endpoint)" >> $GITHUB_OUTPUT
           echo "CLUSTER_CA=$(terraform -chdir=infra/terraform/aws output -raw cluster_ca_certificate)" >> $GITHUB_OUTPUT
 
-      - name: Terraform Destroy (k8s monitoring stack)
-        if: steps.infra_outputs_destroy.outcome == 'success'
+      - name: Terraform Destroy monitoring stack
         working-directory: k8s/terraform/aws
-        env:
-          TF_LOG: INFO
-        continue-on-error: true
         run: |
-          set -e
-          echo "Destruyendo monitoring stack (Prometheus/Grafana)..."
-          
-          # Primero intentar eliminar Helm release manualmente si existe
-          if kubectl get namespace monitoring >/dev/null 2>&1; then
-            echo "Eliminando Helm release kube-prometheus-stack..."
-            kubectl delete namespace monitoring --wait=true --timeout=300s || true
-            sleep 30
-          fi
-          
-          # Ahora hacer terraform destroy
           terraform destroy -auto-approve -input=false \
             -var "aws_region=${{ secrets.AWS_REGION }}" \
-            -var "cluster_name=${{ steps.infra_outputs_destroy.outputs.CLUSTER_NAME }}" \
-            -var "cluster_endpoint=${{ steps.infra_outputs_destroy.outputs.CLUSTER_ENDPOINT }}" \
-            -var "cluster_ca_certificate=${{ steps.infra_outputs_destroy.outputs.CLUSTER_CA }}"
-          
-          echo "Terraform destroy completado para monitoring stack"
+            -var "cluster_name=${{ steps.cluster_info.outputs.CLUSTER_NAME }}" \
+            -var "cluster_endpoint=${{ steps.cluster_info.outputs.CLUSTER_ENDPOINT }}" \
+            -var "cluster_ca_certificate=${{ steps.cluster_info.outputs.CLUSTER_CA }}"
 
-      # ---------------------------
-      # 3) Destroy microservice-specific AWS resources (S3, DynamoDB, IAM)
-      # ---------------------------
-      - name: Get microservice DynamoDB table name
-        working-directory: infra/terraform/aws
-        id: get_microservice_table
-        continue-on-error: true
-        run: |
-          # Intentar obtener el nombre de la tabla de DynamoDB del microservicio
-          TABLE_NAME=$(terraform output -raw dynamodb_table 2>/dev/null || echo "")
-          if [ -n "$TABLE_NAME" ]; then
-            echo "table_name=$TABLE_NAME" >> $GITHUB_OUTPUT
-            echo "TABLE_NAME=$TABLE_NAME" >> $GITHUB_ENV
-          else
-            echo "No DynamoDB table found for microservice (or already destroyed)"
-          fi
-
-      - name: Disable DynamoDB PITR before destroy
-        if: env.TABLE_NAME != ''
-        continue-on-error: true
-        run: |
-          echo "Disabling Point-in-time Recovery for DynamoDB table: $TABLE_NAME"
-          aws dynamodb update-continuous-backups \
-            --table-name "$TABLE_NAME" \
-            --point-in-time-recovery-specification PointInTimeRecoveryEnabled=false \
-            --region ${{ secrets.AWS_REGION }} || echo "Could not disable PITR (table might not exist or already disabled)"
-          
-          # Wait a moment for the change to propagate
-          sleep 2
-
-      - name: Fix Terraform state checksum mismatch if needed
-        working-directory: infra/terraform/aws
-        continue-on-error: true
-        run: |
-          echo "Verificando posible checksum mismatch..."
-          
-          # Verificar si existe el digest en DynamoDB
-          LOCK_ID="$TF_BACKEND_BUCKET/infra/terraform/aws/terraform.tfstate-md5"
-          STATE_CHECKSUM=$(aws dynamodb get-item \
-            --table-name "$TF_BACKEND_DDB_TABLE" \
-            --key "{\"LockID\":{\"S\":\"$LOCK_ID\"}}" \
-            --query 'Item.Digest.S' \
-            --output text \
-            --region "$TF_BACKEND_REGION" 2>/dev/null || echo "")
-          
-          if [ -n "$STATE_CHECKSUM" ]; then
-            echo "Checksum encontrado en DynamoDB: $STATE_CHECKSUM"
-            echo "Si terraform falla con checksum mismatch, intentará con -migrate-state"
-          fi
-          
-          # Verificar si existe el archivo de state en S3
-          STATE_EXISTS=$(aws s3 ls s3://"$TF_BACKEND_BUCKET"/"$TF_BACKEND_KEY" --region "$TF_BACKEND_REGION" 2>/dev/null && echo "yes" || echo "no")
-          echo "State file en S3 existe: $STATE_EXISTS"
-
-      - name: Terraform Destroy (microservice resources)
-        working-directory: infra/terraform/aws
-        env:
-          TF_LOG: INFO
-        run: |
-          set -e
-          echo "Destruyendo recursos AWS del microservicio..."
-          
-          # Verificar si los recursos ya fueron eliminados manualmente
-          echo "Verificando si los recursos existen..."
-          S3_BUCKET=$(terraform output -raw s3_bucket 2>/dev/null || echo "")
-          DYNAMODB_TABLE=$(terraform output -raw dynamodb_table 2>/dev/null || echo "")
-          
-          if [ -n "$S3_BUCKET" ]; then
-            BUCKET_EXISTS=$(aws s3 ls s3://"$S3_BUCKET" 2>/dev/null && echo "yes" || echo "no")
-            echo "S3 Bucket existe: $BUCKET_EXISTS"
-          fi
-          
-          if [ -n "$DYNAMODB_TABLE" ]; then
-            TABLE_EXISTS=$(aws dynamodb describe-table --table-name "$DYNAMODB_TABLE" --region "${{ secrets.AWS_REGION }}" 2>/dev/null && echo "yes" || echo "no")
-            echo "DynamoDB Table existe: $TABLE_EXISTS"
-          fi
-          
-          # Si todos los recursos ya fueron eliminados, limpiar el estado
-          if [[ "${BUCKET_EXISTS:-no}" == "no" && "${TABLE_EXISTS:-no}" == "no" ]]; then
-            echo "ADVERTENCIA: Los recursos ya fueron eliminados manualmente"
-            echo "Limpiando el estado de Terraform..."
-            
-            # Remover del estado los recursos que ya no existen
-            terraform state list 2>/dev/null | while read resource; do
-              echo "Removing from state: $resource"
-              terraform state rm "$resource" 2>/dev/null || true
-            done
-            
-            echo "Estado limpiado. Los recursos ya no existen en AWS."
-            exit 0
-          fi
-          
-          # Si los recursos existen, proceder con destroy normal
-          echo "Los recursos aún existen. Procediendo con destroy..."
-          
-          # Intento 1: terraform destroy normal
-          if terraform destroy -auto-approve -input=false \
-            -var "tf_backend_bucket=$TF_BACKEND_BUCKET"; then
-            echo "Terraform destroy exitoso"
-            exit 0
-          fi
-          
-          # Intento 2: sin refresh
-          echo "Intento 2: Terraform destroy sin refresh"
-          if terraform destroy -auto-approve -input=false -refresh=false \
-            -var "tf_backend_bucket=$TF_BACKEND_BUCKET"; then
-            echo "Terraform destroy exitoso sin refresh"
-            exit 0
-          fi
-          
-          # Intento 3: reinit backend y destruir recursos que falten
-          echo "Intento 3: Limpiando recursos huérfanos del estado"
-          terraform state list 2>/dev/null || echo "No state available"
-          
-          # Intentar eliminar manualmente recursos que ya no existen
-          for resource in $(terraform state list 2>/dev/null); do
-            echo "Verificando resource: $resource"
-            if [[ "$resource" == *"aws_s3_bucket"* ]] && [ "${BUCKET_EXISTS:-no}" == "no" ]; then
-              echo "Eliminando del estado: $resource"
-              terraform state rm "$resource" 2>/dev/null || true
-            elif [[ "$resource" == *"aws_dynamodb_table"* ]] && [ "${TABLE_EXISTS:-no}" == "no" ]; then
-              echo "Eliminando del estado: $resource"
-              terraform state rm "$resource" 2>/dev/null || true
-            fi
-          done
-          
-          echo "Limpieza completada"
-
-      - name: Force destroy resources if Terraform failed
-        if: failure()
-        continue-on-error: true
+      # ========== 6. TERRAFORM DESTROY INFRA ==========
+      - name: Terraform Destroy microservice resources
         working-directory: infra/terraform/aws
         run: |
-          set -e
-          echo "Intentando eliminar recursos manualmente debido a errores de Terraform..."
-          
-          # Intentar leer los outputs del state para destruir manualmente
-          S3_BUCKET=$(terraform output -raw s3_bucket 2>/dev/null || echo "")
-          DYNAMODB_TABLE=$(terraform output -raw dynamodb_table 2>/dev/null || echo "")
-          SECRET_ARN=$(terraform output -raw secretsmanager_secret_arn 2>/dev/null || echo "")
-          IRSA_ROLE_ARN=$(terraform output -raw irsa_role_arn 2>/dev/null || echo "")
-          
-          echo "Recursos encontrados:"
-          echo "  S3 Bucket: $S3_BUCKET"
-          echo "  DynamoDB Table: $DYNAMODB_TABLE"
-          echo "  Secret ARN: $SECRET_ARN"
-          echo "  IRSA Role ARN: $IRSA_ROLE_ARN"
-          
-          # Eliminar S3 bucket
-          if [ -n "$S3_BUCKET" ]; then
-            echo "Eliminando S3 bucket: $S3_BUCKET"
-            aws s3 rb s3://"$S3_BUCKET" --force --region "${{ secrets.AWS_REGION }}" || echo "Error eliminando S3"
-          fi
-          
-          # Eliminar DynamoDB table
-          if [ -n "$DYNAMODB_TABLE" ]; then
-            echo "Eliminando DynamoDB table: $DYNAMODB_TABLE"
-            aws dynamodb delete-table --table-name "$DYNAMODB_TABLE" --region "${{ secrets.AWS_REGION }}" || echo "Error eliminando DynamoDB"
-          fi
-          
-          # Eliminar Secrets Manager secret
-          if [ -n "$SECRET_ARN" ]; then
-            echo "Eliminando Secrets Manager secret"
-            aws secretsmanager delete-secret --secret-id "$SECRET_ARN" --force-delete-without-recovery --region "${{ secrets.AWS_REGION }}" || echo "Error eliminando Secret"
-          fi
-          
-          # Eliminar IAM Role (que tiene las policies adjuntas)
-          if [ -n "$IRSA_ROLE_ARN" ]; then
-            ROLE_NAME=$(echo "$IRSA_ROLE_ARN" | cut -d'/' -f2)
-            echo "Eliminando IAM Role: $ROLE_NAME"
-            
-            # Detach policies
-            for policy_arn in $(aws iam list-attached-role-policies --role-name "$ROLE_NAME" --query 'AttachedPolicies[].PolicyArn' --output text 2>/dev/null); do
-              aws iam detach-role-policy --role-name "$ROLE_NAME" --policy-arn "$policy_arn" || true
-            done
-            
-            # Delete inline policies
-            for policy_name in $(aws iam list-role-policies --role-name "$ROLE_NAME" --query 'PolicyNames[]' --output text 2>/dev/null); do
-              aws iam delete-role-policy --role-name "$ROLE_NAME" --policy-name "$policy_name" || true
-            done
-            
-            # Delete role
-            aws iam delete-role --role-name "$ROLE_NAME" || echo "Error eliminando IAM Role"
-          fi
-          
-          echo "Eliminación manual completada"
+          terraform destroy -auto-approve -input=false
 
-      # ---------------------------
-      # 4) (Opcional) Borrar SOLO el state del microservicio
-      #    NO toca el bucket compartido ni la tabla DynamoDB de locks
-      # ---------------------------
-      - name: Fix checksum mismatch by removing state locks
-        continue-on-error: true
+      # ========== 7. OPCIONAL: ELIMINAR STATE FILES ==========
+      - name: Delete state files (optional)
+        if: ${{ github.event.inputs.delete_state == 'true' }}
         run: |
-          echo "================================================="
-          echo "SOLUCIÓN: Limpiando checksums y locks huérfanos"
-          echo "================================================="
-          echo ""
-          echo "Esto es necesario cuando:"
-          echo "  1. Los recursos fueron eliminados manualmente en AWS"
-          echo "  2. El estado de Terraform tiene checksums desincronizados"
-          echo "  3. DynamoDB tiene locks o digests huérfanos"
-          echo ""
-          
-          # Eliminar el digest (checksum) de DynamoDB
-          echo "Eliminando checksum (digest) del estado en DynamoDB..."
-          LOCK_ID="$TF_BACKEND_BUCKET/infra/terraform/aws/terraform.tfstate-md5"
-          if aws dynamodb delete-item \
-            --table-name "$TF_BACKEND_DDB_TABLE" \
-            --key "{\"LockID\":{\"S\":\"$LOCK_ID\"}}" \
-            --region "$TF_BACKEND_REGION" 2>/dev/null; then
-            echo "✓ Checksum eliminado de DynamoDB"
-          else
-            echo "  Checksum no existe o ya fue eliminado"
-          fi
-          
-          # Eliminar el lock principal si existe
-          echo "Eliminando lock del estado en DynamoDB..."
-          LOCK_ID="$TF_BACKEND_BUCKET/infra/terraform/aws/terraform.tfstate"
-          if aws dynamodb delete-item \
-            --table-name "$TF_BACKEND_DDB_TABLE" \
-            --key "{\"LockID\":{\"S\":\"$LOCK_ID\"}}" \
-            --region "$TF_BACKEND_REGION" 2>/dev/null; then
-            echo "✓ Lock eliminado de DynamoDB"
-          else
-            echo "  Lock no existe o ya fue eliminado"
-          fi
-          
-          # K8s state checksum
-          echo "Eliminando checksum de K8s state en DynamoDB..."
-          LOCK_ID_K8S="$TF_BACKEND_BUCKET/k8s/terraform/aws/terraform.tfstate-md5"
-          if aws dynamodb delete-item \
-            --table-name "$TF_BACKEND_DDB_TABLE" \
-            --key "{\"LockID\":{\"S\":\"$LOCK_ID_K8S\"}}" \
-            --region "$TF_BACKEND_REGION" 2>/dev/null; then
-            echo "✓ K8s checksum eliminado de DynamoDB"
-          else
-            echo "  K8s checksum no existe"
-          fi
-          
-          # K8s state lock
-          LOCK_ID_K8S="$TF_BACKEND_BUCKET/k8s/terraform/aws/terraform.tfstate"
-          if aws dynamodb delete-item \
-            --table-name "$TF_BACKEND_DDB_TABLE" \
-            --key "{\"LockID\":{\"S\":\"$LOCK_ID_K8S\"}}" \
-            --region "$TF_BACKEND_REGION" 2>/dev/null; then
-            echo "✓ K8s lock eliminado de DynamoDB"
-          else
-            echo "  K8s lock no existe"
-          fi
-          
-          echo ""
-          echo "Limpieza completada. Ahora puedes ejecutar terraform init nuevamente."
-          echo "================================================="
-
-      - name: Delete microservice terraform state files
-        if: ${{ github.event.inputs.delete_backend == 'true' }}
-        run: |
-          set -e
-          echo "Eliminando SOLO los archivos de state del microservicio"
-          echo "   Bucket: $TF_BACKEND_BUCKET (NO será eliminado)"
-          echo "   Keys a eliminar:"
-          echo "     - $TF_BACKEND_KEY"
-          echo "     - k8s/terraform/aws/terraform.tfstate"
-
-          # Eliminar state files del microservicio
+          echo "Eliminando state files del microservicio..."
           aws s3api delete-object --bucket "$TF_BACKEND_BUCKET" --key "$TF_BACKEND_KEY" || true
           aws s3api delete-object --bucket "$TF_BACKEND_BUCKET" --key "k8s/terraform/aws/terraform.tfstate" || true
-          
-          echo "State files del microservicio eliminados"
-          echo "Backend compartido (S3 + DynamoDB) conservado para otros servicios"
-
-      - name: Verify cleanup
-        if: steps.kubeconfig.outcome == 'success'
-        continue-on-error: true
-        run: |
-          echo "Verificando limpieza de recursos..."
-          
-          # Verificar que no queden recursos en namespace documents
-          if kubectl get namespace documents >/dev/null 2>&1; then
-            echo "Namespace 'documents' todavía existe"
-            kubectl get all -n documents || true
-          else
-            echo "Namespace 'documents' eliminado correctamente"
-          fi
-          
-          # Verificar que no queden LoadBalancers del microservicio
-          if kubectl get svc -A 2>/dev/null | grep -E "(documents|grafana)" >/dev/null; then
-            echo "Algunos services todavía existen"
-            kubectl get svc -A | grep -E "(documents|grafana)" || true
-          else
-            echo "Todos los services eliminados"
-          fi
-
-      - name: Done
-        run: |
-          echo "========================================"
-          echo "Destroy del microservicio completado"
-          echo "========================================"
-          echo ""
-          echo "Recursos eliminados:"
-          echo "  S3 Bucket (documents)"
-          echo "  DynamoDB Table (documents)"
-          echo "  IAM Role/Policy (documents-irsa)"
-          echo "  Secrets Manager (application config)"
-          echo "  Monitoring stack (kube-prometheus)"
-          echo "  LoadBalancers (Classic/NLB)"
-          echo "  Namespace documents"
-          echo "  Kubernetes resources (Deployments, Services, etc.)"
-          echo ""
-          echo "Recursos compartidos conservados:"
-          echo "  VPC"
-          echo "  EKS Cluster"
-          echo "  RabbitMQ"
-          echo "  AWS Load Balancer Controller"
-          echo "  External Secrets Operator"
-          echo ""
-          echo "Para destruir la infraestructura compartida, ejecuta el workflow de destroy en el repo infrastructure-shared"
+          echo "✓ State files eliminados (bucket compartido conservado)"

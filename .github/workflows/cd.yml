@@ -391,18 +391,55 @@ jobs:
         run: |
           kubectl -n documents rollout status deploy/documents-service --timeout=180s
 
+      - name: Wait for LoadBalancer to be provisioned
+        run: |
+          echo "Waiting for NLB LoadBalancer to get hostname assigned..."
+          for i in {1..30}; do
+            NLB_HOSTNAME=$(kubectl -n documents get svc documents-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+            if [ -n "$NLB_HOSTNAME" ]; then
+              echo "✓ LoadBalancer provisioned: $NLB_HOSTNAME"
+              break
+            fi
+            echo "Waiting for LoadBalancer... (attempt $i/30)"
+            sleep 10
+          done
+          
+          # Mostrar estado actual del servicio
+          if [ -z "$NLB_HOSTNAME" ]; then
+            echo "LoadBalancer still pending after 5 minutes"
+            echo "=== Current Service Status ==="
+            kubectl -n documents get svc documents-service
+            echo ""
+            echo "=== Service Events ==="
+            kubectl -n documents describe svc documents-service | grep -A 20 "Events:" || true
+          fi
+
       - name: Display Access Information
         run: |
           echo "=== Deployment Summary ==="
           echo ""
-          echo "Application Ingress (ALB):"
-          kubectl -n documents get ingress documents-ingress -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' || echo "Pending..."
+          echo "Application LoadBalancer (NLB):"
+          NLB_HOSTNAME=$(kubectl -n documents get svc documents-service -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+          if [ -n "$NLB_HOSTNAME" ]; then
+            echo "  Hostname: $NLB_HOSTNAME"
+            echo "  Access: http://$NLB_HOSTNAME/api/v1/documents"
+            echo "  Swagger: http://$NLB_HOSTNAME/swagger"
+          else
+            echo "  Pending... Waiting for NLB to be provisioned"
+            echo "  This can take 2-5 minutes"
+            kubectl -n documents get svc documents-service -o yaml
+          fi
           echo ""
           echo ""
           echo "Grafana LoadBalancer:"
-          kubectl -n monitoring get svc kube-prometheus-stack-grafana -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' || echo "Pending..."
-          echo " (user: admin, pass: admin)"
+          GRAFANA_LB=$(kubectl -n monitoring get svc kube-prometheus-stack-grafana -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+          if [ -n "$GRAFANA_LB" ]; then
+            echo "  Hostname: $GRAFANA_LB"
+            echo "  (user: admin, pass: admin)"
+          else
+            echo "  Pending..."
+          fi
           echo ""
           echo "Prometheus (internal):"
-          echo "kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:9090"
+          echo "  kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:9090"
           echo ""
