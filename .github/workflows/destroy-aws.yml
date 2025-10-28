@@ -124,9 +124,18 @@ jobs:
       - name: Read cluster outputs
         id: cluster_info
         run: |
-          echo "CLUSTER_NAME=$(terraform -chdir=infra/terraform/aws output -raw cluster_name)" >> $GITHUB_OUTPUT
-          echo "CLUSTER_ENDPOINT=$(terraform -chdir=infra/terraform/aws output -raw cluster_endpoint)" >> $GITHUB_OUTPUT
-          echo "CLUSTER_CA=$(terraform -chdir=infra/terraform/aws output -raw cluster_ca_certificate)" >> $GITHUB_OUTPUT
+          # Intentar obtener outputs de Terraform, si falla obtenerlos de AWS
+          CLUSTER_NAME=$(terraform -chdir=infra/terraform/aws output -raw cluster_name 2>/dev/null || aws eks list-clusters --region "${{ secrets.AWS_REGION }}" --query 'clusters[0]' --output text)
+          CLUSTER_ENDPOINT=$(terraform -chdir=infra/terraform/aws output -raw cluster_endpoint 2>/dev/null || aws eks describe-cluster --name "$CLUSTER_NAME" --region "${{ secrets.AWS_REGION }}" --query 'cluster.endpoint' --output text)
+          CLUSTER_CA=$(terraform -chdir=infra/terraform/aws output -raw cluster_ca_certificate 2>/dev/null || aws eks describe-cluster --name "$CLUSTER_NAME" --region "${{ secrets.AWS_REGION }}" --query 'cluster.certificateAuthority.data' --output text)
+          
+          echo "CLUSTER_NAME=$CLUSTER_NAME" >> $GITHUB_OUTPUT
+          echo "CLUSTER_ENDPOINT=$CLUSTER_ENDPOINT" >> $GITHUB_OUTPUT
+          echo "CLUSTER_CA=$CLUSTER_CA" >> $GITHUB_OUTPUT
+          
+          echo "Cluster info obtenido:"
+          echo "Name: $CLUSTER_NAME"
+          echo "Endpoint: $CLUSTER_ENDPOINT"
 
       - name: Terraform Destroy monitoring config
         working-directory: k8s/terraform/aws
