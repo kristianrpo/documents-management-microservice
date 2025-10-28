@@ -25,8 +25,22 @@ spec:
   rules:
     - http:
         paths:
-          - path: /api/v1(/|$)(.*)
-            pathType: ImplementationSpecific
+          - path: /healthz
+            pathType: Exact
+            backend:
+              service:
+                name: documents-service
+                port:
+                  number: 80
+          - path: /swagger
+            pathType: Prefix
+            backend:
+              service:
+                name: documents-service
+                port:
+                  number: 80
+          - path: /api/v1/
+            pathType: Prefix
             backend:
               service:
                 name: documents-service

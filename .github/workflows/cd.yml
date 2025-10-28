@@ -282,6 +282,7 @@ jobs:
               --arg consumer_queue "${{ secrets.RABBITMQ_CONSUMER_QUEUE }}" \
               --arg auth_request_queue "${{ secrets.RABBITMQ_AUTH_REQUEST_QUEUE }}" \
               --arg auth_result_queue "${{ secrets.RABBITMQ_AUTH_RESULT_QUEUE }}" \
+              --arg jwt_secret "${{ secrets.JWT_SECRET }}" \
               '{
                 APP_PORT: $port,
                 DYNAMODB_TABLE: $table,
@@ -295,7 +296,8 @@ jobs:
                 RABBITMQ_URL: $rabbit,
                 RABBITMQ_CONSUMER_QUEUE: $consumer_queue,
                 RABBITMQ_AUTH_REQUEST_QUEUE: $auth_request_queue,
-                RABBITMQ_AUTH_RESULT_QUEUE: $auth_result_queue
+                RABBITMQ_AUTH_RESULT_QUEUE: $auth_result_queue,
+                JWT_SECRET: $jwt_secret
               }')" || true
 
       - name: Render K8s templates with infra outputs
@@ -422,9 +424,9 @@ jobs:
           ALB_HOSTNAME=$(kubectl -n documents get ingress documents-ingress -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
           if [ -n "$ALB_HOSTNAME" ]; then
             echo "  Hostname: $ALB_HOSTNAME"
-            echo "  Access: http://$ALB_HOSTNAME/api/v1/documents"
-            echo "  Swagger: http://$ALB_HOSTNAME/swagger"
+            echo "  API: http://$ALB_HOSTNAME/api/v1/documents"
             echo "  Health: http://$ALB_HOSTNAME/healthz"
+            echo "  Swagger: http://$ALB_HOSTNAME/swagger"
           else
             echo "  Pending... Waiting for ALB to be provisioned"
             echo "  This can take 2-5 minutes"
