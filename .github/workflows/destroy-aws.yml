@@ -92,12 +92,17 @@ jobs:
           # Namespace
           kubectl delete namespace documents --ignore-not-found --wait=true || true
           
-          # Monitoring resources
+          # Monitoring resources (in monitoring namespace from shared infra)
           kubectl delete configmap documents-service-dashboard -n monitoring --ignore-not-found || true
           kubectl delete prometheusrule documents-service-alerts -n monitoring --ignore-not-found || true
-          kubectl delete servicemonitor documents-service -n monitoring --ignore-not-found || true
+          
+          # Monitoring resources (in documents namespace)
+          kubectl delete servicemonitor documents-service -n documents --ignore-not-found || true
+          
+          # Limpiar Helm release antiguo de Prometheus/Grafana (si existe)
+          helm uninstall kube-prometheus-stack -n monitoring --ignore-not-found || true
 
-      # ========== 5. TERRAFORM DESTROY MONITORING ==========
+      # ========== 5. TERRAFORM DESTROY MONITORING CONFIG ==========
       - name: Init Terraform k8s
         working-directory: k8s/terraform/aws
         run: |
@@ -115,7 +120,7 @@ jobs:
           echo "CLUSTER_ENDPOINT=$(terraform -chdir=infra/terraform/aws output -raw cluster_endpoint)" >> $GITHUB_OUTPUT
           echo "CLUSTER_CA=$(terraform -chdir=infra/terraform/aws output -raw cluster_ca_certificate)" >> $GITHUB_OUTPUT
 
-      - name: Terraform Destroy monitoring stack
+      - name: Terraform Destroy monitoring config
         working-directory: k8s/terraform/aws
         run: |
           terraform destroy -auto-approve -input=false \

@@ -26,13 +26,3 @@ provider "kubernetes" {
   cluster_ca_certificate = base64decode(local.effective_cluster_ca_data)
   token                  = try(data.aws_eks_cluster_auth.this[0].token, null)
 }
-
-provider "helm" {
-  alias = "eks"
-
-  kubernetes = {
-    host                   = local.effective_cluster_endpoint
-    cluster_ca_certificate = base64decode(local.effective_cluster_ca_data)
-    token                  = try(data.aws_eks_cluster_auth.this[0].token, null)
-  }
-}

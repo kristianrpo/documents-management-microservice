@@ -4,7 +4,6 @@ namespace: documents
 resources:
   - ../../base
   - externalsecrets.yaml
-  - grafana-ingress.yaml
   - hpa.yaml
   - ingress.yaml
   - servicemonitor.yaml
@@ -14,10 +13,6 @@ patches:
     target:
       kind: Service
       name: documents-service
-  - path: grafana-namespace-patch.yaml
-    target:
-      kind: Ingress
-      name: grafana-ingress
 
 images:
   - name: REPOSITORY/documents-service

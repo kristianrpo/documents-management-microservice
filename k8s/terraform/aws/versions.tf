@@ -9,18 +9,5 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = ">= 2.24"
     }
-    helm = {
-      source  = "hashicorp/helm"
-      # Mantén esto actualizado; las versiones nuevas usan listas de objetos para set/*
-      version = ">= 2.13.0"
-    }
-    time = {
-      source  = "hashicorp/time"
-      version = ">= 0.9.1"
-    }
-    null = {
-      source  = "hashicorp/null"
-      version = ">= 3.2.1"
-    }
   }
 }
