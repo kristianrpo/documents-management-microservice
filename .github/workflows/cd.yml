@@ -283,13 +283,15 @@ jobs:
               --arg auth_request_queue "${{ secrets.RABBITMQ_AUTH_REQUEST_QUEUE }}" \
               --arg auth_result_queue "${{ secrets.RABBITMQ_AUTH_RESULT_QUEUE }}" \
               --arg jwt_secret "${{ secrets.JWT_SECRET }}" \
+              --arg aws_access_key "${{ secrets.AWS_ACCESS_KEY_ID }}" \
+              --arg aws_secret_key "${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
               '{
                 APP_PORT: $port,
                 DYNAMODB_TABLE: $table,
                 DYNAMODB_PROCESSED_MESSAGES_TABLE: $processed_table,
                 DYNAMODB_ENDPOINT: "",
-                AWS_ACCESS_KEY_ID: "",
-                AWS_SECRET_ACCESS_KEY: "",
+                AWS_ACCESS_KEY_ID: $aws_access_key,
+                AWS_SECRET_ACCESS_KEY: $aws_secret_key,
                 AWS_REGION: $region,
                 S3_BUCKET: $bucket,
                 S3_ENDPOINT: "",
