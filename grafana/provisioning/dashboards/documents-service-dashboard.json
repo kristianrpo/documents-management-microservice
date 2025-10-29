@@ -272,6 +272,147 @@
         {"format": "reqps", "label": null, "logBase": 1, "max": null, "min": 0, "show": true},
         {"format": "short", "label": null, "logBase": 1, "max": null, "min": null, "show": true}
       ]
+    },
+    {
+      "id": 19,
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 18},
+      "type": "stat",
+      "title": "Service Health Status",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "up{job=\"documents-service\"}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"value": 0, "color": "red"},
+              {"value": 1, "color": "green"}
+            ]
+          },
+          "mappings": [
+            {"type": "value", "options": {"0": {"text": "DOWN"}, "1": {"text": "UP"}}}
+          ]
+        }
+      }
+    },
+    {
+      "id": 22,
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 18},
+      "type": "stat",
+      "title": "Service Firing Alerts",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "count(ALERTS{alertstate=\"firing\", job=\"documents-service\", alertname!=\"InfoInhibitor\", alertname!=\"TooManyGoroutines\", alertname!=\"Watchdog\", alertname!=\"KubeControllerManagerDown\", alertname!=\"KubeSchedulerDown\", alertname!=\"PrometheusNotConnectedToAlertmanagers\"})",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"value": 0, "color": "green"},
+              {"value": 0.5, "color": "yellow"},
+              {"value": 1, "color": "red"}
+            ]
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 23,
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 18},
+      "type": "stat",
+      "title": "Service Pending Alerts",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "count(ALERTS{alertstate=\"pending\", job=\"documents-service\"})",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"value": 0, "color": "green"},
+              {"value": 0.5, "color": "yellow"},
+              {"value": 1, "color": "orange"}
+            ]
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 24,
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 22},
+      "type": "table",
+      "title": "Documents Service Alerts",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "ALERTS{alertstate=~\"firing|pending\", job=\"documents-service\", alertname!=\"InfoInhibitor\"}",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {"displayName": "alertstate", "desc": true},
+          {"displayName": "alertname", "desc": false}
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "displayMode": "color-background",
+            "sort": "asc"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "alertstate"},
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {"type": "value", "options": {"firing": {"text": "🔥 FIRING", "color": "red"}}},
+                  {"type": "value", "options": {"pending": {"text": "⏳ PENDING", "color": "yellow"}}},
+                  {"type": "value", "options": {"inactive": {"text": "✅ OK", "color": "green"}}}
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "alertname"},
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Alert Name"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 21,
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 26},
+      "type": "text",
+      "title": "📋 Alert Definitions",
+      "options": {
+        "content": "## Available Alerts:\n\n**HTTP Alerts:**\n- HighErrorRate\n- CriticalErrorRate\n- SlowRequests\n- ServiceDown\n\n**Storage Alerts:**\n- HighStorageErrorRate\n- StorageUploadFailures\n- SlowStorageOperations\n\n**Database Alerts:**\n- HighDatabaseErrorRate\n- SlowDatabaseQueries\n\n**Messaging Alerts:**\n- HighMessageErrorRate\n- MessagePublishingFailures\n\n**Business Alerts:**\n- NoRecentUploads\n- HighAuthenticationFailureRate\n- UnusualBulkDeleteActivity\n\n**Resource Alerts:**\n- HighMemoryUsage\n- TooManyGoroutines\n- HighRequestConcurrency"
+      }
     }
   ],
   "time": {"from": "now-15m", "to": "now"},

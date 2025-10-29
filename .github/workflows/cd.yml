@@ -226,7 +226,8 @@ jobs:
           set -euo pipefail
           # Importar ConfigMap del dashboard si ya existe
           terraform import -input=false -no-color kubernetes_config_map.grafana_dashboard monitoring/documents-service-dashboard || true
-          # Nota: PrometheusRule se creará automáticamente, no necesita import
+          # Importar PrometheusRule si ya existe
+          terraform import -input=false -no-color kubernetes_manifest.prometheus_rule '{"apiVersion":"monitoring.coreos.com/v1","kind":"PrometheusRule","metadata":{"name":"documents-service-alerts","namespace":"monitoring"}}' || true
 
       - name: Terraform Validate (k8s)
         working-directory: k8s/terraform/aws
