@@ -188,6 +188,13 @@ jobs:
         with:
           terraform_wrapper: false
 
+      - name: Install kubectl
+        run: |
+          KUBECTL_VERSION=$(curl -sL https://dl.k8s.io/release/stable.txt)
+          curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/kubectl
+
       - name: Terraform Init (infra dir to read outputs)
         working-directory: infra/terraform/aws
         run: |
@@ -204,6 +211,12 @@ jobs:
           echo "CLUSTER_NAME=$(terraform -chdir=infra/terraform/aws output -raw cluster_name)" >> $GITHUB_OUTPUT
           echo "CLUSTER_ENDPOINT=$(terraform -chdir=infra/terraform/aws output -raw cluster_endpoint)" >> $GITHUB_OUTPUT
           echo "CLUSTER_CA=$(terraform -chdir=infra/terraform/aws output -raw cluster_ca_certificate)" >> $GITHUB_OUTPUT
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --name ${{ steps.infra_outputs.outputs.CLUSTER_NAME }} \
+            --region ${{ secrets.AWS_REGION }}
 
       - name: Terraform Init (k8s - remote state)
         working-directory: k8s/terraform/aws
@@ -225,24 +238,38 @@ jobs:
         run: |
           set -euo pipefail
           
-          # Primero, verificar si el import es necesario ejecutando un plan dry-run
-          echo "Checking existing resources..."
+          echo "Checking and managing existing resources..."
           
-          # Verificar ConfigMap
+          # Primero intentar importar, si falla (recurso no en state pero existe), eliminarlo
+          
+          # ConfigMap
           if terraform state list | grep -q "kubernetes_config_map.grafana_dashboard"; then
-            echo "ConfigMap already in state"
+            echo "✓ ConfigMap already in state"
           else
-            echo "Importing ConfigMap..."
-            terraform import -input=false -no-color kubernetes_config_map.grafana_dashboard monitoring/documents-service-dashboard || echo "ConfigMap not found, will be created"
+            echo "Attempting to import ConfigMap..."
+            if terraform import -input=false -no-color kubernetes_config_map.grafana_dashboard monitoring/documents-service-dashboard 2>&1 | grep -q "already managed"; then
+              echo "ConfigMap managed by Terraform, continuing..."
+            elif kubectl get configmap documents-service-dashboard -n monitoring &>/dev/null; then
+              echo "ConfigMap exists but not in state, deleting to recreate..."
+              kubectl delete configmap documents-service-dashboard -n monitoring || true
+            else
+              echo "ConfigMap not found, will be created"
+            fi
           fi
           
-          # Verificar PrometheusRule
+          # PrometheusRule
           if terraform state list | grep -q "kubernetes_manifest.prometheus_rule"; then
-            echo "PrometheusRule already in state"
+            echo "✓ PrometheusRule already in state"
           else
-            echo "Importing PrometheusRule..."
-            # Para kubernetes_manifest, el formato es: apiVersion_kind_namespace_name
-            terraform import -input=false -no-color 'kubernetes_manifest.prometheus_rule' 'apiVersion_monitoring.coreos.com/PrometheusRule_namespace_monitoring_name_documents-service-alerts' || echo "PrometheusRule not found, will be created"
+            echo "PrometheusRule not in state, checking if it exists in cluster..."
+            if kubectl get prometheusrule documents-service-alerts -n monitoring &>/dev/null; then
+              echo "PrometheusRule exists in cluster but not in state, deleting to recreate..."
+              kubectl delete prometheusrule documents-service-alerts -n monitoring || true
+              echo "Waiting 5 seconds for resource deletion..."
+              sleep 5
+            else
+              echo "PrometheusRule not found, will be created"
+            fi
           fi
 
       - name: Terraform Validate (k8s)
