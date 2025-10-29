@@ -224,10 +224,26 @@ jobs:
           TF_VAR_cluster_ca_certificate: ${{ steps.infra_outputs.outputs.CLUSTER_CA }}
         run: |
           set -euo pipefail
-          # Importar ConfigMap del dashboard si ya existe
-          terraform import -input=false -no-color kubernetes_config_map.grafana_dashboard monitoring/documents-service-dashboard || true
-          # Importar PrometheusRule si ya existe
-          terraform import -input=false -no-color kubernetes_manifest.prometheus_rule '{"apiVersion":"monitoring.coreos.com/v1","kind":"PrometheusRule","metadata":{"name":"documents-service-alerts","namespace":"monitoring"}}' || true
+          
+          # Primero, verificar si el import es necesario ejecutando un plan dry-run
+          echo "Checking existing resources..."
+          
+          # Verificar ConfigMap
+          if terraform state list | grep -q "kubernetes_config_map.grafana_dashboard"; then
+            echo "ConfigMap already in state"
+          else
+            echo "Importing ConfigMap..."
+            terraform import -input=false -no-color kubernetes_config_map.grafana_dashboard monitoring/documents-service-dashboard || echo "ConfigMap not found, will be created"
+          fi
+          
+          # Verificar PrometheusRule
+          if terraform state list | grep -q "kubernetes_manifest.prometheus_rule"; then
+            echo "PrometheusRule already in state"
+          else
+            echo "Importing PrometheusRule..."
+            # Para kubernetes_manifest, el formato es: apiVersion_kind_namespace_name
+            terraform import -input=false -no-color 'kubernetes_manifest.prometheus_rule' 'apiVersion_monitoring.coreos.com/PrometheusRule_namespace_monitoring_name_documents-service-alerts' || echo "PrometheusRule not found, will be created"
+          fi
 
       - name: Terraform Validate (k8s)
         working-directory: k8s/terraform/aws
